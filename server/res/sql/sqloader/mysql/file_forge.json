@@ -1,0 +1,32 @@
+{
+    "get_password": "SELECT password from users WHERE user_id = %s",
+    "get_user": "SELECT u.group_uuid, u.user_uuid, u.user_id, u.user_name, us.storage_uuid, s.storage_name, s.storage_type FROM users u JOIN user_storages us ON u.user_uuid = us.user_uuid JOIN storages s ON s.storage_uuid = us.storage_uuid WHERE u.user_id = %s AND us.is_default = TRUE",
+    "storages": {
+        "get_user_storages": "storages/get_user_storages.sql",
+        "get_node_children": "storages/get_node_children.sql",
+        "get_current_node": "storages/get_current_node.sql",
+        "get_breadcrumb_path": "storages/get_breadcrumb_path.sql",
+        "get_download_permission": "storages/get_download_permission.sql",
+        "get_download": "storages/get_download.sql",
+        "get_node_name": "SELECT name FROM nodes WHERE node_uuid = %s",
+        "get_upload_permission": "storages/get_upload_permission.sql",
+        "insert_node": "INSERT INTO nodes (storage_uuid, node_uuid, name, type, parent_uuid, creator_uuid) VALUES (%s, %s, %s, %s, %s, %s)",
+        "insert_file": "INSERT INTO files (node_uuid, file_hash, file_size, mime_type, creator_uuid) VALUES (%s, %s, %s, %s, %s)",
+        "get_storage_quota_limit": "storages/get_storage_quota_limit.sql",
+        "delete_file": "DELETE FROM files WHERE node_uuid = %s",
+        "delete_file_node": "DELETE FROM nodes WHERE node_uuid = %s",
+        "get_folder_nodes": "storages/get_folder_nodes.sql",
+        "delete_folder_nodes": "storages/delete_folder_nodes.sql",
+        "get_bulk_download": "storages/get_bulk_download.sql"
+    },
+    "share_link": {
+        "create": "INSERT INTO shared_links (token, node_uuid, node_type, password_hash, created_by) VALUES (%s, %s, %s, %s, %s)",
+        "get_by_token": "SELECT sl.*, n.name, n.storage_uuid, f.mime_type FROM shared_links sl JOIN nodes n ON sl.node_uuid = n.node_uuid LEFT JOIN files f ON n.node_uuid = f.node_uuid WHERE sl.token = %s",
+        "get_by_user": "SELECT sl.*, n.name FROM shared_links sl JOIN nodes n ON sl.node_uuid = n.node_uuid WHERE sl.created_by = %s ORDER BY sl.created_at DESC",
+        "delete": "DELETE FROM shared_links WHERE token = %s AND created_by = %s",
+        "delete_by_node": "DELETE FROM shared_links WHERE node_uuid = %s",
+        "exists": "SELECT COUNT(*) FROM shared_links WHERE node_uuid = %s AND created_by = %s"
+    }
+}
+
+

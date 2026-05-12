@@ -1,0 +1,192 @@
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from passlib.context import CryptContext
+from pydantic import BaseModel
+import jwt
+import redis
+from datetime import datetime, timedelta, timezone
+from config import settings, db, tfa
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+import LogAssist.log as logger
+
+db_instance = db.db_instance
+sqloader = db.sqloader
+
+limiter = Limiter(key_func=get_remote_address)
+
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
+TOTP_PENDING_EXPIRE_MINUTES = 5
+
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+router = APIRouter()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def authenticate_user(username: str, password: str):
+    user_pw = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_password"), username)
+    if not user_pw or not verify_password(password, user_pw.get("password", "")):
+        return False
+    result = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), username)
+    logger.debug(result)
+    return result
+
+
+def create_access_token(data: dict, expires_delta: timedelta):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+class TotpVerifyRequest(BaseModel):
+    temp_token: str
+    code: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/")
+@router.post("")
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid credentials")
+
+    user_id = user["user_id"]
+
+    totp_enabled = tfa.is_enabled(user_id)
+    logger.debug(f"[Login] user_id: {user_id}, TOTP 활성화 여부: {totp_enabled}")
+
+    if totp_enabled:
+        temp_token = create_access_token(
+            data={"sub": user_id, "totp_pending": True},
+            expires_delta=timedelta(minutes=TOTP_PENDING_EXPIRE_MINUTES),
+        )
+        logger.debug(f"[Login] temp_token 발급 - user_id: {user_id}")
+        return {"totp_required": True, "temp_token": temp_token}
+
+    access_token = create_access_token(
+        data={"sub": user_id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(data={"sub": user_id})
+    redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, refresh_token)
+    logger.debug({"access_token": access_token, "token_type": "bearer", "user": user})
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user}
+
+
+@router.post("/totp/verify")
+async def verify_totp_login(request: Request, body: TotpVerifyRequest):
+    logger.debug(f"[TOTP Verify] 요청 받음 - temp_token: {body.temp_token[:50]}..., code: {body.code}")
+
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="token_expired",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(body.temp_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": True})
+        logger.debug(f"[TOTP Verify] JWT 파싱 성공 - payload: {payload}")
+    except jwt.ExpiredSignatureError:
+        logger.debug("[TOTP Verify] ❌ JWT 만료됨 (ExpiredSignatureError)")
+        raise HTTPException(status_code=401, detail="token_expired")
+    except jwt.InvalidTokenError as e:
+        logger.debug(f"[TOTP Verify] ❌ JWT 파싱 실패 (InvalidTokenError): {e}")
+        raise credentials_exception
+
+    user_id = payload.get("sub")
+    totp_pending = payload.get("totp_pending", False)
+    logger.debug(f"[TOTP Verify] 추출된 user_id: {user_id}, totp_pending: {totp_pending}")
+
+    if not user_id or not totp_pending:
+        logger.debug(f"[TOTP Verify] ❌ user_id 또는 totp_pending 없음")
+        raise credentials_exception
+
+    logger.debug(f"[TOTP Verify] tfa.verify 호출 - user_id: {user_id}, code: {body.code}")
+    verify_result = tfa.verify(user_id, body.code)
+    logger.debug(f"[TOTP Verify] tfa.verify 결과: {verify_result}")
+
+    if not verify_result:
+        logger.debug(f"[TOTP Verify] ❌ TOTP 검증 실패 - user_id: {user_id}, code: {body.code}")
+        raise HTTPException(status_code=401, detail="invalid_code")
+
+    user = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), user_id)
+    access_token = create_access_token(
+        data={"sub": user_id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(data={"sub": user_id})
+    redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, refresh_token)
+    logger.debug(f"[TOTP Verify] ✅ 로그인 성공 - user_id: {user_id}")
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user}
+
+
+@router.post("/refresh")
+async def refresh(body: RefreshRequest):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    # Step 1: JWT 서명/만료 검증
+    try:
+        payload = jwt.decode(body.refresh_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": True})
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+    user_id: str = payload.get("sub")
+    token_type: str = payload.get("type")
+
+    if not user_id or token_type != "refresh":
+        raise credentials_exception
+
+    # Step 2: blacklist 확인
+    if redis_client.exists(f"blacklist:{body.refresh_token}") > 0:
+        raise HTTPException(status_code=401, detail="Token has been logged out")
+
+    # Step 3: Redis 저장값과 제출된 token 비교
+    stored_token = redis_client.get(f"refresh:{user_id}")
+    if stored_token is None or stored_token != body.refresh_token:
+        raise credentials_exception
+
+    # Step 4: 기존 Redis 키 삭제
+    redis_client.delete(f"refresh:{user_id}")
+
+    # Step 5: 새 refresh token 발급 및 Redis 저장
+    new_refresh_token = create_refresh_token(data={"sub": user_id})
+    redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, new_refresh_token)
+
+    # Step 6: 새 access token 발급
+    access_token = create_access_token(
+        data={"sub": user_id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    logger.debug(f"[Refresh] ✅ token 회전 완료 - user_id: {user_id}")
+    return {"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}

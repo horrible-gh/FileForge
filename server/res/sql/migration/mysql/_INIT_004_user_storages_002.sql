@@ -1,0 +1,1 @@
+ALTER TABLE user_storages ADD COLUMN mode VARCHAR(2) DEFAULT 'rw' AFTER storage_uuid; 
