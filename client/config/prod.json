@@ -1,0 +1,7 @@
+{
+  "SERVER_URL": "https://fileforge.duckdns.org/fileforge",
+  "SHARE_BASE_URL": "https://fileforge.duckdns.org",
+  "LOG_LEVEL": "warn",
+  "LOG_CONSOLE": "false",
+  "LOG_FILE": "true"
+}

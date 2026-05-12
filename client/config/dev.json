@@ -1,0 +1,7 @@
+{
+  "SERVER_URL": "http://localhost:8000/fileforge",
+  "SHARE_BASE_URL": "http://localhost:3000",
+  "LOG_LEVEL": "debug",
+  "LOG_CONSOLE": "true",
+  "LOG_FILE": "true"
+}
