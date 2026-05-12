@@ -56,6 +56,14 @@ Before exposing FileForge to the internet, review your reverse proxy, HTTPS, COR
 
 ---
 
+## Screenshots
+
+| Login | File List |
+|---|---|
+| ![Login](assets/screenshots/login.png) | ![File List](assets/screenshots/file_list.png) |
+
+---
+
 ## Architecture
 
 ```text
