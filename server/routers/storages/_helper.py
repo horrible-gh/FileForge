@@ -128,12 +128,12 @@ async def create_folders_from_path(storage_uuid: str, parent_uuid: str, relative
         # 이미 존재하는지 확인
         if current_parent is None:
             existing = db_instance.fetch_one(
-                "SELECT node_uuid FROM nodes WHERE storage_uuid = %s AND parent_uuid IS NULL AND name = %s AND type = 'folder'",
+                "SELECT node_uuid FROM nodes WHERE storage_uuid = ? AND parent_uuid IS NULL AND name = ? AND type = 'folder'",
                 (storage_uuid, folder_name)
             )
         else:
             existing = db_instance.fetch_one(
-                "SELECT node_uuid FROM nodes WHERE storage_uuid = %s AND parent_uuid = %s AND name = %s AND type = 'folder'",
+                "SELECT node_uuid FROM nodes WHERE storage_uuid = ? AND parent_uuid = ? AND name = ? AND type = 'folder'",
                 (storage_uuid, current_parent, folder_name)
             )
 
@@ -143,7 +143,7 @@ async def create_folders_from_path(storage_uuid: str, parent_uuid: str, relative
             # 폴더 생성
             new_uuid = str(uuid.uuid4())
             db_instance.execute_query(
-                "INSERT INTO nodes (storage_uuid, node_uuid, name, type, parent_uuid, creator_uuid, created_at) VALUES (%s, %s, %s, 'folder', %s, %s, NOW())",
+                "INSERT INTO nodes (storage_uuid, node_uuid, name, type, parent_uuid, creator_uuid, created_at) VALUES (?, ?, ?, 'folder', ?, ?, NOW())",
                 (storage_uuid, new_uuid, folder_name, current_parent, user_uuid)
             )
             current_parent = new_uuid

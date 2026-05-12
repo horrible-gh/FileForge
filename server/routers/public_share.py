@@ -39,7 +39,7 @@ def _check_password(link: dict, password: str | None):
 
 def _get_storage_path(storage_uuid: str) -> str:
     row = db_instance.fetch_one(
-        "SELECT storage_path FROM storages WHERE storage_uuid = %s",
+        "SELECT storage_path FROM storages WHERE storage_uuid = ?",
         (storage_uuid,)
     )
     if not row:
@@ -73,7 +73,7 @@ def _resolve_folder_path(root_uuid: str, path: str) -> str:
     path_parts = [p for p in path.split("/") if p]
     for part in path_parts:
         child = db_instance.fetch_one(
-            "SELECT node_uuid FROM nodes WHERE parent_uuid = %s AND name = %s AND type = 'folder'",
+            "SELECT node_uuid FROM nodes WHERE parent_uuid = ? AND name = ? AND type = 'folder'",
             (current_uuid, part)
         )
         if not child:
@@ -95,7 +95,7 @@ def _is_descendant(node_uuid: str, ancestor_uuid: str) -> bool:
         if current == ancestor_uuid:
             return True
         row = db_instance.fetch_one(
-            "SELECT parent_uuid FROM nodes WHERE node_uuid = %s",
+            "SELECT parent_uuid FROM nodes WHERE node_uuid = ?",
             (current,)
         )
         if not row or not row["parent_uuid"]:
@@ -135,7 +135,7 @@ async def public_share_access(
         if meta:
             # 파일 크기 조회
             size_row = db_instance.fetch_one(
-                "SELECT file_size FROM files WHERE node_uuid = %s",
+                "SELECT file_size FROM files WHERE node_uuid = ?",
                 (node_uuid,)
             )
             return {
@@ -160,7 +160,7 @@ async def public_share_access(
     files = db_instance.fetch_all(
         "SELECT n.node_uuid, n.name, f.file_size, f.mime_type "
         "FROM nodes n JOIN files f ON n.node_uuid = f.node_uuid "
-        "WHERE n.parent_uuid = %s AND n.type = 'file' "
+        "WHERE n.parent_uuid = ? AND n.type = 'file' "
         "ORDER BY n.name",
         (target_uuid,)
     )
@@ -169,7 +169,7 @@ async def public_share_access(
     folders = db_instance.fetch_all(
         "SELECT node_uuid, name "
         "FROM nodes "
-        "WHERE parent_uuid = %s AND type = 'folder' "
+        "WHERE parent_uuid = ? AND type = 'folder' "
         "ORDER BY name",
         (target_uuid,)
     )
@@ -177,7 +177,7 @@ async def public_share_access(
     # target 폴더 이름 조회 (path가 있는 경우 root와 다름)
     if path and path != "/":
         target_info = db_instance.fetch_one(
-            "SELECT name FROM nodes WHERE node_uuid = %s",
+            "SELECT name FROM nodes WHERE node_uuid = ?",
             (target_uuid,)
         )
         folder_name = target_info["name"] if target_info else link["name"]
@@ -238,7 +238,7 @@ async def public_share_file_download(
     file_node = db_instance.fetch_one(
         "SELECT n.node_uuid, n.name, f.mime_type "
         "FROM nodes n JOIN files f ON n.node_uuid = f.node_uuid "
-        "WHERE n.node_uuid = %s AND n.type = 'file'",
+        "WHERE n.node_uuid = ? AND n.type = 'file'",
         (file_uuid,)
     )
     if not file_node:

@@ -122,7 +122,7 @@ async def get_node_children(params: UserStoragesRequest = Depends()):
     if node_uuid is not None:
         [current_data] = db_instance.fetch_all(
             sqloader.load_sql("file_forge.json", "storages.get_current_node"),
-            (node_uuid)
+            (node_uuid,)
         )
         logger.debug("current_data", current_data)
         current_result = {
@@ -131,7 +131,7 @@ async def get_node_children(params: UserStoragesRequest = Depends()):
             "parent_uuid": current_data.get("parent_uuid", "")
         }
 
-        breadcrumb_path_data = db_instance.fetch_all(sqloader.load_sql("file_forge.json", "storages.get_breadcrumb_path"), (node_uuid))
+        breadcrumb_path_data = db_instance.fetch_all(sqloader.load_sql("file_forge.json", "storages.get_breadcrumb_path"), (node_uuid,))
         logger.debug("breadcrumb_path_data", breadcrumb_path_data)
 
     return {
@@ -159,7 +159,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
 
     # 노드 정보 먼저 조회 (타입 확인)
     node_info = db_instance.fetch_one(
-        "SELECT node_uuid, name, type, parent_uuid, storage_uuid FROM nodes WHERE node_uuid = %s",
+        "SELECT node_uuid, name, type, parent_uuid, storage_uuid FROM nodes WHERE node_uuid = ?",
         prm2
     )
 
@@ -168,7 +168,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
 
     # 스토리지 경로 가져오기
     storage_info = db_instance.fetch_one(
-        "SELECT storage_path FROM storages WHERE storage_uuid = %s",
+        "SELECT storage_path FROM storages WHERE storage_uuid = ?",
         (node_info['storage_uuid'],)
     )
     storage_path = storage_info['storage_path']
@@ -256,7 +256,7 @@ async def create_folder(params: UserStoragesRequest):
 
     # 1. 물리 디렉터리 생성
     storage_path_result = db_instance.fetch_one(
-        "SELECT storage_path FROM storages WHERE storage_uuid = %s",
+        "SELECT storage_path FROM storages WHERE storage_uuid = ?",
         (storage_uuid,)
     )
     logger.debug("storage_path_result", storage_path_result)
@@ -334,12 +334,12 @@ async def upload_file(
         # 3. 같은 이름의 기존 파일 체크 (덮어쓰기의 경우 기존 용량 제외)
         if parent_uuid is None:
             existing_node = db_instance.fetch_one(
-                "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid IS NULL AND n.name = %s AND n.type = 'file'",
+                "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid IS NULL AND n.name = ? AND n.type = 'file'",
                 (file.filename,)
             )
         else:
             existing_node = db_instance.fetch_one(
-                "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid = %s AND n.name = %s AND n.type = 'file'",
+                "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid = ? AND n.name = ? AND n.type = 'file'",
                 (parent_uuid, file.filename)
             )
 
@@ -375,7 +375,7 @@ async def upload_file(
         if existing_node:
             # 기존 파일 업데이트
             db_instance.execute_query(
-                "UPDATE files SET file_hash = %s, file_size = %s, mime_type = %s, modifier_uuid = %s, modified_at = NOW() WHERE node_uuid = %s",
+                "UPDATE files SET file_hash = ?, file_size = ?, mime_type = ?, modifier_uuid = ?, modified_at = NOW() WHERE node_uuid = ?",
                 (file_hash, file_size, file.content_type or 'application/octet-stream', user_uuid, node_uuid)
             )
         else:
@@ -467,12 +467,12 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
         # 2. 중복 이름 체크
         if parent_uuid:
             duplicate = db_instance.fetch_one(
-                "SELECT node_uuid FROM nodes WHERE parent_uuid = %s AND name = %s AND node_uuid != %s",
+                "SELECT node_uuid FROM nodes WHERE parent_uuid = ? AND name = ? AND node_uuid != ?",
                 (parent_uuid, new_name, node_uuid)
             )
         else:
             duplicate = db_instance.fetch_one(
-                "SELECT node_uuid FROM nodes WHERE parent_uuid IS NULL AND name = %s AND node_uuid != %s",
+                "SELECT node_uuid FROM nodes WHERE parent_uuid IS NULL AND name = ? AND node_uuid != ?",
                 (new_name, node_uuid)
             )
 
@@ -493,7 +493,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
 
         # 4. DB 업데이트
         db_instance.execute_query(
-            "UPDATE nodes SET name = %s, modifier_uuid = %s, modified_at = NOW() WHERE node_uuid = %s",
+            "UPDATE nodes SET name = ?, modifier_uuid = ?, modified_at = NOW() WHERE node_uuid = ?",
             (new_name, user_uuid, node_uuid)
         )
 
@@ -547,11 +547,11 @@ async def update_file_content(request: UserStoragesRequest):
         new_hash = hashlib.sha256(content_bytes).hexdigest()
 
         db_instance.execute_query(
-            "UPDATE files SET file_size = %s, file_hash = %s, modifier_uuid = %s, modified_at = NOW() WHERE node_uuid = %s",
+            "UPDATE files SET file_size = ?, file_hash = ?, modifier_uuid = ?, modified_at = NOW() WHERE node_uuid = ?",
             (new_size, new_hash, user_uuid, node_uuid)
         )
         db_instance.execute_query(
-            "UPDATE nodes SET modified_at = NOW() WHERE node_uuid = %s",
+            "UPDATE nodes SET modified_at = NOW() WHERE node_uuid = ?",
             (node_uuid,)
         )
 

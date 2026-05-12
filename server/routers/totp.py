@@ -17,7 +17,7 @@ class TotpCodeRequest(BaseModel):
 async def setup_totp(user_id: str = Depends(verify_token)):
     """TOTP 설정 초기화 — secret, QR 이미지, 복구 코드 반환."""
     user = db_instance.fetch_one(
-        "SELECT user_id FROM users WHERE user_id = %s",
+        "SELECT user_id FROM users WHERE user_id = ?",
         (user_id,)
     )
     username = user["user_id"] if user else user_id
