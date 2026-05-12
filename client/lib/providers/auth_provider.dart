@@ -210,7 +210,7 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('[B004][AuthProvider.login] Unexpected error=$e');
       debugPrint('$st');
       _isLoading = false;
-      _error = '로그인 중 오류가 발생했습니다';
+      _error = 'An error occurred during login';
       notifyListeners();
       return LoginResult.failed;
     }
@@ -218,9 +218,9 @@ class AuthProvider extends ChangeNotifier {
 
   String _loginErrorMessage(String detail) {
     if (detail == 'Invalid credentials') {
-      return '아이디 또는 비밀번호가 틀렸습니다';
+      return 'Invalid username or password';
     }
-    return '로그인 중 오류가 발생했습니다';
+    return 'An error occurred during login';
   }
 
   // ── TOTP 검증 (Phase 2) ──────────────────────────────────────────────────────

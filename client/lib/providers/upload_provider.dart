@@ -138,17 +138,17 @@ class UploadProvider extends ChangeNotifier {
       final statusCode = e.response?.statusCode;
       if (statusCode == 413) {
         item.status = UploadStatus.error;
-        item.errorMessage = '저장 공간이 부족합니다';
+        item.errorMessage = 'Insufficient storage space';
         AppLogger.warn(_tag, 'HTTP 413: ${item.filename}');
       } else {
         item.status = UploadStatus.error;
-        item.errorMessage = '업로드에 실패했습니다';
+        item.errorMessage = 'Upload failed';
         AppLogger.error(_tag, '업로드 실패: ${item.filename} ($statusCode)');
       }
       notifyListeners();
     } catch (e) {
       item.status = UploadStatus.error;
-      item.errorMessage = '업로드에 실패했습니다';
+      item.errorMessage = 'Upload failed';
       AppLogger.error(_tag, '업로드 예외: ${item.filename} $e');
       notifyListeners();
     }

@@ -302,10 +302,10 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       setState(() => _isSaving = false);
       final statusCode = e.response?.statusCode;
       final message = statusCode == 404
-          ? '파일을 찾을 수 없습니다'
+          ? 'File not found'
           : statusCode == 403
-              ? '저장 권한이 없습니다'
-              : '저장에 실패했습니다';
+              ? 'No permission to save'
+              : 'Save failed';
       AppLogger.error('FilePreviewScreen', '텍스트 저장 실패: $statusCode');
       AppToast.error(context, message);
     } catch (e) {
@@ -620,7 +620,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     } catch (e) {
       AppLogger.error('FilePreviewScreen', 'PDF 초기화 실패: $e');
       if (mounted) {
-        setState(() => _error = 'PDF를 표시할 수 없습니다');
+        setState(() => _error = 'Cannot display PDF');
       }
     }
   }
@@ -752,7 +752,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     } catch (e) {
       AppLogger.error('FilePreviewScreen', '비디오 초기화 실패: $e');
       if (mounted) {
-        setState(() => _error = '비디오를 재생할 수 없습니다');
+        setState(() => _error = 'Cannot play video');
       }
     }
   }

@@ -103,9 +103,9 @@ class SharePageProvider extends ChangeNotifier {
 
   /// currentPath → breadcrumbs 파싱 (BT-L4-02)
   List<String> _parseBreadcrumbs(String path) {
-    if (path.isEmpty) return ['홈'];
+    if (path.isEmpty) return ['Home'];
     final segments = path.split('/').where((s) => s.isNotEmpty).toList();
-    return ['홈', ...segments];
+    return ['Home', ...segments];
   }
 
   void _applyMetaResponse(Map<String, dynamic> data) {
@@ -144,7 +144,7 @@ class SharePageProvider extends ChangeNotifier {
       _handleMetaResponse(response);
     } catch (e) {
       _state = SharePageState.error;
-      _errorMessage = '네트워크 오류가 발생했습니다';
+      _errorMessage = 'Network error occurred';
     }
     notifyListeners();
   }
@@ -163,13 +163,13 @@ class SharePageProvider extends ChangeNotifier {
       _errorMessage = null;
     } else if (status == 403) {
       _state = SharePageState.password;
-      _errorMessage = '비밀번호가 올바르지 않습니다';
+      _errorMessage = 'Incorrect password';
     } else if (status == 404) {
       _state = SharePageState.error;
-      _errorMessage = '공유 링크를 찾을 수 없습니다';
+      _errorMessage = 'Shared link not found';
     } else {
       _state = SharePageState.error;
-      _errorMessage = '오류가 발생했습니다 (HTTP $status)';
+      _errorMessage = 'An error occurred (HTTP $status)';
     }
   }
 
@@ -188,7 +188,7 @@ class SharePageProvider extends ChangeNotifier {
       _handleMetaResponse(response, fromPassword: true, pw: pw);
     } catch (e) {
       _state = SharePageState.password;
-      _errorMessage = '네트워크 오류가 발생했습니다';
+      _errorMessage = 'Network error occurred';
     }
     notifyListeners();
   }
@@ -214,7 +214,7 @@ class SharePageProvider extends ChangeNotifier {
       if (status == 200) {
         _applyMetaResponse(response.data ?? {});
       } else if (status == 404) {
-        onToast('폴더를 찾을 수 없습니다');
+        onToast('Folder not found');
         // 루트로 복귀 (error 상태로 전이 금지 — L004 ST-L4-01 #10)
         await _loadRoot();
         return;
@@ -277,13 +277,13 @@ class SharePageProvider extends ChangeNotifier {
 
       final status = response.statusCode ?? 0;
       if (status != 200) {
-        onToast(status == 404 ? '파일을 찾을 수 없습니다' : '다운로드에 실패했습니다');
+        onToast(status == 404 ? 'File not found' : 'Download failed');
         return;
       }
 
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
-        onToast('다운로드에 실패했습니다');
+        onToast('Download failed');
         return;
       }
 
@@ -292,9 +292,9 @@ class SharePageProvider extends ChangeNotifier {
           (fileUuid != null ? 'file_$fileUuid' : 'download');
 
       await DownloadSaveService.saveBytes(bytes: bytes, filename: filename);
-      onToast('다운로드가 완료되었습니다');
+      onToast('Download complete');
     } catch (e) {
-      onToast('다운로드에 실패했습니다');
+      onToast('Download failed');
     }
   }
 
