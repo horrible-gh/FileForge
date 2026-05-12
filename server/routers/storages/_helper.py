@@ -143,7 +143,7 @@ async def create_folders_from_path(storage_uuid: str, parent_uuid: str, relative
             # 폴더 생성
             new_uuid = str(uuid.uuid4())
             db_instance.execute_query(
-                "INSERT INTO nodes (storage_uuid, node_uuid, name, type, parent_uuid, creator_uuid, created_at) VALUES (?, ?, ?, 'folder', ?, ?, NOW())",
+                "INSERT INTO nodes (storage_uuid, node_uuid, name, type, parent_uuid, creator_uuid, created_at) VALUES (?, ?, ?, 'folder', ?, ?, CURRENT_TIMESTAMP)",
                 (storage_uuid, new_uuid, folder_name, current_parent, user_uuid)
             )
             current_parent = new_uuid
