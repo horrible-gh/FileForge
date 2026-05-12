@@ -1,0 +1,63 @@
+# === Common ===
+.DS_Store
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.bundle
+/tmp/
+/server/fileforge.db
+/server/*.db
+
+# === Server (Python) ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.env
+.venv
+env/
+venv/
+*.log
+server/default.log*
+server/logs/
+server/log/
+server/test/
+server/tests/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# === Client (Flutter) ===
+node_modules/
+client/build/
+client/.dart_tool/
+client/.flutter-plugins-dependencies
+client/android/.gradle/
+client/android/local.properties
+client/ios/.symlinks/
+client/windows/flutter/generated_plugin_registrant.cpp
+client/windows/flutter/generated_plugin_registrant.h
+client/windows/flutter/generated_plugins.cmake
+client/linux/flutter/generated_plugin_registrant.cc
+client/linux/flutter/generated_plugin_registrant.h
+client/linux/flutter/generated_plugins.cmake
+
+# === Storage ===
+file-forge-storage/
+
+# === Claude ===
+.claude/
+
+# === Secure Bolt ===
+/securebolt/*
