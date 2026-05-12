@@ -51,10 +51,6 @@ Before exposing FileForge to the internet, review your reverse proxy, HTTPS, COR
 - TOTP two-factor authentication
 - File search
 - Endpoint rate limiting
-- Multi-language support
-  - Korean
-  - English
-  - Japanese
 - Local filesystem storage with UUID-based directories
 - SQLite by default, with MySQL and PostgreSQL support
 
