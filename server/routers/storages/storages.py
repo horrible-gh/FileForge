@@ -375,7 +375,7 @@ async def upload_file(
         if existing_node:
             # 기존 파일 업데이트
             db_instance.execute_query(
-                "UPDATE files SET file_hash = ?, file_size = ?, mime_type = ?, modifier_uuid = ?, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = ?",
+                sqloader.load_sql("file_forge.json", "storages.update_file_on_upload"),
                 (file_hash, file_size, file.content_type or 'application/octet-stream', user_uuid, node_uuid)
             )
         else:
@@ -493,7 +493,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
 
         # 4. DB 업데이트
         db_instance.execute_query(
-            "UPDATE nodes SET name = ?, modifier_uuid = ?, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = ?",
+            sqloader.load_sql("file_forge.json", "storages.update_node_name"),
             (new_name, user_uuid, node_uuid)
         )
 
@@ -547,11 +547,11 @@ async def update_file_content(request: UserStoragesRequest):
         new_hash = hashlib.sha256(content_bytes).hexdigest()
 
         db_instance.execute_query(
-            "UPDATE files SET file_size = ?, file_hash = ?, modifier_uuid = ?, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = ?",
+            sqloader.load_sql("file_forge.json", "storages.update_file_content"),
             (new_size, new_hash, user_uuid, node_uuid)
         )
         db_instance.execute_query(
-            "UPDATE nodes SET modified_at = CURRENT_TIMESTAMP WHERE node_uuid = ?",
+            sqloader.load_sql("file_forge.json", "storages.update_node_modified"),
             (node_uuid,)
         )
 

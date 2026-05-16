@@ -37,6 +37,8 @@ server/tests/
 htmlcov/
 .coverage
 .coverage.*
+/server/storage/
+/server/note/
 
 # === Client (Flutter) ===
 node_modules/

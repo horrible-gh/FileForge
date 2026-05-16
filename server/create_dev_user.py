@@ -5,7 +5,7 @@
 
 Usage:
     python create_dev_user.py
-    python create_dev_user.py --email admin@test.local --password secret123
+    python create_dev_user.py --email admin@test.local --password secret123 --storage storage
     python create_dev_user.py --count 5
     python create_dev_user.py --role admin --email admin@test.local
     python create_dev_user.py --storage mystore
@@ -42,7 +42,7 @@ def _load_config():
     global _config_loaded, db_instance, settings
     if _config_loaded:
         return
-    
+
     # Load .env first
     try:
         from dotenv import load_dotenv
@@ -57,7 +57,7 @@ def _load_config():
                     if line and not line.startswith("#") and "=" in line:
                         k, _, v = line.partition("=")
                         os.environ.setdefault(k.strip(), v.strip())
-    
+
     # Import config
     try:
         from config import settings as _settings, db as _db
@@ -67,7 +67,7 @@ def _load_config():
         print(f"[!] Failed to load FileForge config: {e}")
         print("    Make sure .env is configured properly.")
         sys.exit(1)
-    
+
     _config_loaded = True
 
 def get_secret_key() -> str | None:
@@ -185,8 +185,8 @@ def user_exists(user_id: str) -> bool:
 
 
 def create_user_record(
-    user_id: str, 
-    password: str, 
+    user_id: str,
+    password: str,
     user_name: str | None = None,
     email: str | None = None,
     role: str = "user",
@@ -194,32 +194,32 @@ def create_user_record(
 ) -> dict | None:
     """
     Create a new user record in the database.
-    
+
     Returns:
         dict with keys: user_id, user_uuid, password, email, role, token (if generated)
         None if creation failed
     """
     try:
         db = get_db_instance()
-        
+
         # Generate UUIDs
         user_uuid = str(uuid.uuid4())
         group_uuid = get_anonymous_group_uuid()
-        
+
         # Hash password
         hashed_password = hash_password(password)
-        
+
         # Default user_name to user_id if not provided
         if user_name is None:
             user_name = user_id
-        
+
         # Default email to user_id if not provided
         if email is None:
             email = user_id
-        
+
         # Get current timestamp
         now = datetime.now(timezone.utc).isoformat()
-        
+
         # Insert into users table
         db.execute(
             "INSERT INTO users (group_uuid, user_uuid, user_id, user_name, password, email, role, created_at, modified_at) "
@@ -249,7 +249,7 @@ def create_user_record(
 
         # Generate token
         token = make_token(user_id)
-        
+
         result = {
             "user_id": user_id,
             "user_uuid": user_uuid,
@@ -257,12 +257,12 @@ def create_user_record(
             "email": email,
             "role": role,
         }
-        
+
         if token:
             result["token"] = token
-        
+
         return result
-        
+
     except Exception as e:
         print(f"[!] Error creating user: {e}")
         return None
@@ -289,9 +289,9 @@ def delete_user(user_id: str) -> bool:
         # First, check if user exists
         if not user_exists(user_id):
             return False
-        
+
         db = get_db_instance()
-        
+
         # Delete user
         db.execute(
             "DELETE FROM users WHERE user_id = ?",
@@ -349,10 +349,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     """Main entry point."""
     args = build_parser().parse_args()
-    
+
     # Print warning: development only
     print("\n[WARNING] This is a development tool. Do not use in production!\n")
-    
+
     # ---- List
     if args.list:
         users = list_users()
@@ -365,7 +365,7 @@ def main() -> None:
                 created_at = u["created_at"][:19] if u["created_at"] else "N/A"
                 print(f"{u['user_id']:<40} {u['user_name']:<25} {u['role']:<8} {created_at}")
         return
-    
+
     # ---- Delete
     if args.delete:
         if delete_user(args.delete):
@@ -373,7 +373,7 @@ def main() -> None:
         else:
             print(f"[!] User not found: {args.delete}")
         return
-    
+
     # ---- Re-issue token
     if args.token:
         if user_exists(args.token):
@@ -386,27 +386,27 @@ def main() -> None:
         else:
             print(f"[!] User not found: {args.token}")
         return
-    
+
     # ---- Create
     emails: list[str] = []
     if args.email:
         emails = [args.email]
     else:
         emails = [f"dev{i}@fileforge.local" for i in range(1, args.count + 1)]
-    
+
     # Load config only when needed
     _load_config()
     db_type = settings.DB_TYPE.value if hasattr(settings.DB_TYPE, 'value') else settings.DB_TYPE
     print(f"[*] Creating dev test users (DB type: {db_type})")
-    
+
     created, skipped = [], []
-    
+
     for idx, email in enumerate(emails, start=1):
         if user_exists(email):
             skipped.append(email)
             print(f"  [skip] user already exists: {email}")
             continue
-        
+
         info = create_user_record(
             user_id=email,
             password=args.password,
@@ -414,15 +414,15 @@ def main() -> None:
             role=args.role,
             storage_name=args.storage,
         )
-        
+
         if info:
             created.append(info)
             print_user(info, idx - len(skipped))
         else:
             skipped.append(email)
-    
+
     print(f"\nDone: {len(created)} created, {len(skipped)} skipped")
-    
+
     secret_key = get_secret_key()
     if not secret_key:
         print("\n[WARNING] SECRET_KEY is not set in .env. JWT tokens may be invalid.")

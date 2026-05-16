@@ -17,7 +17,11 @@
         "delete_file_node": "DELETE FROM nodes WHERE node_uuid = %s",
         "get_folder_nodes": "storages/get_folder_nodes.sql",
         "delete_folder_nodes": "storages/delete_folder_nodes.sql",
-        "get_bulk_download": "storages/get_bulk_download.sql"
+        "get_bulk_download": "storages/get_bulk_download.sql",
+        "update_file_on_upload": "UPDATE files SET file_hash = %s, file_size = %s, mime_type = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
+        "update_file_content": "UPDATE files SET file_size = %s, file_hash = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
+        "update_node_modified": "UPDATE nodes SET modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
+        "update_node_name": "UPDATE nodes SET name = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s"
     },
     "share_link": {
         "create": "INSERT INTO shared_links (token, node_uuid, node_type, password_hash, created_by) VALUES (%s, %s, %s, %s, %s)",
