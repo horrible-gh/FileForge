@@ -159,7 +159,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
 
     # 노드 정보 먼저 조회 (타입 확인)
     node_info = db_instance.fetch_one(
-        "SELECT node_uuid, name, type, parent_uuid, storage_uuid FROM nodes WHERE node_uuid = ?",
+        sqloader.load_sql("file_forge.json", "storages.get_node_by_uuid"),
         prm2
     )
 
@@ -168,7 +168,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
 
     # 스토리지 경로 가져오기
     storage_info = db_instance.fetch_one(
-        "SELECT storage_path FROM storages WHERE storage_uuid = ?",
+        sqloader.load_sql("file_forge.json", "storages.get_storage_path"),
         (node_info['storage_uuid'],)
     )
     storage_path = storage_info['storage_path']
@@ -256,7 +256,7 @@ async def create_folder(params: UserStoragesRequest):
 
     # 1. 물리 디렉터리 생성
     storage_path_result = db_instance.fetch_one(
-        "SELECT storage_path FROM storages WHERE storage_uuid = ?",
+        sqloader.load_sql("file_forge.json", "storages.get_storage_path"),
         (storage_uuid,)
     )
     logger.debug("storage_path_result", storage_path_result)
@@ -334,12 +334,12 @@ async def upload_file(
         # 3. 같은 이름의 기존 파일 체크 (덮어쓰기의 경우 기존 용량 제외)
         if parent_uuid is None:
             existing_node = db_instance.fetch_one(
-                "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid IS NULL AND n.name = ? AND n.type = 'file'",
-                (file.filename,)
+                sqloader.load_sql("file_forge.json", "storages.get_existing_file_at_root"),
+                (file.filename, storage_uuid)
             )
         else:
             existing_node = db_instance.fetch_one(
-                "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid = ? AND n.name = ? AND n.type = 'file'",
+                sqloader.load_sql("file_forge.json", "storages.get_existing_file_in_folder"),
                 (parent_uuid, file.filename)
             )
 
@@ -467,12 +467,12 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
         # 2. 중복 이름 체크
         if parent_uuid:
             duplicate = db_instance.fetch_one(
-                "SELECT node_uuid FROM nodes WHERE parent_uuid = ? AND name = ? AND node_uuid != ?",
+                sqloader.load_sql("file_forge.json", "storages.get_duplicate_in_folder"),
                 (parent_uuid, new_name, node_uuid)
             )
         else:
             duplicate = db_instance.fetch_one(
-                "SELECT node_uuid FROM nodes WHERE parent_uuid IS NULL AND name = ? AND node_uuid != ?",
+                sqloader.load_sql("file_forge.json", "storages.get_duplicate_at_root"),
                 (new_name, node_uuid)
             )
 

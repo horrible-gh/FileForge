@@ -21,7 +21,19 @@
         "update_file_on_upload": "UPDATE files SET file_hash = %s, file_size = %s, mime_type = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
         "update_file_content": "UPDATE files SET file_size = %s, file_hash = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
         "update_node_modified": "UPDATE nodes SET modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
-        "update_node_name": "UPDATE nodes SET name = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s"
+        "update_node_name": "UPDATE nodes SET name = %s, modifier_uuid = %s, modified_at = CURRENT_TIMESTAMP WHERE node_uuid = %s",
+        "get_storage_path": "SELECT storage_path FROM storages WHERE storage_uuid = %s",
+        "get_node_by_uuid": "SELECT node_uuid, name, type, parent_uuid, storage_uuid FROM nodes WHERE node_uuid = %s",
+        "get_existing_file_at_root": "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid IS NULL AND n.name = %s AND n.storage_uuid = %s AND n.type = 'file'",
+        "get_existing_file_in_folder": "SELECT n.node_uuid, f.file_size FROM nodes n LEFT JOIN files f ON f.node_uuid = n.node_uuid WHERE n.parent_uuid = %s AND n.name = %s AND n.type = 'file'",
+        "get_duplicate_in_folder": "SELECT node_uuid FROM nodes WHERE parent_uuid = %s AND name = %s AND node_uuid != %s",
+        "get_duplicate_at_root": "SELECT node_uuid FROM nodes WHERE parent_uuid IS NULL AND name = %s AND node_uuid != %s",
+        "get_child_folder": "SELECT node_uuid FROM nodes WHERE parent_uuid = %s AND name = %s AND type = 'folder'",
+        "get_parent_uuid": "SELECT parent_uuid FROM nodes WHERE node_uuid = %s",
+        "get_file_size": "SELECT file_size FROM files WHERE node_uuid = %s",
+        "get_folder_files": "SELECT n.node_uuid, n.name, f.file_size, f.mime_type FROM nodes n JOIN files f ON n.node_uuid = f.node_uuid WHERE n.parent_uuid = %s AND n.type = 'file' ORDER BY n.name",
+        "get_folder_subfolders": "SELECT node_uuid, name FROM nodes WHERE parent_uuid = %s AND type = 'folder' ORDER BY name",
+        "get_file_node_with_mime": "SELECT n.node_uuid, n.name, f.mime_type FROM nodes n JOIN files f ON n.node_uuid = f.node_uuid WHERE n.node_uuid = %s AND n.type = 'file'"
     },
     "share_link": {
         "create": "INSERT INTO shared_links (token, node_uuid, node_type, password_hash, created_by) VALUES (%s, %s, %s, %s, %s)",
