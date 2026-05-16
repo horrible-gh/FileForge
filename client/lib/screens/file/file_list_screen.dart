@@ -196,7 +196,7 @@ class _FileListScreenState extends State<FileListScreen> {
 
   /// 미리보기 화면 진입 — Navigator.push 방식 (D006 §12)
   /// pop 결과 bool 수신 → true이면 FileProvider.loadChildren() 갱신
-  Future<void> _handlePreview(Node node) async {
+  Future<void> _handlePreview(Node node, {bool autoEdit = false}) async {
     if (!mounted) return;
     final result = await Navigator.push<bool>(
       context,
@@ -206,6 +206,7 @@ class _FileListScreenState extends State<FileListScreen> {
           storageUuid: _storageUuid,
           userUuid: _userUuid,
           groupUuid: _groupUuid,
+          autoEdit: autoEdit,
         ),
       ),
     );
@@ -377,7 +378,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   name: finalName,
                   type: 'file',
                 );
-                await _handlePreview(newNode);
+                await _handlePreview(newNode, autoEdit: true);
               } on DioException catch (e) {
                 if (!dialogContext.mounted) return;
                 setDialogState(() => isUploading = false);

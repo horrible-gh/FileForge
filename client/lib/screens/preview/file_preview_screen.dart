@@ -42,6 +42,7 @@ class FilePreviewScreen extends StatefulWidget {
   final String storageUuid;
   final String userUuid;
   final String groupUuid;
+  final bool autoEdit;
 
   const FilePreviewScreen({
     super.key,
@@ -49,6 +50,7 @@ class FilePreviewScreen extends StatefulWidget {
     required this.storageUuid,
     required this.userUuid,
     required this.groupUuid,
+    this.autoEdit = false,
   });
 
   @override
@@ -97,6 +99,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   bool _isEditMode = false;
   bool _isSaving = false;
   late final TextEditingController _textController;
+  final FocusNode _textFocusNode = FocusNode();
 
   // ── 서비스 ─────────────────────────────────────────────────────────────────
   StorageService get _storageService =>
@@ -121,6 +124,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _textFocusNode.dispose();
     _pdfController?.dispose();
     try {
       _pdfTempFile?.deleteSync();
@@ -177,6 +181,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           _textContent = utf8.decode(bytes, allowMalformed: true);
           _editedContent = _textContent;
           _textController.text = _textContent ?? '';
+          if (widget.autoEdit) _isEditMode = true;
         }
         if (_previewType == PreviewType.pdf && bytes != null) {
           _initPdfController(bytes);
@@ -188,6 +193,11 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           _initAudioController(bytes);
         }
       });
+      if (widget.autoEdit && _previewType == PreviewType.text) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _textFocusNode.requestFocus();
+        });
+      }
       AppLogger.info(
           'FilePreviewScreen', '파일 로드 완료: ${widget.node.name}');
     } on DioException catch (e) {
@@ -260,6 +270,9 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     setState(() {
       _isEditMode = true;
       _textController.text = _editedContent ?? '';
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _textFocusNode.requestFocus();
     });
   }
 
@@ -438,29 +451,13 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       child: Scaffold(
         appBar: AppBar(
           leading: BackButton(onPressed: _onBack),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                (_previewType == PreviewType.text &&
-                        widget.node.name.toLowerCase().endsWith('.md'))
-                    ? widget.node.name.substring(
-                        0, widget.node.name.length - 3)
-                    : widget.node.name,
-                style: const TextStyle(fontSize: 16),
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (widget.node.preview != null &&
-                  widget.node.preview!.isNotEmpty)
-                Text(
-                  widget.node.preview!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
+          title: Text(
+            (_previewType == PreviewType.text &&
+                    widget.node.name.toLowerCase().endsWith('.md'))
+                ? widget.node.name.substring(0, widget.node.name.length - 3)
+                : widget.node.name,
+            style: const TextStyle(fontSize: 16),
+            overflow: TextOverflow.ellipsis,
           ),
           actions: _buildAppBarActions(),
         ),
@@ -563,6 +560,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         padding: const EdgeInsets.all(12),
         child: TextField(
           controller: _textController,
+          focusNode: _textFocusNode,
           maxLines: null,
           onChanged: (value) => _editedContent = value,
           style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
