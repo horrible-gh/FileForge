@@ -1,0 +1,59 @@
+{
+  "@@locale": "ja",
+
+  "appTitle": "FileForge",
+
+  "mailComposeTooltip": "新規作成",
+  "mailListEmpty": "メールがありません",
+  "mailLoadFailed": "メールを読み込めませんでした",
+  "mailDetailTitle": "メール",
+  "noSubject": "(件名なし)",
+
+  "labelInbox": "受信トレイ",
+  "labelDrafts": "下書き",
+  "labelSent": "送信済み",
+  "draftLoadFailed": "下書きを読み込めませんでした",
+
+  "fieldFrom": "差出人",
+  "fieldTo": "宛先",
+  "fieldCc": "Cc",
+  "fieldBcc": "Bcc",
+
+  "composeTitleNew": "新規メール",
+  "composeTitleReply": "返信",
+  "composeTitleReplyAll": "全員に返信",
+  "composeTitleForward": "転送",
+  "composeTitleDraft": "下書き",
+
+  "saveDraftTooltip": "下書きを保存",
+  "sendTooltip": "送信",
+  "ccBccToggle": "Cc / Bcc",
+  "subjectLabel": "件名",
+  "messageLabel": "本文",
+  "htmlSourceHint": "<p>HTML ソース…</p>",
+  "formatLabel": "形式:",
+  "formatPlain": "プレーン",
+  "formatHtml": "HTML",
+  "attachmentsLabel": "添付ファイル",
+  "addLabel": "追加",
+  "removeLabel": "削除",
+
+  "waitUploads": "添付ファイルのアップロードが完了するまでお待ちください",
+  "enterRecipient": "宛先を1件以上入力してください",
+  "invalidAddress": "無効なアドレス: {address}",
+  "tooManyRecipients": "宛先が多すぎます",
+  "subjectTooLong": "件名が長すぎます",
+  "mailSent": "メールを送信しました",
+  "serverRejectedRecipient": "サーバーが宛先を拒否しました",
+  "sendFailed": "送信に失敗しました: {code}",
+  "draftSaved": "下書きを保存しました",
+  "draftSaveFailed": "下書きを保存できませんでした",
+  "draftUpdated": "下書きを更新しました",
+  "draftUpdateFailed": "下書きを更新できませんでした",
+  "attachFailed": "{filename} の添付に失敗しました",
+
+  "draftConflictTitle": "下書きが他の場所で変更されました",
+  "draftConflictBody": "この下書きは他の場所で変更されました。最新版を再読み込みしますか？ここで保存していない編集内容は失われます。",
+  "keepEditing": "編集を続ける",
+  "reload": "再読み込み"
+}

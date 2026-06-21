@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/routes.dart';
 import 'config/theme.dart';
+import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
 import 'providers/storage_provider.dart';
 import 'providers/file_provider.dart';
 import 'providers/upload_provider.dart';
 import 'providers/selection_provider.dart';
 import 'providers/share_link_provider.dart';
+import 'providers/mail_provider.dart';
+import 'services/mail_api_client.dart';
 
 /// 앱 루트 위젯
 /// MaterialApp.router + MultiProvider 래핑
@@ -28,6 +31,8 @@ class _AppState extends State<App> {
   late final UploadProvider _uploadProvider;
   late final SelectionProvider _selectionProvider;
   late final ShareLinkProvider _shareLinkProvider;
+  late final MailApiClient _mailApiClient;
+  late final MailProvider _mailProvider;
   late final RouterConfig<Object> _routerConfig;
 
   @override
@@ -46,10 +51,19 @@ class _AppState extends State<App> {
     _uploadProvider = UploadProvider(_authProvider.dio);
     _selectionProvider = SelectionProvider();
     _shareLinkProvider = ShareLinkProvider(_authProvider.dio);
-    // T074: 로그아웃/세션 만료 시 storage·file 상태 초기화 연결
+    // MailAnchor(Go) 전용 Dio — FileForge 세션 토큰을 공유한다(NR0003 §1/§3.3).
+    _mailApiClient = MailApiClient()
+      ..configure(
+        getAccessToken: () => _authProvider.accessToken,
+        onRefreshToken: _authProvider.refreshAccessToken,
+        onSessionExpired: _authProvider.logout,
+      );
+    _mailProvider = MailProvider(_mailApiClient.dio);
+    // T074: 로그아웃/세션 만료 시 storage·file·mail 상태 초기화 연결
     _authProvider.setProviderResetCallback(() {
       _storageProvider.reset();
       _fileProvider.reset();
+      _mailProvider.reset();
     });
     _routerConfig = AppRoutes.createRouter(_authProvider);
   }
@@ -64,11 +78,16 @@ class _AppState extends State<App> {
         ChangeNotifierProvider<UploadProvider>.value(value: _uploadProvider),
         ChangeNotifierProvider<SelectionProvider>.value(value: _selectionProvider),
         ChangeNotifierProvider<ShareLinkProvider>.value(value: _shareLinkProvider),
+        ChangeNotifierProvider<MailProvider>.value(value: _mailProvider),
       ],
       child: MaterialApp.router(
         title: 'FileForge',
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
+        // i18n(mailanchor.ui.0002) — 기기 로케일을 따르며 ko/ja/en 을 지원한다.
+        // 지원하지 않는 로케일은 supportedLocales 의 첫 항목(en)으로 폴백한다.
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: _routerConfig,
       ),
     );

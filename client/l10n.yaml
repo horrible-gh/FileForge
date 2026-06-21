@@ -1,0 +1,11 @@
+# Flutter gen-l10n configuration (mailanchor.ui.0002 — i18n slice).
+#
+# ARB sources live in lib/l10n; the generated AppLocalizations is emitted
+# into the same directory (synthetic package disabled) so it can be imported
+# with a relative path and committed alongside the sources.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+output-dir: lib/l10n
+nullable-getter: false

@@ -9,6 +9,15 @@ class Env {
     defaultValue: 'http://10.0.2.2:8000/fileforge',
   );
 
+  /// MailAnchor(Go 서비스) API base URL — P0007 §표기 규칙의 `https://{host}/api/v1`.
+  /// 흡수 아키텍처(NR0003 §1)에서 메일은 별도 Go 백엔드가 담당하므로 파일 API와
+  /// 분리한다. 리버스 프록시 단일 origin 구성 시에도 경로 프리픽스가 다르므로
+  /// 별도 base URL로 둔다. 빌드 시 --dart-define=MAIL_SERVER_URL=... 로 주입.
+  static const String mailServerUrl = String.fromEnvironment(
+    'MAIL_SERVER_URL',
+    defaultValue: 'http://10.0.2.2:8000/api/v1',
+  );
+
   /// 로그 최소 레벨: debug | info | warn | error
   static const String logLevel = String.fromEnvironment(
     'LOG_LEVEL',

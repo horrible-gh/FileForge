@@ -1,0 +1,72 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "FileForge",
+  "@appTitle": { "description": "Application title." },
+
+  "mailComposeTooltip": "Compose",
+  "mailListEmpty": "No mail",
+  "mailLoadFailed": "Failed to load mail",
+  "mailDetailTitle": "Mail",
+  "noSubject": "(no subject)",
+
+  "labelInbox": "Inbox",
+  "labelDrafts": "Drafts",
+  "labelSent": "Sent",
+  "draftLoadFailed": "Failed to load draft",
+
+  "fieldFrom": "From",
+  "fieldTo": "To",
+  "fieldCc": "Cc",
+  "fieldBcc": "Bcc",
+
+  "composeTitleNew": "New mail",
+  "composeTitleReply": "Reply",
+  "composeTitleReplyAll": "Reply all",
+  "composeTitleForward": "Forward",
+  "composeTitleDraft": "Draft",
+
+  "saveDraftTooltip": "Save draft",
+  "sendTooltip": "Send",
+  "ccBccToggle": "Cc / Bcc",
+  "subjectLabel": "Subject",
+  "messageLabel": "Message",
+  "htmlSourceHint": "<p>HTML source…</p>",
+  "formatLabel": "Format:",
+  "formatPlain": "Plain",
+  "formatHtml": "HTML",
+  "attachmentsLabel": "Attachments",
+  "addLabel": "Add",
+  "removeLabel": "Remove",
+
+  "waitUploads": "Wait for attachments to finish uploading",
+  "enterRecipient": "Enter at least one recipient",
+  "invalidAddress": "Invalid address: {address}",
+  "@invalidAddress": {
+    "description": "Shown when a typed recipient address is malformed.",
+    "placeholders": { "address": { "type": "String" } }
+  },
+  "tooManyRecipients": "Too many recipients",
+  "subjectTooLong": "Subject is too long",
+  "mailSent": "Mail sent",
+  "serverRejectedRecipient": "Server rejected a recipient",
+  "sendFailed": "Send failed: {code}",
+  "@sendFailed": {
+    "description": "Send failure with a server error code.",
+    "placeholders": { "code": { "type": "String" } }
+  },
+  "draftSaved": "Draft saved",
+  "draftSaveFailed": "Failed to save draft",
+  "draftUpdated": "Draft updated",
+  "draftUpdateFailed": "Failed to update draft",
+  "attachFailed": "Failed to attach {filename}",
+  "@attachFailed": {
+    "description": "Attachment upload failure with the file name.",
+    "placeholders": { "filename": { "type": "String" } }
+  },
+
+  "draftConflictTitle": "Draft changed elsewhere",
+  "draftConflictBody": "This draft was modified in another place. Reload the latest version? Your unsaved edits here will be lost.",
+  "keepEditing": "Keep editing",
+  "reload": "Reload"
+}

@@ -4,6 +4,7 @@ import '../screens/splash_screen.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/login/totp_verify_screen.dart';
 import '../screens/main/main_screen.dart';
+import '../screens/main/storage_dispatcher.dart';
 import '../screens/file/file_list_screen.dart';
 import '../screens/share/share_links_screen.dart';
 import '../screens/share/share_page.dart';
@@ -90,16 +91,18 @@ class AppRoutes {
               path: settings,
               builder: (context, state) => const SecuritySettingsScreen(),
             ),
+            // 스토리지 타입 분기: mail → MailListScreen, 그 외 → FileListScreen.
+            // (NR0003 §1.1 — 전용 모듈 라우팅, FileListScreen 내부 비오염)
             GoRoute(
               path: '/:storageUuid',
-              builder: (context, state) => FileListScreen(
-                storageUuid: state.pathParameters['storageUuid'],
+              builder: (context, state) => StorageDispatcher(
+                storageUuid: state.pathParameters['storageUuid']!,
               ),
             ),
             GoRoute(
               path: '/:storageUuid/:nodeUuid',
-              builder: (context, state) => FileListScreen(
-                storageUuid: state.pathParameters['storageUuid'],
+              builder: (context, state) => StorageDispatcher(
+                storageUuid: state.pathParameters['storageUuid']!,
                 nodeUuid: state.pathParameters['nodeUuid'],
               ),
             ),
