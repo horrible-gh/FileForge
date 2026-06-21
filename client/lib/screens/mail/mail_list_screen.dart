@@ -225,6 +225,7 @@ class _MailListTile extends StatelessWidget {
     final unread = !summary.isRead;
     final weight = unread ? FontWeight.w700 : FontWeight.w400;
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
     return ListTile(
       onTap: onTap,
       leading: CircleAvatar(
@@ -260,7 +261,7 @@ class _MailListTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            summary.subject.isEmpty ? '(no subject)' : summary.subject,
+            summary.subject.isEmpty ? t.noSubject : summary.subject,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontWeight: weight),

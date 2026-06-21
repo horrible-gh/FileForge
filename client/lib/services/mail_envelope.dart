@@ -120,6 +120,36 @@ dynamic unwrapEnvelope(dynamic body, {int? httpStatus}) {
   throw MailApiException.fromEnvelope(map, httpStatus: httpStatus);
 }
 
+/// 성공 봉투의 `data`가 객체(Map)임을 보장하고 `Map<String, dynamic>`로 캐스트한다.
+/// 봉투는 [unwrapEnvelope]가 검증하지만, `ok:true` 인데 내부 `data`가 비-Map인
+/// 비정상 성공응답이면 무가드 캐스트가 raw `TypeError`로 크래시한다(NR0016 §3 MINOR).
+/// 이를 generic `MALFORMED_RESPONSE` 예외로 우아하게 환원한다.
+Map<String, dynamic> expectMapData(dynamic data, {int? httpStatus}) {
+  if (data is! Map) {
+    throw MailApiException(
+      code: 'MALFORMED_RESPONSE',
+      message: 'Expected an object in response data',
+      httpStatus: httpStatus,
+    );
+  }
+  return data.cast<String, dynamic>();
+}
+
+/// [expectMapData]의 List 대응 — 성공 봉투의 `data`가 배열임을 보장한다.
+/// `null`은 빈 리스트로 허용(목록 응답에서 data 생략 가능)하되, 비-List 비정상
+/// 응답은 raw `TypeError` 대신 `MALFORMED_RESPONSE` 예외로 환원한다.
+List<dynamic> expectListData(dynamic data, {int? httpStatus}) {
+  if (data == null) return const [];
+  if (data is! List) {
+    throw MailApiException(
+      code: 'MALFORMED_RESPONSE',
+      message: 'Expected an array in response data',
+      httpStatus: httpStatus,
+    );
+  }
+  return data;
+}
+
 /// 성공 봉투의 `meta`(목록 페이지네이션 등)를 꺼낸다. 없으면 null.
 Map<String, dynamic>? envelopeMeta(dynamic body) {
   if (body is Map) {

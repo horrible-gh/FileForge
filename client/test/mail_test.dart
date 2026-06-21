@@ -192,6 +192,38 @@ void main() {
       );
     });
 
+    test('expectMapData returns typed map for object data', () {
+      final m = expectMapData({'draft_id': 'd1', 'updated_at': 't'});
+      expect(m, isA<Map<String, dynamic>>());
+      expect(m['draft_id'], 'd1');
+    });
+
+    test('expectMapData on non-Map success data → MALFORMED_RESPONSE (not TypeError)',
+        () {
+      // NR0016 §3 MINOR #2: ok:true 인데 data가 비-Map인 비정상 성공응답.
+      expect(
+        () => expectMapData('not-an-object', httpStatus: 200),
+        throwsA(isA<MailApiException>()
+            .having((e) => e.code, 'code', 'MALFORMED_RESPONSE')
+            .having((e) => e.httpStatus, 'httpStatus', 200)),
+      );
+      expect(() => expectMapData([1, 2, 3]),
+          throwsA(isA<MailApiException>()));
+    });
+
+    test('expectListData returns list for array data; null → empty', () {
+      expect(expectListData([1, 2]), [1, 2]);
+      expect(expectListData(null), isEmpty);
+    });
+
+    test('expectListData on non-List success data → MALFORMED_RESPONSE', () {
+      expect(
+        () => expectListData({'not': 'a list'}, httpStatus: 200),
+        throwsA(isA<MailApiException>()
+            .having((e) => e.code, 'code', 'MALFORMED_RESPONSE')),
+      );
+    });
+
     test('classifyMailErrorCode maps all P0007 §5 catalogue codes', () {
       expect(classifyMailErrorCode('TOKEN_EXPIRED'),
           MailErrorCategory.refreshable);

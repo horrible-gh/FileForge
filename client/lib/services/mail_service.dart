@@ -35,7 +35,7 @@ class MailService {
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
     final meta = envelopeMeta(resp.data);
     return MailPage.fromEnvelopeParts(
-      (data as List<dynamic>? ?? const []),
+      expectListData(data, httpStatus: resp.statusCode),
       meta,
     );
   }
@@ -44,7 +44,7 @@ class MailService {
   Future<MailDetail> getMail(String mailId) async {
     final resp = await _dio.get('/mails/$mailId');
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
-    return MailDetail.fromJson((data as Map).cast<String, dynamic>());
+    return MailDetail.fromJson(expectMapData(data, httpStatus: resp.statusCode));
   }
 
   /// PATCH /mails/{mail_id} — 읽음 여부 변경. P0007 §6.2/§7.3.
@@ -62,21 +62,21 @@ class MailService {
   Future<Map<String, dynamic>> sendMail(SendPayload payload) async {
     final resp = await _dio.post('/mails', data: payload.toJson());
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
-    return (data as Map).cast<String, dynamic>();
+    return expectMapData(data, httpStatus: resp.statusCode);
   }
 
   /// POST /drafts — 초안 저장. 반환: { draft_id, updated_at } (§7.9).
   Future<Map<String, dynamic>> saveDraft(SendPayload payload) async {
     final resp = await _dio.post('/drafts', data: payload.toJson());
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
-    return (data as Map).cast<String, dynamic>();
+    return expectMapData(data, httpStatus: resp.statusCode);
   }
 
   /// GET /drafts/{draft_id} — 초안 불러오기(이어쓰기, §6.2/§7.9).
   Future<MailDraft> getDraft(String draftId) async {
     final resp = await _dio.get('/drafts/$draftId');
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
-    return MailDraft.fromJson((data as Map).cast<String, dynamic>());
+    return MailDraft.fromJson(expectMapData(data, httpStatus: resp.statusCode));
   }
 
   /// PUT /drafts/{draft_id} — 초안 갱신(낙관적 경합 base_updated_at, §7.10).
@@ -90,7 +90,7 @@ class MailService {
       data: {...payload.toJson(), 'base_updated_at': baseUpdatedAt},
     );
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
-    return (data as Map).cast<String, dynamic>();
+    return expectMapData(data, httpStatus: resp.statusCode);
   }
 
   /// DELETE /drafts/{draft_id} — 초안 삭제.
@@ -123,6 +123,6 @@ class MailService {
       cancelToken: cancelToken,
     );
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
-    return MailAttachment.fromJson((data as Map).cast<String, dynamic>());
+    return MailAttachment.fromJson(expectMapData(data, httpStatus: resp.statusCode));
   }
 }
