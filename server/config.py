@@ -254,6 +254,17 @@ db = DatabaseSetting()
 # 기존 임포트 호환성 유지
 tfa = db.tfa
 
+# 🔹 sqloader를 우회하는 원시(inline) SQL용 플레이스홀더 변환기.
+#    sqlite3 드라이버는 '?'(qmark), pymysql/psycopg는 '%s'(pyformat)를 사용한다.
+#    원시 SQL에 '?'를 하드코딩한 코드(create_dev_user.py·_helper.py·totp.py 등)는
+#    이 함수를 거쳐야 DB_TYPE에 무관하게 동작한다. mysql/postgresql 경로에서는
+#    리터럴 '%'를 '%%'로 escape하여 pyformat 오해석을 막는다.
+def adapt_query(sql: str) -> str:
+    if settings.DB_TYPE in (DBType.MYSQL, DBType.POSTGRESQL):
+        return sql.replace("%", "%%").replace("?", "%s")
+    return sql
+
+
 # 🔹 FastAPI에서 의존성 주입으로 사용할 함수
 def get_db_instance():
     return db.get_db_instance()
