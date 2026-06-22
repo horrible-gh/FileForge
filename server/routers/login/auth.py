@@ -3,7 +3,7 @@ import redis
 from datetime import datetime, timezone
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from config import settings
+from config import settings, redis_client
 
 import LogAssist.log as Logger
 
@@ -14,8 +14,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 # routers/main.py 하위 호환 import용 (실제 블랙리스트 확인은 Redis 기준)
 token_blacklist = set()
-
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 def is_token_blacklisted(token: str) -> bool:
     try:

@@ -5,8 +5,7 @@ from .login import login, logout
 from .storages import storages, bulk
 from . import shared_link, public_share, totp
 from routers.login.auth import verify_token, token_blacklist
-import redis
-from config import settings
+from config import settings, redis_client
 import LogAssist.log as Logger
 import sys
 import io
@@ -24,8 +23,6 @@ Logger.logger_init()
 
 ALLOWED_ORIGIN = settings.ALLOWED_ORIGIN.split(",")
 CONTEXT = settings.CONTEXT
-
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 limiter = Limiter(
     key_func=get_remote_address,
