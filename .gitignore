@@ -55,6 +55,20 @@ client/linux/flutter/generated_plugin_registrant.cc
 client/linux/flutter/generated_plugin_registrant.h
 client/linux/flutter/generated_plugins.cmake
 
+# === Mail server (Go) ===
+# Compiled binaries (anchored so the cmd/mailanchord source package is not ignored)
+/mail-server/mailanchord
+/mail-server/mailanchord.exe
+/mail-server/cmd/mailanchord/mailanchord
+/mail-server/cmd/mailanchord/mailanchord.exe
+# Local sqlite db + WAL sidecars
+/mail-server/*.db
+/mail-server/*.db-shm
+/mail-server/*.db-wal
+# Runtime attachment storage (keep the dir, drop the contents)
+/mail-server/attachments/*
+!/mail-server/attachments/.gitkeep
+
 # === Storage ===
 file-forge-storage/
 
