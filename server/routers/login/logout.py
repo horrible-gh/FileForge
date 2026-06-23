@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from config import settings
 import redis
 
+from . import jwt_keys
+
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -24,7 +26,8 @@ class LogoutRequest(BaseModel):
 @router.post("/")
 async def logout(token: str = Depends(oauth2_scheme), body: LogoutRequest = Body(default=LogoutRequest())):
     """ 현재 사용 중인 JWT 토큰을 블랙리스트에 등록 (로그아웃) """
-    exp_time = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])["exp"]
+    # access_token은 RS256(jwt_keys). 만료 직전 토큰도 블랙리스트에 넣을 수 있게 exp만 추출.
+    exp_time = jwt_keys.verify_access(token, verify_exp=False)["exp"]
     remaining_time = exp_time - datetime.now(timezone.utc).timestamp()
 
     # access_token 블랙리스트 등록

@@ -9,6 +9,8 @@ from config import settings, db, tfa
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from . import jwt_keys
+
 import LogAssist.log as logger
 
 db_instance = db.db_instance
@@ -43,11 +45,22 @@ def authenticate_user(username: str, password: str):
 
 
 def create_access_token(data: dict, expires_delta: timedelta):
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + expires_delta
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    # Access tokens are RS256-signed so the Go server (MailAnchor) can verify them with
+    # FileForge's public key alone — the polyglot token-sharing bridge (mailanchor.ui.0003
+    # T1). iss/aud/exp are injected by jwt_keys.sign_access.
+    return jwt_keys.sign_access(data, expires_delta)
+
+
+def _access_claims(user_id: str, user: dict | None = None) -> dict:
+    """Assemble the federated access-token claims. email/display_name let the Go server
+    provision a real local user instead of synthesizing a placeholder from `sub`."""
+    claims = {"sub": user_id, "type": "access"}
+    if user:
+        if user.get("user_name"):
+            claims["display_name"] = user["user_name"]
+        if user.get("email"):
+            claims["email"] = user["email"]
+    return claims
 
 
 def create_refresh_token(data: dict):
@@ -89,7 +102,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         return {"totp_required": True, "temp_token": temp_token}
 
     access_token = create_access_token(
-        data={"sub": user_id},
+        data=_access_claims(user_id, user),
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     refresh_token = create_refresh_token(data={"sub": user_id})
@@ -109,7 +122,8 @@ async def verify_totp_login(request: Request, body: TotpVerifyRequest):
     )
 
     try:
-        payload = jwt.decode(body.temp_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": True})
+        # temp_token is an RS256 access token carrying totp_pending=True.
+        payload = jwt_keys.verify_access(body.temp_token, verify_exp=True)
         logger.debug(f"[TOTP Verify] JWT 파싱 성공 - payload: {payload}")
     except jwt.ExpiredSignatureError:
         logger.debug("[TOTP Verify] ❌ JWT 만료됨 (ExpiredSignatureError)")
@@ -136,7 +150,7 @@ async def verify_totp_login(request: Request, body: TotpVerifyRequest):
 
     user = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), user_id)
     access_token = create_access_token(
-        data={"sub": user_id},
+        data=_access_claims(user_id, user),
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     refresh_token = create_refresh_token(data={"sub": user_id})

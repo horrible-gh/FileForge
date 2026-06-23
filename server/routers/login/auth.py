@@ -5,9 +5,11 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from config import settings
 
+from . import jwt_keys
+
 import LogAssist.log as Logger
 
-# JWT 설정값
+# JWT 설정값 (refresh/legacy HS256 잔존; access는 RS256으로 jwt_keys가 검증)
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -34,7 +36,7 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         if is_token_blacklisted(token):
             raise HTTPException(status_code=401, detail="Token has been logged out")
 
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": True})
+        payload = jwt_keys.verify_access(token, verify_exp=True)
         user_id: str = payload.get("sub")
         exp: int = payload.get("exp")
         totp_pending: bool = payload.get("totp_pending", False)
