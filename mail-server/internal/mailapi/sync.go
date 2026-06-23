@@ -198,7 +198,7 @@ func replaceLabelsTx(tx *sql.Tx, userID, mailID string, names []string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO mail_label(mail_id,label_id) VALUES(?,?)`, mailID, lid); err != nil {
+		if _, err := tx.Exec(insertIgnoreInto("mail_label")+`(mail_id,label_id) VALUES(?,?)`, mailID, lid); err != nil {
 			return err
 		}
 	}
@@ -214,7 +214,7 @@ func addLabelsTx(tx *sql.Tx, userID, mailID string, names []string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO mail_label(mail_id,label_id) VALUES(?,?)`, mailID, lid); err != nil {
+		if _, err := tx.Exec(insertIgnoreInto("mail_label")+`(mail_id,label_id) VALUES(?,?)`, mailID, lid); err != nil {
 			return err
 		}
 	}

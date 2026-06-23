@@ -3,6 +3,7 @@ package mailapi
 import (
 	"database/sql"
 	"errors"
+	"reflect"
 	"strings"
 	"time"
 
@@ -14,12 +15,62 @@ var ErrDuplicate = errors.New("duplicate")
 
 type Store struct{ db *sql.DB }
 
-func NewStore(db *sql.DB) *Store { return &Store{db: db} }
+// NewStore wires a Store to db and detects its SQL dialect once, so the handful of
+// statements that differ between SQLite and MySQL (INSERT-OR-IGNORE, duplicate-error
+// detection) adapt automatically — the Go analog of FileForge's config.adapt_query().
+func NewStore(db *sql.DB) *Store {
+	setDialect(db)
+	return &Store{db: db}
+}
 
 const tsLayout = "2006-01-02T15:04:05Z"
 
+// --- SQL dialect adaptation (stage 1: DB_TYPE mysql/sqlite) ---
+//
+// One process opens exactly one DB driver, so a package-level dialect (set at Store
+// construction) is sufficient and lets the tx-helper free functions in sync.go reach it
+// without threading a parameter through every call site.
+const (
+	dialectSQLite = "sqlite"
+	dialectMySQL  = "mysql"
+)
+
+var activeDialect = dialectSQLite
+
+// setDialect inspects the driver behind db. The mysql driver type is
+// *mysql.MySQLDriver; anything else is treated as sqlite (the default deployment).
+func setDialect(db *sql.DB) {
+	if db == nil {
+		return
+	}
+	if strings.Contains(strings.ToLower(reflect.TypeOf(db.Driver()).String()), "mysql") {
+		activeDialect = dialectMySQL
+		return
+	}
+	activeDialect = dialectSQLite
+}
+
+// insertIgnoreInto returns the dialect's "insert, skip on duplicate key" prefix.
+// SQLite: "INSERT OR IGNORE INTO <table>"; MySQL: "INSERT IGNORE INTO <table>".
+func insertIgnoreInto(table string) string {
+	if activeDialect == dialectMySQL {
+		return "INSERT IGNORE INTO " + table
+	}
+	return "INSERT OR IGNORE INTO " + table
+}
+
+// isUnique reports a UNIQUE/duplicate-key violation across both dialects.
+//
+//	SQLite: "UNIQUE constraint failed: ..."
+//	MySQL : "Error 1062 (23000): Duplicate entry ..."
 func isUnique(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") ||
+		strings.Contains(msg, "Duplicate entry") ||
+		strings.Contains(msg, "1062")
 }
 
 // --- labels (M) ---
@@ -325,7 +376,7 @@ func (s *Store) PatchMail(userID, mailID string, isRead *bool, add, remove []str
 			}
 			return err
 		}
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO mail_label(mail_id,label_id) VALUES(?,?)`, mailID, lid); err != nil {
+		if _, err := tx.Exec(insertIgnoreInto("mail_label")+`(mail_id,label_id) VALUES(?,?)`, mailID, lid); err != nil {
 			return err
 		}
 	}
