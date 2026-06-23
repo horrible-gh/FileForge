@@ -16,6 +16,7 @@ import (
 	"mailanchor/serverd/internal/imapx"
 	"mailanchor/serverd/internal/mailapi"
 	"mailanchor/serverd/internal/oauthx"
+	"mailanchor/serverd/internal/sharedstore"
 	"mailanchor/serverd/internal/smtpx"
 	"mailanchor/serverd/internal/storage"
 )
@@ -32,7 +33,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 		log.Printf("attachment store init failed (%s): attachments disabled: %v", cfg.AttachmentDir, err)
 	}
 	deps := mailapi.Deps{
-		Secrets:        mailapi.NewMemSecretStore(),
+		Secrets:        newSecretStore(cfg),
 		OAuthReturnURL: cfg.OAuthReturnURL,
 	}
 	if blob != nil {
@@ -53,6 +54,45 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	return NewWithDeps(cfg, db, deps)
 }
 
+// newSecretStore selects the OAuth credential store. When MAILANCHOR_SECRET_ENCRYPTION_KEY
+// is configured, credentials are encrypted at rest with AES-256-GCM (R0001 stage 5);
+// otherwise the in-memory dev store is kept (unchanged default). A configured-but-unusable
+// key logs and falls back rather than blocking boot (Redis/FileForge degradation style).
+func newSecretStore(cfg config.Config) mailapi.SecretStore {
+	if len(cfg.SecretEncryptionKey) > 0 {
+		if enc, err := mailapi.NewEncryptedSecretStore(cfg.SecretEncryptionKey); err == nil {
+			log.Printf("oauth secret store: AES-256-GCM at-rest encryption enabled")
+			return enc
+		} else {
+			log.Printf("oauth secret store: encryption key set but unusable, using in-memory store: %v", err)
+		}
+	}
+	return mailapi.NewMemSecretStore()
+}
+
+// corsMiddleware applies a minimal CORS policy for the configured allow-origin
+// (ALLOWED_ORIGIN, stage 2). It echoes the origin when it matches (supporting "*"),
+// advertises the methods/headers the API uses, and short-circuits preflight OPTIONS.
+func corsMiddleware(allowed string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" && (allowed == "*" || allowed == origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-TOTP-Code")
+			}
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // oauthCreds maps the config provider credentials into the oauthx port type.
 func oauthCreds(cfg config.Config) map[string]oauthx.Creds {
 	out := map[string]oauthx.Creds{}
@@ -71,6 +111,31 @@ func oauthCreds(cfg config.Config) map[string]oauthx.Creds {
 func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler {
 	store := auth.NewStore(db)
 	svc := auth.NewService(store, cfg.JWTSecret, cfg.AccessTTL, cfg.RefreshTTL)
+	// Shared store (R0001 stage 3+5): token blacklist + OAuth state. A configured Redis is
+	// shared across instances; if it is unreachable we log and keep the in-process defaults
+	// rather than blocking boot (FileForge-bridge degradation style). One Redis instance
+	// backs both the auth blacklist (stage 3) and the OAuth front-channel state (stage 5),
+	// so authorize/callback can span instances.
+	if cfg.Redis.Enabled() {
+		if rs, err := sharedstore.NewRedisStore(sharedstore.Options{
+			Host:     cfg.Redis.Host,
+			Port:     cfg.Redis.Port,
+			DB:       cfg.Redis.DB,
+			Password: cfg.Redis.Password,
+			SSL:      cfg.Redis.SSL,
+		}); err != nil {
+			log.Printf("redis shared-store disabled (falling back to in-process store): %v", err)
+		} else {
+			svc.WithSharedStore(rs)
+			// Move OAuth state to the shared store too (stage 5), unless the caller injected
+			// its own States port (tests). NewHandlers fills a MemStateStore when still nil.
+			if deps.States == nil {
+				deps.States = mailapi.NewSharedStateStore(rs)
+				log.Printf("oauth state store: backed by redis shared-store (stage 5)")
+			}
+			log.Printf("redis shared-store enabled (%s:%d db=%d)", cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.DB)
+		}
+	}
 	// FileForge token-sharing bridge (mailanchor.ui.0003 T1): accept RS256 tokens minted
 	// by FileForge when its public key is configured. A malformed key disables the bridge
 	// (logged) rather than blocking boot — self-issued HS256 auth keeps working.
@@ -107,6 +172,12 @@ func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler 
 	}
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
+	// CORS (stage 2, ALLOWED_ORIGIN). Mounted only when an origin is configured so the
+	// default (same-origin) behaviour is unchanged. FileForge's main.py applies CORS from
+	// ALLOWED_ORIGIN; we mirror that with a dependency-free middleware.
+	if cfg.AllowedOrigin != "" {
+		r.Use(corsMiddleware(cfg.AllowedOrigin))
+	}
 
 	r.Route(cfg.Context, func(api chi.Router) {
 		api.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -131,6 +202,12 @@ func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler 
 				uid, _ := auth.UserID(r.Context())
 				httpx.OK(w, http.StatusOK, map[string]any{"user_id": uid})
 			})
+			// 2FA(TOTP) 관리 — R0001 stage 4 (MailAnchor /2fa/* 대응). 모두 인증 필요.
+			pr.Get("/auth/2fa/status", authH.TOTPStatus)
+			pr.Post("/auth/2fa/setup", authH.TOTPSetup)
+			pr.Post("/auth/2fa/activate", authH.TOTPActivate)
+			pr.Post("/auth/2fa/disable", authH.TOTPDisable)
+			pr.Post("/auth/2fa/regenerate-recovery", authH.TOTPRegenerateRecovery)
 			apiH.Mount(pr)
 		})
 	})

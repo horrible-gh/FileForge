@@ -29,7 +29,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
-	database, err := db.Open(cfg.DBPath)
+	driver, err := db.NormalizeDriver(cfg.DBType)
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	database, err := db.OpenDB(db.Config{
+		Driver:   driver,
+		Path:     cfg.DBPath,
+		Host:     cfg.DBHost,
+		Port:     cfg.DBPort,
+		User:     cfg.DBUser,
+		Password: cfg.DBPassword,
+		Database: cfg.DBName,
+	})
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
@@ -52,7 +64,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("mailanchord listening on %s (context %s, db %s)", cfg.Addr, cfg.Context, cfg.DBPath)
+		log.Printf("mailanchord listening on %s (context %s, db %s)", cfg.Addr, cfg.Context, driver)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("serve: %v", err)
 		}
