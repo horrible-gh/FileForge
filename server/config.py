@@ -1,7 +1,9 @@
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from enum import Enum
 from sqloader.init import database_init
 from auth2fa import TwoFactorAuth
+import redis
 import os
 import re
 
@@ -36,10 +38,43 @@ class Settings(BaseSettings):
     RATE_LIMIT_UPLOAD: str = "20/hour"
     RATE_LIMIT_DOWNLOAD: str = "50/hour"
 
+    # 🔹 Redis 설정 (DB_* 컨벤션과 동일). 기본값 localhost/6379로 기존 동작 무변경(하위호환).
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""   # 비어있으면 AUTH 미사용
+    REDIS_SSL: bool = False    # 원격/관리형 Redis TLS 대응
+
+    # .env의 빈 값("")이 int/bool 파싱 오류를 일으키지 않도록 기본값으로 흡수(0101 인시던트 계열 대응)
+    @field_validator("REDIS_PORT", "REDIS_DB", mode="before")
+    @classmethod
+    def _blank_int_to_default(cls, v, info):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return cls.model_fields[info.field_name].default
+        return v
+
+    @field_validator("REDIS_SSL", mode="before")
+    @classmethod
+    def _blank_bool_to_default(cls, v):
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return False
+        return v
+
     class Config:
         env_file = ".env"
 
 settings = Settings()
+
+# 🔹 중앙 Redis 클라이언트(단일 인스턴스/풀). 4개 라우터의 중복 생성 코드를 통합한다.
+#    decode_responses=True 보존(호출부가 문자열 비교에 의존), password="" → None 정규화로 불필요한 AUTH 방지.
+redis_client = redis.Redis(
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
+    db=settings.REDIS_DB,
+    password=settings.REDIS_PASSWORD or None,
+    ssl=settings.REDIS_SSL,
+    decode_responses=True,
+)
 
 
 class Auth2FAAdapter:
@@ -218,6 +253,17 @@ db = DatabaseSetting()
 
 # 기존 임포트 호환성 유지
 tfa = db.tfa
+
+# 🔹 sqloader를 우회하는 원시(inline) SQL용 플레이스홀더 변환기.
+#    sqlite3 드라이버는 '?'(qmark), pymysql/psycopg는 '%s'(pyformat)를 사용한다.
+#    원시 SQL에 '?'를 하드코딩한 코드(create_dev_user.py·_helper.py·totp.py 등)는
+#    이 함수를 거쳐야 DB_TYPE에 무관하게 동작한다. mysql/postgresql 경로에서는
+#    리터럴 '%'를 '%%'로 escape하여 pyformat 오해석을 막는다.
+def adapt_query(sql: str) -> str:
+    if settings.DB_TYPE in (DBType.MYSQL, DBType.POSTGRESQL):
+        return sql.replace("%", "%%").replace("?", "%s")
+    return sql
+
 
 # 🔹 FastAPI에서 의존성 주입으로 사용할 함수
 def get_db_instance():

@@ -36,10 +36,11 @@ sys.path.insert(0, BASE_DIR)
 _config_loaded = False
 db_instance = None
 settings = None
+_adapt_query = None
 
 def _load_config():
     """Lazy-load config and db."""
-    global _config_loaded, db_instance, settings
+    global _config_loaded, db_instance, settings, _adapt_query
     if _config_loaded:
         return
 
@@ -60,15 +61,24 @@ def _load_config():
 
     # Import config
     try:
-        from config import settings as _settings, db as _db
+        from config import settings as _settings, db as _db, adapt_query as _aq
         settings = _settings
         db_instance = _db.db_instance
+        _adapt_query = _aq
     except Exception as e:
         print(f"[!] Failed to load FileForge config: {e}")
         print("    Make sure .env is configured properly.")
         sys.exit(1)
 
     _config_loaded = True
+
+
+def q(sql: str) -> str:
+    """Adapt SQLite-style '?' placeholders in raw SQL to the configured DB driver
+    (pymysql/psycopg use '%s'). Without this, this script only works on SQLite and
+    silently fails to create storages/users on MySQL/PostgreSQL."""
+    _load_config()
+    return _adapt_query(sql)
 
 def get_secret_key() -> str | None:
     """Get SECRET_KEY from settings."""
@@ -130,12 +140,16 @@ def make_token(user_id: str, email: str | None = None) -> str | None:
 # Database helper functions
 # ==========================================
 
-def create_or_get_storage(storage_name: str) -> str | None:
-    """Return storage_uuid for the given name, creating the storage if it doesn't exist."""
+def create_or_get_storage(storage_name: str, storage_type: str = "file") -> str | None:
+    """Return storage_uuid for the given name, creating the storage if it doesn't exist.
+
+    storage_type must be one of the values permitted by the storages CHECK/ENUM
+    constraint (file/note/password/mail — see migration _INIT_009_storages_003).
+    """
     try:
         db = get_db_instance()
         row = db.fetch_one(
-            "SELECT storage_uuid FROM storages WHERE storage_name = ?",
+            q("SELECT storage_uuid FROM storages WHERE storage_name = ?"),
             (storage_name,)
         )
         if row:
@@ -143,16 +157,21 @@ def create_or_get_storage(storage_name: str) -> str | None:
 
         # Create a new storage entry
         storage_uuid = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
+        # DB-portable timestamp: 'YYYY-MM-DD HH:MM:SS' is accepted by MySQL DATETIME,
+        # PostgreSQL TIMESTAMP, and SQLite TEXT alike. isoformat() ('...T...+00:00')
+        # is rejected by MySQL (error 1292, incorrect datetime value).
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         db.execute(
-            "INSERT INTO storages (storage_uuid, storage_name, storage_path, status, created_at, modified_at) "
-            "VALUES (?, ?, ?, 'active', ?, ?)",
-            (storage_uuid, storage_name, f"/{storage_name}", now, now)
+            q("INSERT INTO storages (storage_uuid, storage_name, storage_path, storage_type, status, created_at, modified_at) "
+              "VALUES (?, ?, ?, ?, 'active', ?, ?)"),
+            (storage_uuid, storage_name, f"/{storage_name}", storage_type, now, now)
         )
-        print(f"[+] Storage created: '{storage_name}' (uuid: {storage_uuid})")
+        print(f"[+] Storage created: '{storage_name}' (type: {storage_type}, uuid: {storage_uuid})")
         return storage_uuid
     except Exception as e:
+        import traceback
         print(f"[!] Error creating/getting storage '{storage_name}': {e}")
+        traceback.print_exc()
         return None
 
 
@@ -161,7 +180,7 @@ def get_anonymous_group_uuid() -> str | None:
     try:
         db = get_db_instance()
         result = db.fetch_one(
-            "SELECT group_uuid FROM groups WHERE group_name = ?",
+            q("SELECT group_uuid FROM groups WHERE group_name = ?"),
             ("Anonymous group",)
         )
         return result.get("group_uuid") if result else None
@@ -174,7 +193,7 @@ def user_exists(user_id: str) -> bool:
     try:
         db = get_db_instance()
         result = db.fetch_one(
-            "SELECT 1 FROM users WHERE user_id = ?",
+            q("SELECT 1 FROM users WHERE user_id = ?"),
             (user_id,)
         )
         return result is not None
@@ -190,6 +209,7 @@ def create_user_record(
     email: str | None = None,
     role: str = "user",
     storage_name: str | None = None,
+    storage_type: str = "file",
 ) -> dict | None:
     """
     Create a new user record in the database.
@@ -217,30 +237,33 @@ def create_user_record(
             email = user_id
 
         # Get current timestamp
-        now = datetime.now(timezone.utc).isoformat()
+        # DB-portable timestamp: 'YYYY-MM-DD HH:MM:SS' is accepted by MySQL DATETIME,
+        # PostgreSQL TIMESTAMP, and SQLite TEXT alike. isoformat() ('...T...+00:00')
+        # is rejected by MySQL (error 1292, incorrect datetime value).
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         # Insert into users table
         db.execute(
-            "INSERT INTO users (group_uuid, user_uuid, user_id, user_name, password, email, role, created_at, modified_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            q("INSERT INTO users (group_uuid, user_uuid, user_id, user_name, password, email, role, created_at, modified_at) "
+              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"),
             (group_uuid, user_uuid, user_id, user_name, hashed_password, email, role, now, now)
         )
 
         # Link user to storage
         if storage_name:
-            storage_uuid = create_or_get_storage(storage_name)
+            storage_uuid = create_or_get_storage(storage_name, storage_type)
         else:
             storage_row = db.fetch_one("SELECT storage_uuid FROM storages LIMIT 1")
             storage_uuid = storage_row["storage_uuid"] if storage_row else None
 
         if storage_uuid:
             existing = db.fetch_one(
-                "SELECT 1 FROM user_storages WHERE user_uuid = ? AND storage_uuid = ?",
+                q("SELECT 1 FROM user_storages WHERE user_uuid = ? AND storage_uuid = ?"),
                 (user_uuid, storage_uuid)
             )
             if not existing:
                 db.execute(
-                    "INSERT INTO user_storages (user_uuid, storage_uuid, is_default) VALUES (?, ?, 1)",
+                    q("INSERT INTO user_storages (user_uuid, storage_uuid, is_default) VALUES (?, ?, 1)"),
                     (user_uuid, storage_uuid)
                 )
         else:
@@ -263,7 +286,9 @@ def create_user_record(
         return result
 
     except Exception as e:
+        import traceback
         print(f"[!] Error creating user: {e}")
+        traceback.print_exc()
         return None
 
 
@@ -293,7 +318,7 @@ def delete_user(user_id: str) -> bool:
 
         # Delete user
         db.execute(
-            "DELETE FROM users WHERE user_id = ?",
+            q("DELETE FROM users WHERE user_id = ?"),
             (user_id,)
         )
         return True
@@ -341,6 +366,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--storage", metavar="NAME",
         help="Storage name to assign to created users. "
              "If the storage does not exist it will be created automatically.",
+    )
+    p.add_argument(
+        "--storage-type", choices=["file", "note", "password", "mail"], default="file",
+        help="storage_type for a newly created storage (default: file). "
+             "Only applies when --storage names a storage that does not yet exist.",
     )
     return p
 
@@ -412,6 +442,7 @@ def main() -> None:
             email=email,
             role=args.role,
             storage_name=args.storage,
+            storage_type=args.storage_type,
         )
 
         if info:

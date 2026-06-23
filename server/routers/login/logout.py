@@ -4,8 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 import jwt
 from datetime import datetime, timezone
-from config import settings
-import redis
+from config import settings, redis_client
 
 from . import jwt_keys
 
@@ -15,8 +14,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
-
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 
 class LogoutRequest(BaseModel):

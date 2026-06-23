@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from routers.login.auth import verify_token
-from config import tfa, db
+from config import tfa, db, adapt_query
 import LogAssist.log as logger
 
 db_instance = db.db_instance
@@ -17,7 +17,7 @@ class TotpCodeRequest(BaseModel):
 async def setup_totp(user_id: str = Depends(verify_token)):
     """TOTP 설정 초기화 — secret, QR 이미지, 복구 코드 반환."""
     user = db_instance.fetch_one(
-        "SELECT user_id FROM users WHERE user_id = ?",
+        adapt_query("SELECT user_id FROM users WHERE user_id = ?"),
         (user_id,)
     )
     username = user["user_id"] if user else user_id

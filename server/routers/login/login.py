@@ -3,9 +3,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
 import jwt
-import redis
 from datetime import datetime, timedelta, timezone
-from config import settings, db, tfa
+from config import settings, db, tfa, redis_client
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -23,8 +22,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 TOTP_PENDING_EXPIRE_MINUTES = 5
-
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
