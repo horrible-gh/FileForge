@@ -28,8 +28,11 @@ func New(code string, status int, msg string) *AppError {
 
 // P0007 §5 error catalog. Messages default to ko (Accept-Language negotiation deferred).
 var (
-	ValidationFailed   = New("VALIDATION_FAILED", http.StatusBadRequest, "요청 형식 또는 필수값이 올바르지 않습니다.")
-	AuthInvalidCreds   = New("AUTH_INVALID_CREDENTIALS", http.StatusUnauthorized, "이메일 또는 비밀번호가 올바르지 않습니다.")
+	ValidationFailed = New("VALIDATION_FAILED", http.StatusBadRequest, "요청 형식 또는 필수값이 올바르지 않습니다.")
+	AuthInvalidCreds = New("AUTH_INVALID_CREDENTIALS", http.StatusUnauthorized, "이메일 또는 비밀번호가 올바르지 않습니다.")
+	// TwoFactorInvalid extends the P0007 §5 catalog for the R0001 stage-4 2FA flow: a wrong
+	// or missing TOTP/recovery code on login, activate, disable, or recovery regeneration.
+	TwoFactorInvalid   = New("TWO_FACTOR_INVALID", http.StatusUnauthorized, "2단계 인증 코드가 올바르지 않습니다.")
 	TokenExpired       = New("TOKEN_EXPIRED", http.StatusUnauthorized, "세션이 만료되었습니다. 다시 시도해 주세요.")
 	TokenInvalid       = New("TOKEN_INVALID", http.StatusUnauthorized, "인증 토큰이 유효하지 않습니다.")
 	Forbidden          = New("FORBIDDEN", http.StatusForbidden, "접근 권한이 없습니다.")
