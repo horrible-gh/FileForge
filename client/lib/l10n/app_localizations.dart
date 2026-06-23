@@ -387,6 +387,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reload'**
   String get reload;
+
+  /// No description provided for @accountConnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mail accounts'**
+  String get accountConnectTitle;
+
+  /// No description provided for @accountOnboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect a mail account'**
+  String get accountOnboardingTitle;
+
+  /// No description provided for @accountOnboardingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Before your inbox can load, connect a mail account. Nothing is fetched until an account is connected.'**
+  String get accountOnboardingBody;
+
+  /// No description provided for @accountConnectCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect account'**
+  String get accountConnectCta;
+
+  /// No description provided for @accountListLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load accounts'**
+  String get accountListLoadFailed;
+
+  /// No description provided for @accountGateSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again — your mail accounts are unaffected.'**
+  String get accountGateSessionExpired;
+
+  /// No description provided for @accountGateTransientError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the mail service. You can still add an account or open settings; tap retry when you\'re back online.'**
+  String get accountGateTransientError;
+
+  /// No description provided for @accountGateRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get accountGateRetry;
+
+  /// No description provided for @accountSectionConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected accounts'**
+  String get accountSectionConnected;
+
+  /// No description provided for @accountSectionAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an account'**
+  String get accountSectionAdd;
+
+  /// No description provided for @accountProviderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get accountProviderLabel;
+
+  /// No description provided for @accountAuthCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization code'**
+  String get accountAuthCodeLabel;
+
+  /// No description provided for @accountAuthCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the code from the provider consent screen'**
+  String get accountAuthCodeHint;
+
+  /// No description provided for @accountAuthCodeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve access on the provider\'s site, then paste the returned authorization code here.'**
+  String get accountAuthCodeHelp;
+
+  /// No description provided for @accountConnectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get accountConnectAction;
+
+  /// OAuth connect button label; provider is a display name like Google.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with {provider}'**
+  String accountOAuthConnectWith(String provider);
+
+  /// No description provided for @accountOAuthLaunching.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening sign-in…'**
+  String get accountOAuthLaunching;
+
+  /// No description provided for @accountOAuthLaunchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the sign-in page'**
+  String get accountOAuthLaunchFailed;
+
+  /// No description provided for @accountOAuthAwaitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish in your browser'**
+  String get accountOAuthAwaitTitle;
+
+  /// No description provided for @accountOAuthAwaitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve access in the browser that opened, then come back here — we\'ll detect the connection automatically.'**
+  String get accountOAuthAwaitBody;
+
+  /// No description provided for @accountOAuthCheckAction.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve finished — check now'**
+  String get accountOAuthCheckAction;
+
+  /// No description provided for @accountOAuthReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open sign-in again'**
+  String get accountOAuthReopen;
+
+  /// No description provided for @accountAdvancedToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced: enter a code manually'**
+  String get accountAdvancedToggle;
+
+  /// No description provided for @accountConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get accountConnecting;
+
+  /// No description provided for @accountConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Account connected'**
+  String get accountConnected;
+
+  /// No description provided for @accountEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts connected yet'**
+  String get accountEmpty;
+
+  /// No description provided for @accountAuthCodeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the authorization code'**
+  String get accountAuthCodeRequired;
+
+  /// No description provided for @accountOAuthNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Mail OAuth is not configured on the server. Contact your administrator.'**
+  String get accountOAuthNotConfigured;
+
+  /// No description provided for @accountConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'That account is already connected'**
+  String get accountConflict;
+
+  /// No description provided for @accountConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to connect the account'**
+  String get accountConnectFailed;
+
+  /// No description provided for @accountOAuthExchangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in, but the server couldn\'t finish connecting the account (OAuth exchange failed). Please try again.'**
+  String get accountOAuthExchangeFailed;
+
+  /// No description provided for @accountConnectSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Sign in again, then reconnect the account.'**
+  String get accountConnectSessionExpired;
+
+  /// No description provided for @accountConnectUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the mail service. Check your connection and try again.'**
+  String get accountConnectUnreachable;
+
+  /// No description provided for @accountConnectMalformed.
+  ///
+  /// In en, this message translates to:
+  /// **'The mail server returned an unexpected response (the endpoint may not be deployed yet). Try again, or contact your administrator.'**
+  String get accountConnectMalformed;
+
+  /// No description provided for @accountConnectInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t connect with these details. Check the provider and code, then try again.'**
+  String get accountConnectInvalid;
+
+  /// No description provided for @accountRemoveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove account'**
+  String get accountRemoveTooltip;
+
+  /// No description provided for @accountRemoveConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove account?'**
+  String get accountRemoveConfirmTitle;
+
+  /// Confirm dialog body for removing a mail account.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect {email}? Its synced mail will be removed.'**
+  String accountRemoveConfirmBody(String email);
+
+  /// No description provided for @accountRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Account removed'**
+  String get accountRemoved;
+
+  /// No description provided for @accountRemoveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove the account'**
+  String get accountRemoveFailed;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
 }
 
 class _AppLocalizationsDelegate
