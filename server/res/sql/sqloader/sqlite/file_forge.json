@@ -1,6 +1,6 @@
 {
     "get_password": "SELECT password from users WHERE user_id = ?",
-    "get_user": "SELECT u.group_uuid, u.user_uuid, u.user_id, u.user_name, us.storage_uuid, s.storage_name, s.storage_type FROM users u JOIN user_storages us ON u.user_uuid = us.user_uuid JOIN storages s ON s.storage_uuid = us.storage_uuid WHERE u.user_id = ? AND us.is_default = 1",
+    "get_user": "SELECT u.group_uuid, u.user_uuid, u.user_id, u.user_name, u.email, us.storage_uuid, s.storage_name, s.storage_type FROM users u JOIN user_storages us ON u.user_uuid = us.user_uuid JOIN storages s ON s.storage_uuid = us.storage_uuid WHERE u.user_id = ? AND us.is_default = 1",
     "storages": {
         "get_user_storages": "storages/get_user_storages.sql",
         "get_node_children": "storages/get_node_children.sql",
