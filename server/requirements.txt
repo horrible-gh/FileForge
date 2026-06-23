@@ -2,6 +2,7 @@ uvicorn==0.34.0
 fastapi==0.115.8
 passlib==1.7.4
 pyjwt==2.10.1
+cryptography==49.0.0
 pydantic_settings==2.7.1
 bcrypt==4.3.0
 python-multipart==0.0.20

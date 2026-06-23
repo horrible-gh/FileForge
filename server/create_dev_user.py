@@ -111,19 +111,18 @@ def hash_password(pw: str) -> str:
         import hashlib
         return hashlib.sha256(pw.encode()).hexdigest()
 
-def make_token(user_id: str) -> str | None:
-    """Generate JWT token for user."""
+def make_token(user_id: str, email: str | None = None) -> str | None:
+    """Generate an RS256 access token for the user, matching the server's issuance path
+    (mailanchor.ui.0003 T1). Falls back to None if the key/crypto stack is unavailable."""
     try:
-        import jwt as pyjwt
-        secret_key = get_secret_key()
-        if not secret_key:
-            return None
-        expire = datetime.now(timezone.utc) + timedelta(minutes=get_access_token_expire_minutes())
-        try:
-            return pyjwt.encode({"sub": user_id, "exp": expire}, secret_key, algorithm="HS256")
-        except Exception:
-            return None
-    except ImportError:
+        from routers.login import jwt_keys
+        data = {"sub": user_id, "type": "access"}
+        if email:
+            data["email"] = email
+        return jwt_keys.sign_access(
+            data, timedelta(minutes=get_access_token_expire_minutes())
+        )
+    except Exception:
         return None
 
 
@@ -248,7 +247,7 @@ def create_user_record(
             print("[!] Warning: no storages found — user_storages record was not created.")
 
         # Generate token
-        token = make_token(user_id)
+        token = make_token(user_id, email)
 
         result = {
             "user_id": user_id,

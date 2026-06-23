@@ -169,3 +169,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+
+# RS256 signing keys (MailAnchor token bridge) — never commit private keys
+keys/
+*.pem
