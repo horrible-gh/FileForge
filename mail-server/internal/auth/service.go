@@ -6,6 +6,7 @@ import (
 
 	"mailanchor/serverd/internal/apperr"
 	"mailanchor/serverd/internal/idgen"
+	"mailanchor/serverd/internal/sharedstore"
 )
 
 // Service implements the auth module logic (L0011) on top of the cross-cutting
@@ -17,6 +18,13 @@ type Service struct {
 	refreshTTL time.Duration
 	lock       *lockout
 	federated  *FederatedVerifier // optional FileForge RS256 bridge (mailanchor.ui.0003 T1)
+	// shared is the token-blacklist / state store (R0001 stage 3). Defaults to an
+	// in-process MemStore so logout revokes a live access token even without Redis;
+	// WithSharedStore swaps in a Redis-backed store for multi-instance deployments.
+	shared sharedstore.Store
+	// totp implements the second factor (R0001 stage 4). Always present; gates login only
+	// for users who have activated TOTP.
+	totp *TOTPManager
 }
 
 func NewService(store *Store, secret []byte, accessTTL, refreshTTL time.Duration) *Service {
@@ -26,7 +34,18 @@ func NewService(store *Store, secret []byte, accessTTL, refreshTTL time.Duration
 		accessTTL:  accessTTL,
 		refreshTTL: refreshTTL,
 		lock:       newLockout(),
+		shared:     sharedstore.NewMemStore(),
+		totp:       newTOTPManager(store),
 	}
+}
+
+// WithSharedStore overrides the default in-process blacklist/state store (e.g. with a
+// Redis-backed one). A nil store is ignored. Returns the receiver for chaining.
+func (s *Service) WithSharedStore(store sharedstore.Store) *Service {
+	if store != nil {
+		s.shared = store
+	}
+	return s
 }
 
 // WithFederation enables the FileForge token bridge: tokens that fail local HS256
@@ -63,11 +82,26 @@ type SessionResult struct {
 	Authenticated bool       `json:"authenticated"`
 }
 
-// Login validates credentials and issues an access+refresh pair (L0011 §2.1).
+// Login validates credentials and issues an access+refresh pair (L0011 §2.1). It is the
+// no-second-factor entry point (kept for callers/tests that don't supply a TOTP code); a
+// user who has activated 2FA must use LoginWithTOTP.
 func (s *Service) Login(email, password, clientIP string) (LoginResult, error) {
+	res, _, err := s.login(email, password, "", clientIP)
+	return res, err
+}
+
+// LoginWithTOTP is the 2FA-aware login (R0001 stage 4). When the account has activated TOTP
+// and totpCode is empty, it returns requires2FA=true with an empty result and a nil error —
+// the client must resubmit with the X-TOTP-Code header. A wrong code returns
+// apperr.TwoFactorInvalid; absent 2FA, totpCode is ignored.
+func (s *Service) LoginWithTOTP(email, password, totpCode, clientIP string) (LoginResult, bool, error) {
+	return s.login(email, password, totpCode, clientIP)
+}
+
+func (s *Service) login(email, password, totpCode, clientIP string) (LoginResult, bool, error) {
 	key := email + "|" + clientIP
 	if s.lock.isLocked(key) {
-		return LoginResult{}, apperr.AuthInvalidCreds // lockout concealed behind same code
+		return LoginResult{}, false, apperr.AuthInvalidCreds // lockout concealed behind same code
 	}
 
 	user, err := s.store.FindUserByEmail(email)
@@ -75,23 +109,36 @@ func (s *Service) Login(email, password, clientIP string) (LoginResult, error) {
 		if IsNotFound(err) {
 			VerifyPassword(password, DummyHash) // equalize timing for unknown account
 			s.lock.record(key)
-			return LoginResult{}, apperr.AuthInvalidCreds
+			return LoginResult{}, false, apperr.AuthInvalidCreds
 		}
-		return LoginResult{}, apperr.Internal
+		return LoginResult{}, false, apperr.Internal
 	}
 	if !VerifyPassword(password, user.PasswordHash) {
 		s.lock.record(key)
-		return LoginResult{}, apperr.AuthInvalidCreds
+		return LoginResult{}, false, apperr.AuthInvalidCreds
+	}
+
+	// Second factor (R0001 stage 4): a correct password is necessary but not sufficient when
+	// the user has activated TOTP. We keep the failure window armed (don't clear the lockout)
+	// until the second factor passes, so a leaked password alone stays bounded.
+	if s.totp != nil && s.totp.IsEnabled(user.ID) {
+		if totpCode == "" {
+			return LoginResult{}, true, nil // tell the client to resubmit with X-TOTP-Code
+		}
+		if !s.totp.Verify(user.ID, totpCode) {
+			s.lock.record(key)
+			return LoginResult{}, false, apperr.TwoFactorInvalid
+		}
 	}
 
 	s.lock.clear(key)
 	access, rerr := IssueAccess(s.secret, user.ID, s.accessTTL)
 	if rerr != nil {
-		return LoginResult{}, apperr.Internal
+		return LoginResult{}, false, apperr.Internal
 	}
 	raw, ierr := s.issueRefresh(user.ID, nil)
 	if ierr != nil {
-		return LoginResult{}, apperr.Internal
+		return LoginResult{}, false, apperr.Internal
 	}
 	return LoginResult{
 		AccessToken:  access,
@@ -99,7 +146,27 @@ func (s *Service) Login(email, password, clientIP string) (LoginResult, error) {
 		TokenType:    "Bearer",
 		ExpiresIn:    int(s.accessTTL.Seconds()),
 		User:         UserPublic{UserID: user.ID, Email: user.Email, DisplayName: user.DisplayName},
-	}, nil
+	}, false, nil
+}
+
+// --- 2FA (TOTP) service surface (R0001 stage 4). Thin delegations to the TOTPManager so the
+// HTTP handlers depend only on *Service. ---
+
+// TOTPStatus reports whether the user has activated 2FA.
+func (s *Service) TOTPStatus(userID string) bool { return s.totp.IsEnabled(userID) }
+
+// TOTPSetup enrolls (or re-enrolls) a secret and returns the QR/recovery payload.
+func (s *Service) TOTPSetup(userID string) (TOTPSetup, error) { return s.totp.Setup(userID) }
+
+// TOTPActivate flips an enrolled secret to active after verifying a current code.
+func (s *Service) TOTPActivate(userID, code string) error { return s.totp.Activate(userID, code) }
+
+// TOTPDisable removes 2FA after verifying a current code.
+func (s *Service) TOTPDisable(userID, code string) error { return s.totp.Disable(userID, code) }
+
+// TOTPRegenerateRecovery issues a fresh set of recovery codes after verifying a current code.
+func (s *Service) TOTPRegenerateRecovery(userID, code string) ([]string, error) {
+	return s.totp.RegenerateRecovery(userID, code)
 }
 
 // Refresh rotates a refresh token and mints a new access token (L0010 §2.1).
@@ -165,6 +232,24 @@ func (s *Service) Logout(presented string) error {
 	return nil // always 204, token state concealed
 }
 
+// BlacklistAccess revokes a still-valid access token in real time (R0001 stage 3 token
+// blacklist). The stateless access token cannot otherwise be invalidated before its
+// expiry; logout registers it in the shared store keyed by its hash, for the remainder of
+// its lifetime, and resolveAccess rejects any token found there. A blank/already-expired
+// token is a no-op. Best-effort: a shared-store error is swallowed (logout always 204).
+func (s *Service) BlacklistAccess(accessToken string) {
+	if accessToken == "" || s.shared == nil {
+		return
+	}
+	ttl := s.accessTTL // safe upper bound (covers federated tokens we can't introspect)
+	if exp, ok := accessExp(s.secret, accessToken); ok {
+		ttl = time.Until(exp) + clockSkewAllowance
+	}
+	if ttl > 0 {
+		_ = s.shared.Blacklist(tokenKey(accessToken), ttl)
+	}
+}
+
 // Session validates the access token and returns the current user (L0011 §2.2).
 func (s *Service) Session(accessToken string) (SessionResult, error) {
 	user, err := s.resolveAccess(accessToken)
@@ -192,6 +277,13 @@ func (s *Service) AuthenticateAccess(accessToken string) (string, error) {
 // provisioning the linked local user (mailanchor.ui.0003 T1). HS256 expiry is returned
 // as-is (the client should refresh) and never reinterpreted as a foreign token.
 func (s *Service) resolveAccess(accessToken string) (User, error) {
+	// Token blacklist (R0001 stage 3): a token revoked at logout is rejected before any
+	// signature work, for both self-issued and federated tokens.
+	if s.shared != nil {
+		if bl, _ := s.shared.IsBlacklisted(tokenKey(accessToken)); bl {
+			return User{}, apperr.TokenInvalid
+		}
+	}
 	userID, err := VerifyAccess(s.secret, accessToken)
 	if err == nil {
 		user, ferr := s.store.FindUserByID(userID)
