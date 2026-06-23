@@ -56,6 +56,88 @@ MailErrorCategory classifyMailErrorCode(String code) {
   }
 }
 
+/// 계정 연결(authorize/connect) 실패의 **사용자노출 범주** — NR0007 §6 L1.
+///
+/// TR0005 가 OAuth 브라우저 전환을 넣으며 실패 표면을 같이 설계하지 않아,
+/// `_connectErrorMessage` 의 catch-all 한 분기가 5종 실패(네트워크/404·MALFORMED/
+/// 세션401/VALIDATION/oauth-exchange-failed)를 단일 불투명 토스트로 뭉갰다
+/// (NR0007 §5 — 진단가능성 붕괴 → "왜 실패했는지 모른 채 진행 불가"). 이 enum 은
+/// 그 catch-all 을 원인별로 분화해 사용자/운영자가 다음 행동을 할 수 있게 한다.
+enum ConnectFailureKind {
+  /// 이미 연결된 계정(`ACCOUNT_DUPLICATE`).
+  conflict,
+
+  /// 서버에 OAuth env 미설정(`UPSTREAM_UNAVAILABLE` reason=`oauth not configured`).
+  oauthNotConfigured,
+
+  /// OAuth 코드 교환 실패(`UPSTREAM_UNAVAILABLE` reason=`oauth exchange failed`).
+  /// NR0007 §5.2 — reason 분기가 한 가지만 처리해 일반 토스트로 새던 케이스.
+  oauthExchangeFailed,
+
+  /// 세션 만료/거부(401·403 또는 auth/refreshable 범주) — 재로그인 신호.
+  /// NR0007 §5.3 — connect/authorize 경로엔 세션 승격이 없던 누락.
+  session,
+
+  /// 메일 서버 미도달/네트워크 단절 또는 업스트림 일시 불가.
+  network,
+
+  /// 비-봉투 응답(404·리버스프록시 HTML 등) → `MALFORMED_RESPONSE`.
+  /// NR0007 §4 H1 — 신규 authorize 라우트 미배포의 가장 유력한 표면.
+  malformed,
+
+  /// provider 화이트리스트 밖/입력 검증 실패 등 사용자 조치 대상.
+  invalid,
+
+  /// 위 어디에도 안 잡히는 미정의 실패(최후 폴백).
+  generic,
+}
+
+/// [MailApiException] 을 [ConnectFailureKind] 로 분류한다(NR0007 §6 L1).
+///
+/// 분기는 `code`/`httpStatus`/`category`/`details.reason` 만 본다(`message` 는
+/// 로케일 종속이라 쓰지 않음 — P0007 §1.2). 순서가 중요하다: 구체 코드(중복·OAuth
+/// reason) → 세션(상태/범주) → 네트워크/일시 → MALFORMED → 입력검증 → 폴백.
+ConnectFailureKind classifyConnectFailure(MailApiException e) {
+  if (e.code == 'ACCOUNT_DUPLICATE') return ConnectFailureKind.conflict;
+  if (e.code == 'UPSTREAM_UNAVAILABLE') {
+    final reason = e.details?['reason'] as String?;
+    if (reason == 'oauth not configured') {
+      return ConnectFailureKind.oauthNotConfigured;
+    }
+    if (reason == 'oauth exchange failed') {
+      return ConnectFailureKind.oauthExchangeFailed;
+    }
+  }
+  if (e.httpStatus == 401 ||
+      e.httpStatus == 403 ||
+      e.category == MailErrorCategory.auth ||
+      e.category == MailErrorCategory.refreshable) {
+    return ConnectFailureKind.session;
+  }
+  // UNKNOWN(네트워크 단절) 과 transient(UPSTREAM_UNAVAILABLE/SEND_FAILED, reason
+  // 미상)은 모두 "서버에 닿지 못함/일시 불가" → 재시도 안내.
+  if (e.code == 'UNKNOWN' || e.category == MailErrorCategory.transient) {
+    return ConnectFailureKind.network;
+  }
+  if (e.code == 'MALFORMED_RESPONSE') return ConnectFailureKind.malformed;
+  if (e.category == MailErrorCategory.userAction) {
+    return ConnectFailureKind.invalid;
+  }
+  return ConnectFailureKind.generic;
+}
+
+/// 토스트/배너에 붙이는 **진단 꼬리표**(NR0007 §6 L2) — 사용자/운영자가 원인을
+/// 짚을 수 있도록 `code`·`httpStatus`·`requestId` 를 로케일 중립으로 노출한다.
+/// `MailApiException` 에 이미 다 실려 있다(mail_envelope §60-100).
+String diagnosticLabel(MailApiException e) {
+  final parts = <String>[e.code];
+  if (e.httpStatus != null) parts.add('HTTP ${e.httpStatus}');
+  if (e.requestId != null && e.requestId!.isNotEmpty) {
+    parts.add('req ${e.requestId}');
+  }
+  return parts.join(' · ');
+}
+
 /// P0007 §1.2 에러 봉투를 표현하는 예외.
 class MailApiException implements Exception {
   final String code;

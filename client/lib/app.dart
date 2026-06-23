@@ -10,6 +10,8 @@ import 'providers/upload_provider.dart';
 import 'providers/selection_provider.dart';
 import 'providers/share_link_provider.dart';
 import 'providers/mail_provider.dart';
+import 'providers/account_provider.dart';
+import 'services/account_cache.dart';
 import 'services/mail_api_client.dart';
 
 /// 앱 루트 위젯
@@ -33,6 +35,7 @@ class _AppState extends State<App> {
   late final ShareLinkProvider _shareLinkProvider;
   late final MailApiClient _mailApiClient;
   late final MailProvider _mailProvider;
+  late final AccountProvider _accountProvider;
   late final RouterConfig<Object> _routerConfig;
 
   @override
@@ -59,11 +62,18 @@ class _AppState extends State<App> {
         onSessionExpired: _authProvider.logout,
       );
     _mailProvider = MailProvider(_mailApiClient.dio);
-    // T074: 로그아웃/세션 만료 시 storage·file·mail 상태 초기화 연결
+    // 계정 게이트 — MailProvider 와 같은 MailApiClient Dio(세션 토큰 공유)를 탄다.
+    // 계정 유무 캐시를 주입해 콜드 진입에서 화면을 즉시 그린다(TR0005 §증상1).
+    _accountProvider = AccountProvider(
+      _mailApiClient.dio,
+      cache: SharedPrefsAccountCache(),
+    );
+    // T074: 로그아웃/세션 만료 시 storage·file·mail·account 상태 초기화 연결
     _authProvider.setProviderResetCallback(() {
       _storageProvider.reset();
       _fileProvider.reset();
       _mailProvider.reset();
+      _accountProvider.reset();
     });
     _routerConfig = AppRoutes.createRouter(_authProvider);
   }
@@ -79,6 +89,7 @@ class _AppState extends State<App> {
         ChangeNotifierProvider<SelectionProvider>.value(value: _selectionProvider),
         ChangeNotifierProvider<ShareLinkProvider>.value(value: _shareLinkProvider),
         ChangeNotifierProvider<MailProvider>.value(value: _mailProvider),
+        ChangeNotifierProvider<AccountProvider>.value(value: _accountProvider),
       ],
       child: MaterialApp.router(
         title: 'FileForge',

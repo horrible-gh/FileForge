@@ -1,5 +1,6 @@
 {
   "SERVER_URL": "https://fileforge.duckdns.org/fileforge",
+  "MAIL_SERVER_URL": "https://fileforge.duckdns.org/api/v1",
   "SHARE_BASE_URL": "https://fileforge.duckdns.org",
   "LOG_LEVEL": "warn",
   "LOG_CONSOLE": "false",

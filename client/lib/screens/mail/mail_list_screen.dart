@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/mail_provider.dart';
+import '../../providers/account_provider.dart';
 import '../../models/mail.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_retry.dart';
@@ -9,6 +10,7 @@ import '../../widgets/app_toast.dart';
 import '../../services/mail_compose.dart';
 import 'mail_detail_screen.dart';
 import 'mail_compose_screen.dart';
+import 'account_connect_screen.dart';
 
 /// 라벨 스위처가 노출하는 시스템 라벨(읽기 슬라이스 범위).
 ///
@@ -44,9 +46,41 @@ class _MailListScreenState extends State<MailListScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _enterMail());
+  }
+
+  /// 메일 진입 게이트(NR0003 §5.5) — inbox 를 긁기 전에 연결된 계정이 있는지
+  /// 먼저 확인한다. 계정이 0개면 inbox 를 호출하지 않고(사용자가 본 "에러+Retry"
+  /// 의 근본) 온보딩 화면으로 흘려보낸다. 1개 이상일 때만 loadInbox 한다.
+  Future<void> _enterMail() async {
+    final accounts = context.read<AccountProvider>();
+    // 낙관적 렌더(TR0005 §증상1): 캐시된 마지막 계정 유무로 화면을 즉시 그린다.
+    // 캐시상 계정이 있었으면 네트워크 응답 전이라도 inbox 를 선로딩한다.
+    final primed = await accounts.primeFromCache();
+    if (!mounted) return;
+    if (primed && accounts.hasAccounts) {
       context.read<MailProvider>().loadInbox();
-    });
+    }
+    // 실로드로 재조정한다(이미 ready 면 스피너로 되돌지 않음).
+    await accounts.load();
+    if (!mounted) return;
+    final mail = context.read<MailProvider>();
+    if (accounts.hasAccounts && mail.mails.isEmpty) {
+      mail.loadInbox();
+    }
+  }
+
+  /// 계정 연결 화면으로 이동. 돌아왔을 때 계정이 생겼으면 inbox 를 로드한다
+  /// (AccountConnectScreen 이 공유 AccountProvider 를 갱신하므로 즉시 반영됨).
+  Future<void> _openAccounts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AccountConnectScreen()),
+    );
+    if (!mounted) return;
+    final mail = context.read<MailProvider>();
+    if (context.read<AccountProvider>().hasAccounts && mail.mails.isEmpty) {
+      mail.loadInbox();
+    }
   }
 
   @override
@@ -117,6 +151,22 @@ class _MailListScreenState extends State<MailListScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final accounts = context.watch<AccountProvider>();
+
+    // ── 계정 게이트(NR0003 §5.5) — inbox 표시 이전에 계정 유무로 분기한다. ──
+    // 아직 확인 전/확인 중이면 스피너. "진짜" 조회 실패(네트워크/세션, 무계정과
+    // 구분)면 블랙아웃이 아니라 비차단 안내(NR0004 §4). 확인됐는데 0개면 온보딩.
+    // ≥1개일 때만 메일 UI.
+    if (accounts.gate == AccountGateState.error) {
+      return _buildGateError(context, t, accounts);
+    }
+    if (!accounts.isResolved) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!accounts.hasAccounts) {
+      return _buildOnboarding(context, t);
+    }
+
     // 셸(MainScreen) 본문에 작성 FAB를 더하기 위해 내부 Scaffold로 감싼다
     // (AppBar는 셸이 제공하므로 두지 않는다).
     return Scaffold(
@@ -133,6 +183,102 @@ class _MailListScreenState extends State<MailListScreen> {
             onSelected: _switchLabel,
           ),
           Expanded(child: _buildBody(context, t)),
+        ],
+      ),
+    );
+  }
+
+  /// 계정 읽기 실패 게이트 — NR0004 §4 (썬더버드 패리티).
+  ///
+  /// 전체 화면 ErrorRetry 로 앱을 블랙아웃하던 것이 사용자가 화내던 차단 화면의
+  /// 근원이었다. 대신 상단에 **비차단** 인라인 배너(원인별 문구·재시도)를 두고,
+  /// 그 아래 온보딩(계정 연결 CTA)을 그대로 노출해 계정 추가 도달성을 보존한다.
+  /// (설정 화면은 별개 셸 라우트라 이와 무관하게 항상 도달 가능하다.)
+  /// 401/403(세션 만료)은 "다시 로그인" 신호로, 그 외(네트워크 등)는 일시 오류로
+  /// 구분해 안내한다.
+  Widget _buildGateError(
+      BuildContext context, AppLocalizations t, AccountProvider accounts) {
+    final theme = Theme.of(context);
+    final isSession = accounts.errorKind == AccountLoadErrorKind.session;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          color: theme.colorScheme.errorContainer,
+          elevation: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  isSession
+                      ? Icons.lock_clock_rounded
+                      : Icons.cloud_off_rounded,
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isSession
+                        ? t.accountGateSessionExpired
+                        : t.accountGateTransientError,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _enterMail,
+                  child: Text(t.accountGateRetry),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildOnboardingCard(context, t),
+      ],
+    );
+  }
+
+  /// 무계정 온보딩 — 무서운 "메일을 불러오지 못했습니다 + Retry" 대신, 계정을
+  /// 연결하라는 안내와 연결 버튼을 보여준다(NR0003 §5.6).
+  Widget _buildOnboarding(BuildContext context, AppLocalizations t) {
+    return Center(child: _buildOnboardingCard(context, t));
+  }
+
+  /// 온보딩 카드 본문(Center 미포함) — 무계정 게이트와 에러 게이트(인라인 배너
+  /// 아래)에서 공유한다. ListView 안에서도 안전하도록 mainAxisSize.min Column.
+  Widget _buildOnboardingCard(BuildContext context, AppLocalizations t) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.mark_email_unread_rounded,
+              size: 64, color: theme.colorScheme.primary),
+          const SizedBox(height: 16),
+          Text(
+            t.accountOnboardingTitle,
+            style: theme.textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t.accountOnboardingBody,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: _openAccounts,
+            icon: const Icon(Icons.add_link_rounded),
+            label: Text(t.accountConnectCta),
+          ),
         ],
       ),
     );
