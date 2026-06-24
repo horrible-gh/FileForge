@@ -70,14 +70,14 @@ func newSecretStore(cfg config.Config) mailapi.SecretStore {
 	return mailapi.NewMemSecretStore()
 }
 
-// corsMiddleware applies a minimal CORS policy for the configured allow-origin
+// corsMiddleware applies a minimal CORS policy for the configured allow-origins
 // (ALLOWED_ORIGIN, stage 2). It echoes the origin when it matches (supporting "*"),
 // advertises the methods/headers the API uses, and short-circuits preflight OPTIONS.
-func corsMiddleware(allowed string) func(http.Handler) http.Handler {
+func corsMiddleware(allowed []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			if origin != "" && (allowed == "*" || allowed == origin) {
+			if origin != "" && originAllowed(allowed, origin) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -91,6 +91,15 @@ func corsMiddleware(allowed string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func originAllowed(allowed []string, origin string) bool {
+	for _, candidate := range allowed {
+		if candidate == "*" || candidate == origin {
+			return true
+		}
+	}
+	return false
 }
 
 // oauthCreds maps the config provider credentials into the oauthx port type.
@@ -172,11 +181,11 @@ func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler 
 	}
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
-	// CORS (stage 2, ALLOWED_ORIGIN). Mounted only when an origin is configured so the
+	// CORS (stage 2, ALLOWED_ORIGIN). Mounted only when origins are configured so the
 	// default (same-origin) behaviour is unchanged. FileForge's main.py applies CORS from
 	// ALLOWED_ORIGIN; we mirror that with a dependency-free middleware.
-	if cfg.AllowedOrigin != "" {
-		r.Use(corsMiddleware(cfg.AllowedOrigin))
+	if len(cfg.AllowedOrigins) > 0 {
+		r.Use(corsMiddleware(cfg.AllowedOrigins))
 	}
 
 	r.Route(cfg.Context, func(api chi.Router) {
