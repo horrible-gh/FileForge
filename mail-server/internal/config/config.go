@@ -42,9 +42,9 @@ type Config struct {
 	// to evade the per-IP login lockout (NR0011 S3). MAILANCHOR_TRUST_PROXY=1.
 	TrustProxy bool
 
-	// AllowedOrigin (ALLOWED_ORIGIN) — CORS allow-origin for the SPA/mobile client.
-	// Empty -> no CORS middleware mounted (same-origin only, unchanged behaviour).
-	AllowedOrigin string
+	// AllowedOrigins (ALLOWED_ORIGIN) — CORS allow-origins for the SPA/mobile client.
+	// Empty -> no CORS middleware mounted (same-origin only).
+	AllowedOrigins []string
 
 	// Phase 2 — external services / object store.
 	AttachmentDir string // MAIL_STORAGE_BASE_PATH: disk object-store root for attachment bytes
@@ -136,11 +136,11 @@ func Load() (Config, error) {
 		DBName:     firstenv("", "DB_DATABASE"),
 		DBSchema:   firstenv("", "DB_SCHEMA"),
 
-		TrustProxy:    getenvBool("MAILANCHOR_TRUST_PROXY", false),
-		AllowedOrigin: firstenv("", "ALLOWED_ORIGIN"),
-		JWTSecret:     []byte(firstenv("", "SECRET_KEY", "MAILANCHOR_JWT_SECRET")),
-		AccessTTL:     resolveAccessTTL(),
-		RefreshTTL:    resolveRefreshTTL(),
+		TrustProxy:     getenvBool("MAILANCHOR_TRUST_PROXY", false),
+		AllowedOrigins: loadAllowedOrigins(strings.ToLower(firstenv("production", "ENVIRONMENT", "MAILANCHOR_ENV"))),
+		JWTSecret:      []byte(firstenv("", "SECRET_KEY", "MAILANCHOR_JWT_SECRET")),
+		AccessTTL:      resolveAccessTTL(),
+		RefreshTTL:     resolveRefreshTTL(),
 
 		AttachmentDir:       firstenv("./attachments", "MAIL_STORAGE_BASE_PATH", "MAILANCHOR_ATTACHMENT_DIR"),
 		SMTPHost:            getenv("MAILANCHOR_SMTP_HOST", ""),
@@ -179,6 +179,27 @@ func resolveRefreshTTL() time.Duration {
 		return time.Duration(d) * 24 * time.Hour
 	}
 	return time.Duration(getenvInt("MAILANCHOR_REFRESH_TTL_SEC", 2592000)) * time.Second
+}
+
+func loadAllowedOrigins(env string) []string {
+	raw := firstenv("", "ALLOWED_ORIGIN", "MAILANCHOR_ALLOWED_ORIGINS", "MAILANCHOR_ALLOWED_ORIGIN")
+	if raw == "" && isDevEnv(env) {
+		raw = "http://localhost:3031,http://127.0.0.1:3031"
+	}
+	if raw == "" {
+		return nil
+	}
+	seen := map[string]bool{}
+	out := []string{}
+	for _, part := range strings.Split(raw, ",") {
+		origin := strings.TrimSpace(part)
+		if origin == "" || seen[origin] {
+			continue
+		}
+		seen[origin] = true
+		out = append(out, origin)
+	}
+	return out
 }
 
 // isDevEnv reports whether the env permits an auto-generated dev secret.

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -213,13 +214,37 @@ func TestRedisConfigLoaded(t *testing.T) {
 func TestAllowedOriginLoaded(t *testing.T) {
 	clearConfigEnv(t)
 	t.Setenv("ENVIRONMENT", "development")
-	t.Setenv("ALLOWED_ORIGIN", "https://mail.example.com")
+	t.Setenv("ALLOWED_ORIGIN", "https://mail.example.com, http://localhost:3031, https://mail.example.com")
 	c, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if c.AllowedOrigin != "https://mail.example.com" {
-		t.Fatalf("ALLOWED_ORIGIN not loaded: %q", c.AllowedOrigin)
+	want := []string{"https://mail.example.com", "http://localhost:3031"}
+	if strings.Join(c.AllowedOrigins, ",") != strings.Join(want, ",") {
+		t.Fatalf("ALLOWED_ORIGIN not loaded: %q", strings.Join(c.AllowedOrigins, ","))
+	}
+}
+
+func TestAllowedOriginDefaultsByEnvironment(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("ENVIRONMENT", "development")
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load(dev): %v", err)
+	}
+	if got := strings.Join(c.AllowedOrigins, ","); got != "http://localhost:3031,http://127.0.0.1:3031" {
+		t.Fatalf("dev allowed origins = %q", got)
+	}
+
+	clearConfigEnv(t)
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("SECRET_KEY", "production-secret-key-1234567890")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load(prod): %v", err)
+	}
+	if len(c.AllowedOrigins) != 0 {
+		t.Fatalf("prod allowed origins should default empty, got %q", strings.Join(c.AllowedOrigins, ","))
 	}
 }
 
