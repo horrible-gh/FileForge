@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     DB_LOG: bool = True
     DB_PATH: str = ""
 
+    # 🔹 Gmail OAuth credential (MailAnchor 메일 연동). MailAnchorServer/config.py와 동일 컨벤션.
+    #    이 세 값은 정식 설정 항목이며, 기본값 ""로 비워 두어도 기동에는 영향이 없다.
+    #    (이전엔 미선언 + pydantic extra="forbid" 기본값 탓에 .env에 넣으면
+    #     기동이 extra_forbidden ValidationError로 즉시 죽었다.)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = ""
+
     RATE_LIMIT_DEFAULT: str = "100/hour"
     RATE_LIMIT_LOGIN: str = "5/minute"
     RATE_LIMIT_UPLOAD: str = "20/hour"

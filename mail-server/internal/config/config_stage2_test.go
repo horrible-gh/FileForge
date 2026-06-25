@@ -232,7 +232,7 @@ func TestAllowedOriginDefaultsByEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load(dev): %v", err)
 	}
-	if got := strings.Join(c.AllowedOrigins, ","); got != "http://localhost:3031,http://127.0.0.1:3031" {
+	if got := strings.Join(c.AllowedOrigins, ","); got != "http://localhost:3031,http://127.0.0.1:3031,http://localhost:4152,http://127.0.0.1:4152" {
 		t.Fatalf("dev allowed origins = %q", got)
 	}
 

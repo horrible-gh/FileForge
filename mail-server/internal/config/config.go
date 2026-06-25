@@ -184,7 +184,7 @@ func resolveRefreshTTL() time.Duration {
 func loadAllowedOrigins(env string) []string {
 	raw := firstenv("", "ALLOWED_ORIGIN", "MAILANCHOR_ALLOWED_ORIGINS", "MAILANCHOR_ALLOWED_ORIGIN")
 	if raw == "" && isDevEnv(env) {
-		raw = "http://localhost:3031,http://127.0.0.1:3031"
+		raw = "http://localhost:3031,http://127.0.0.1:3031,http://localhost:4152,http://127.0.0.1:4152"
 	}
 	if raw == "" {
 		return nil
