@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -115,6 +116,15 @@ func oauthCreds(cfg config.Config) map[string]oauthx.Creds {
 	return out
 }
 
+func oauthProviderNames(cfg config.Config) []string {
+	names := make([]string, 0, len(cfg.OAuth))
+	for name := range cfg.OAuth {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // NewWithDeps builds the router with explicit mail dependencies. Tests use this to
 // inject fakes (Sender/ChangeSource/OAuth) and a controllable clock.
 func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler {
@@ -189,8 +199,14 @@ func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler 
 	}
 
 	r.Route(cfg.Context, func(api chi.Router) {
+		oauthProviders := oauthProviderNames(cfg)
 		api.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-			httpx.OK(w, http.StatusOK, map[string]any{"status": "ok", "fileforge_bridge": bridgeStatus})
+			httpx.OK(w, http.StatusOK, map[string]any{
+				"status":           "ok",
+				"fileforge_bridge": bridgeStatus,
+				"oauth_configured": len(oauthProviders) > 0,
+				"oauth_providers":  oauthProviders,
+			})
 		})
 
 		// 인증(A) — P0007 §6.1

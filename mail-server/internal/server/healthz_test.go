@@ -52,8 +52,10 @@ func healthzBridge(t *testing.T, cfg config.Config) (int, string) {
 	var env struct {
 		OK   bool `json:"ok"`
 		Data struct {
-			Status          string `json:"status"`
-			FileForgeBridge string `json:"fileforge_bridge"`
+			Status          string   `json:"status"`
+			FileForgeBridge string   `json:"fileforge_bridge"`
+			OAuthConfigured bool     `json:"oauth_configured"`
+			OAuthProviders  []string `json:"oauth_providers"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &env); err != nil {
@@ -63,6 +65,40 @@ func healthzBridge(t *testing.T, cfg config.Config) (int, string) {
 		t.Fatalf("healthz not ok: %q", body)
 	}
 	return resp.StatusCode, env.Data.FileForgeBridge
+}
+
+func healthzOAuth(t *testing.T, cfg config.Config) (bool, []string) {
+	t.Helper()
+	conn, err := db.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	ts := httptest.NewServer(server.New(cfg, conn))
+	t.Cleanup(ts.Close)
+
+	resp, err := http.Get(ts.URL + cfg.Context + "/healthz")
+	if err != nil {
+		t.Fatalf("GET healthz: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var env struct {
+		OK   bool `json:"ok"`
+		Data struct {
+			OAuthConfigured bool     `json:"oauth_configured"`
+			OAuthProviders  []string `json:"oauth_providers"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &env); err != nil {
+		t.Fatalf("decode healthz body %q: %v", body, err)
+	}
+	if !env.OK {
+		t.Fatalf("healthz not ok: %q", body)
+	}
+	return env.Data.OAuthConfigured, env.Data.OAuthProviders
 }
 
 func TestHealthzReportsBridgeDisabledByDefault(t *testing.T) {
@@ -100,6 +136,28 @@ func TestHealthzReportsBridgeDisabledOnBadPubKey(t *testing.T) {
 	}
 	if bridge != "disabled" {
 		t.Fatalf("fileforge_bridge = %q, want %q (malformed pubkey)", bridge, "disabled")
+	}
+}
+
+func TestHealthzReportsOAuthConfiguration(t *testing.T) {
+	configured, providers := healthzOAuth(t, baseCfg())
+	if configured {
+		t.Fatalf("oauth_configured = true, want false")
+	}
+	if len(providers) != 0 {
+		t.Fatalf("oauth_providers = %v, want empty", providers)
+	}
+
+	cfg := baseCfg()
+	cfg.OAuth = map[string]config.OAuthProvider{
+		"gmail": {ClientID: "gid", ClientSecret: "gsec", RedirectURI: "https://app/cb"},
+	}
+	configured, providers = healthzOAuth(t, cfg)
+	if !configured {
+		t.Fatalf("oauth_configured = false, want true")
+	}
+	if len(providers) != 1 || providers[0] != "gmail" {
+		t.Fatalf("oauth_providers = %v, want [gmail]", providers)
 	}
 }
 

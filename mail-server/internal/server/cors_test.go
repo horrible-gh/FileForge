@@ -90,7 +90,27 @@ func TestCORSPreflightShortCircuits(t *testing.T) {
 
 func TestCORSMultipleOrigins(t *testing.T) {
 	const origin = "http://127.0.0.1:3031"
-	ts := newTestServer(t, []string{"http://localhost:3031", origin})
+	ts := newTestServer(t, []string{"http://localhost:3031", origin, "http://localhost:4152"})
+	req, _ := http.NewRequest(http.MethodOptions, ts.URL+"/api/v1/accounts", nil)
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	req.Header.Set("Access-Control-Request-Headers", "authorization")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("preflight status = %d, want 204", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != origin {
+		t.Fatalf("Access-Control-Allow-Origin = %q, want %q", got, origin)
+	}
+}
+
+func TestCORSAllowsFlutterWebDevPort(t *testing.T) {
+	const origin = "http://localhost:4152"
+	ts := newTestServer(t, []string{"http://localhost:3031", "http://127.0.0.1:3031", origin})
 	req, _ := http.NewRequest(http.MethodOptions, ts.URL+"/api/v1/accounts", nil)
 	req.Header.Set("Origin", origin)
 	req.Header.Set("Access-Control-Request-Method", http.MethodGet)

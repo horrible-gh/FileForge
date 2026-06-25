@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -58,14 +59,30 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:              cfg.Addr,
 		Handler:           server.New(cfg, database),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	// Bind the listen address synchronously BEFORE announcing "listening", so a
+	// port conflict (a previous mailanchord instance still holding cfg.Addr) fails
+	// here with an actionable message instead of printing a misleading "listening"
+	// line and then dying with a raw socket error. This is the only boot failure a
+	// user editing GOOGLE_* would actually hit: the credential values themselves do
+	// not affect startup — an unconfigured provider only makes the OAuth endpoints
+	// answer 503 (NR0003), it never blocks boot.
+	ln, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
+		log.Fatalf("listen %s: %v\n"+
+			"    The address %s is already in use — most likely a previous mailanchord\n"+
+			"    instance is still running. Stop it (Windows: taskkill /F /IM mailanchord.exe),\n"+
+			"    confirm nothing is listening on %s, then start again. (Gmail OAuth\n"+
+			"    GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI do NOT affect whether the server boots.)",
+			cfg.Addr, err, cfg.Addr, cfg.Addr)
+	}
+
 	go func() {
 		log.Printf("mailanchord listening on %s (context %s, db %s)", cfg.Addr, cfg.Context, driver)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("serve: %v", err)
 		}
 	}()
