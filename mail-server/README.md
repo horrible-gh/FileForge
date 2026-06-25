@@ -32,10 +32,26 @@ MAILANCHOR_JWT_SECRET=... ./mailanchord                                         
 | `MAILANCHOR_JWT_SECRET` | (개발용 폴백) | HS256 서명키 — 운영 필수 |
 | `MAILANCHOR_ACCESS_TTL_SEC` | `900` | access TTL |
 | `MAILANCHOR_REFRESH_TTL_SEC` | `2592000` | refresh TTL(30일) |
+| `GOOGLE_CLIENT_ID` | (없음) | Gmail OAuth 클라이언트 ID. 없으면 `/accounts/oauth/authorize?provider=gmail`는 503 `oauth not configured` |
+| `GOOGLE_CLIENT_SECRET` | (없음) | Gmail OAuth 클라이언트 secret |
+| `GOOGLE_REDIRECT_URI` | (없음) | Google Cloud Console의 Authorized redirect URI와 동일해야 함. 로컬 예: `http://localhost:8090/api/v1/accounts/oauth/callback` |
+| `MAILANCHOR_OAUTH_RETURN_URL` | (없음) | OAuth 완료 후 앱으로 되돌릴 URL. 없으면 서버가 자체 완료 HTML을 렌더링 |
 | `MAILANCHOR_FILEFORGE_JWT_PUBKEY` | (없음) | FileForge RS256 공개키(PEM 인라인). 설정 시 토큰 공유 다리 ON |
 | `MAILANCHOR_FILEFORGE_JWT_PUBKEY_FILE` | (없음) | 위 키를 파일 경로로 주입(인라인 미설정 시) |
 | `MAILANCHOR_FILEFORGE_ISSUER` | (없음) | 기대 `iss` 클레임(설정 시 강제) |
 | `MAILANCHOR_FILEFORGE_AUDIENCE` | (없음) | 기대 `aud` 클레임(설정 시 강제) |
+
+`MAILANCHOR_OAUTH_GMAIL_CLIENT_ID`, `MAILANCHOR_OAUTH_GMAIL_CLIENT_SECRET`,
+`MAILANCHOR_OAUTH_GMAIL_REDIRECT_URI`도 legacy fallback으로 읽지만, 신규 설정은
+`GOOGLE_*`를 우선한다. `/api/v1/healthz`의 `oauth_configured`와 `oauth_providers`로
+기동 직후 OAuth 설정 반영 여부를 확인할 수 있다.
+
+> **`GOOGLE_*`를 넣었는데 서버가 안 뜨는 경우**: 이 값들은 서버 기동을 막지 않는다(미설정은
+> `/accounts/oauth/authorize`만 503으로 만들 뿐이다). 기동 실패의 실제 원인은 거의 항상
+> `MAILANCHOR_ADDR`(기본 `:8090`) **포트 중복**이다 — 이전 `mailanchord` 인스턴스가 아직 그
+> 포트를 잡고 있으면 새 프로세스가 `bind: address already in use`로 즉시 종료된다. 기존
+> 인스턴스를 먼저 종료(`taskkill /F /IM mailanchord.exe`)하고 해당 포트가 비었는지 확인한 뒤
+> 다시 기동한다. `run.bat`는 재기동 시 포트가 실제로 해제될 때까지 대기한 후 빌드/기동한다.
 
 ## FileForge 토큰 공유 다리 (구현됨, mailanchor.ui.0003 T1)
 폴리글랏(Python FileForge ↔ Go) 경계를 **시크릿 없이** 잇는 연합 인증. FileForge 공개키만 경계를
