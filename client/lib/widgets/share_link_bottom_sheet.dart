@@ -6,12 +6,12 @@ import '../providers/share_link_provider.dart';
 import '../config/env.dart';
 import 'app_toast.dart';
 
-/// D004 §2-1 — 공유 링크 생성 BottomSheet
-/// - 대상 노드 아이콘 + 이름 표시
-/// - 비밀번호 스위치/조건부 입력
-/// - 링크 생성 (POST /share/create via ShareLinkProvider)
-/// - 생성 URL 표시 + 클립보드 복사 + 2초 피드백
-/// - BottomSheet 열릴 때마다 상태 초기화 (StatefulWidget)
+/// D004 §2-1 — Create a shared link BottomSheet
+/// - text text translated text + name display
+/// - password translated text/translated text text
+/// - text create (POST /share/create via ShareLinkProvider)
+/// - create URL display + translated text text + 2text translated text
+/// - BottomSheet text translated text state initialize (StatefulWidget)
 class ShareLinkBottomSheet extends StatefulWidget {
   final Node node;
 
@@ -34,7 +34,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
     super.dispose();
   }
 
-  /// P005 §1 기준: Env.shareBaseUrl에 /share/{token} 조합
+  /// P005 §1 text: Env.shareBaseUrltext /share/{token} text
   String _buildShareUrl(String token) {
     return '${Env.shareBaseUrl}/share/$token';
   }
@@ -82,7 +82,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 헤더
+            // text
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Text(
@@ -94,7 +94,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
               ),
             ),
             const Divider(height: 1),
-            // 대상 노드 표시
+            // text text display
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -115,7 +115,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                 ],
               ),
             ),
-            // 비밀번호 스위치
+            // password translated text
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -134,7 +134,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                 ],
               ),
             ),
-            // 비밀번호 입력 필드 — 스위치 ON일 때만 표시
+            // password text text — translated text ONtext text display
             if (_usePassword)
               Padding(
                 padding:
@@ -152,7 +152,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                   ),
                 ),
               ),
-            // 링크 생성 버튼
+            // text create text
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: SizedBox(
@@ -169,7 +169,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                 ),
               ),
             ),
-            // 생성 결과 URL + 복사 버튼
+            // create result URL + text text
             if (_generatedUrl != null) ...[
               const Divider(height: 1),
               Padding(

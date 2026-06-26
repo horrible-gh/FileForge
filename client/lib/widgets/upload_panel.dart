@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/upload_item.dart';
 import '../providers/upload_provider.dart';
 
-/// D003 U04~U07 — 하단 업로드 진행률 패널
+/// D003 U04~U07 — text upload translated text text
 class UploadPanel extends StatelessWidget {
   const UploadPanel({super.key});
 

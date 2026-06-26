@@ -1,5 +1,5 @@
-// Non-web stub — dart.library.io 환경(Android, iOS, Desktop)에서 사용
-// 모든 함수는 no-op이며 실제 구현은 web_directory_drop.dart에 있다.
+// Non-web stub — dart.library.io text(Android, iOS, Desktop)text text
+// all translated text no-optext text translated text web_directory_drop.darttext text.
 
 import 'dart:typed_data';
 

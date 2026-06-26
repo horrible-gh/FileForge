@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import '../models/breadcrumb.dart';
 
-/// AppBar 하단 빵부스러기 네비게이션 위젯
-/// P003 § 2-3 기준: breadcrumb_path 서버 응답 순서대로 렌더링.
-/// 마지막 항목(현재 위치)은 탭 불가.
+/// AppBar text translated text translated text text
+/// P003 § 2-3 text: breadcrumb_path server text translated text translated text.
+/// translated text text(current text)text text text.
 class BreadcrumbNav extends StatelessWidget {
   final List<Breadcrumb> breadcrumbs;
 
-  /// 맨 앞에 항상 표시되는 스토리지 이름 레이블
+  /// text firsttext text displaytext storage name translated text
   final String storageLabel;
 
-  /// 빵부스러기 탭 시 호출. 해당 항목의 nodeUuid를 전달 (null = 루트).
+  /// translated text text text text. text translated text nodeUuidtext text (null = text).
   final void Function(String? nodeUuid) onBreadcrumbTapped;
 
   const BreadcrumbNav({
@@ -34,7 +34,7 @@ class BreadcrumbNav extends StatelessWidget {
   List<Widget> _buildItems(BuildContext context) {
     final items = <Widget>[];
 
-    // 스토리지 항목 (항상 맨 앞에 고정)
+    // storage text (text text firsttext text)
     final bool hasSubCrumbs = breadcrumbs.isNotEmpty;
     items.add(
       GestureDetector(

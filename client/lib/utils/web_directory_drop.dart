@@ -1,6 +1,6 @@
-// Flutter 웹 전용 — dart:library.io 환경에서는 web_directory_drop_stub.dart 사용
-// DropzoneView 컨테이너에 캡처링 단계 drop 핸들러를 등록하여
-// 디렉터리 드롭 시 재귀 순회 + relativePath 구성을 수행한다. (T057)
+// Flutter text text — dart:library.io translated text web_directory_drop_stub.dart text
+// DropzoneView translated text translated text stage drop translated text registertext
+// directory text text text text + relativePath translated text translated text. (T057)
 
 import 'dart:async';
 import 'dart:js_interop';
@@ -13,17 +13,17 @@ typedef WebDropFileInfo = ({
   String relativePath,
 });
 
-/// DropzoneView 컨테이너에 캡처링 단계 drop 핸들러를 등록한다.
+/// DropzoneView translated text translated text stage drop translated text registertext.
 ///
-/// - 디렉터리가 포함된 드롭: 재귀 순회 후 [onFilesReady] 호출. flutter_dropzone 버블 핸들러 차단.
-/// - 순수 파일 드롭: 핸들러가 조기 반환하여 flutter_dropzone의 기존 흐름에 위임.
+/// - directorytext translated text text: text text text [onFilesReady] text. flutter_dropzone text translated text text.
+/// - text file text: translated text text returntext flutter_dropzonetext text translated text text.
 ///
-/// [viewId]는 [DropzoneViewController.viewId]와 동일하다.
+/// [viewId]text [DropzoneViewController.viewId]text translated text.
 void registerDirectoryCaptureDrop({
   required int viewId,
   required void Function(List<WebDropFileInfo>) onFilesReady,
 }) {
-  // addPostFrameCallback 이후 DOM 삽입이 완료된 시점에 실행
+  // addPostFrameCallback text DOM translated text completetext translated text text
   Future.delayed(Duration.zero, () {
     final el = web.document.getElementById('dropzone-container-$viewId')
         as web.HTMLDivElement?;
@@ -34,7 +34,7 @@ void registerDirectoryCaptureDrop({
       final items = dragEvent.dataTransfer?.items;
       if (items == null) return;
 
-      // [NR028 C5] webkitGetAsEntry()는 반드시 drop 핸들러 동기 구간에서 호출
+      // [NR028 C5] webkitGetAsEntry()text translated text drop translated text text translated text text
       final entries = <web.FileSystemEntry>[];
       bool hasDirectory = false;
       for (var i = 0; i < items.length; i++) {
@@ -45,14 +45,14 @@ void registerDirectoryCaptureDrop({
         }
       }
 
-      // 디렉터리가 없으면 flutter_dropzone의 기존 onDropFiles 흐름에 위임
+      // directorytext translated text flutter_dropzonetext text onDropFiles translated text text
       if (!hasDirectory) return;
 
-      // 디렉터리 포함: flutter_dropzone 버블 핸들러를 차단하고 직접 처리
+      // directory text: flutter_dropzone text translated text translated text text text
       event.preventDefault();
       event.stopImmediatePropagation();
 
-      // 비동기 순회 fire-and-forget (에러 무시)
+      // translated text text fire-and-forget (error text)
       _processAllEntries(entries, onFilesReady).catchError((_) {});
     }
 
@@ -78,7 +78,7 @@ Future<void> _traverseEntry(
   String parentPath,
   List<WebDropFileInfo> results,
 ) async {
-  // [NR028 C4] fullPath 대신 name 누적으로 relativePath 구성
+  // [NR028 C4] fullPath text name translated text relativePath text
   final relativePath =
       parentPath.isEmpty ? entry.name : '$parentPath/${entry.name}';
 
@@ -91,7 +91,7 @@ Future<void> _traverseEntry(
         relativePath: relativePath,
       ));
     } catch (_) {
-      // 읽기 실패 파일 건너뜀
+      // text failed file translated text
     }
   } else if (entry.isDirectory) {
     await _traverseDirectory(
@@ -108,7 +108,7 @@ Future<void> _traverseDirectory(
   List<WebDropFileInfo> results,
 ) async {
   final reader = dirEntry.createReader();
-  // [NR028 C3] 빈 배열 반환 시까지 반복 호출 (100개 배치 제한 대응)
+  // [NR028 C3] empty text return translated text text text (100text text text text)
   while (true) {
     final batch = await _readEntries(reader);
     if (batch.isEmpty) break;

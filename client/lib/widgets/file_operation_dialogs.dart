@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// D003 §2-4 — 폴더 생성, 이름 변경, 삭제 확인, 일괄 삭제 확인 다이얼로그 묶음
+/// D003 §2-4 — folder create, name change, delete text, text delete text translated text text
 
 class FileOperationDialogs {
-  /// 폴더 생성 다이얼로그 — 확인 시 폴더 이름 반환, 취소 시 null.
+  /// folder create translated text — text text folder name return, cancel text null.
   static Future<String?> showCreateFolderDialog(BuildContext context) {
     final controller = TextEditingController();
     return showDialog<String>(
@@ -39,7 +39,7 @@ class FileOperationDialogs {
     );
   }
 
-  /// 이름 변경 다이얼로그 — 확인 시 새 이름 반환, 취소 시 null.
+  /// name change translated text — text text text name return, cancel text null.
   static Future<String?> showRenameDialog(
     BuildContext context, {
     required String currentName,
@@ -84,7 +84,7 @@ class FileOperationDialogs {
     );
   }
 
-  /// 삭제 확인 다이얼로그 — 확인 시 true, 취소 시 false.
+  /// delete text translated text — text text true, cancel text false.
   static Future<bool> showDeleteConfirmDialog(
     BuildContext context, {
     required String name,
@@ -110,7 +110,7 @@ class FileOperationDialogs {
     return result ?? false;
   }
 
-  /// 일괄 삭제 확인 다이얼로그
+  /// text delete text translated text
   static Future<bool> showBulkDeleteConfirmDialog(
     BuildContext context, {
     required int count,

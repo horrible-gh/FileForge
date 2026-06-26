@@ -12,24 +12,24 @@ import 'mail_detail_screen.dart';
 import 'mail_compose_screen.dart';
 import 'account_connect_screen.dart';
 
-/// 라벨 스위처가 노출하는 시스템 라벨(읽기 슬라이스 범위).
+/// text translated text translated text translated text text(text translated text text).
 ///
-/// 'drafts' 는 [MailProvider] 의 초안 라벨 판정(`_isDraftsLabel`)과 맞물려,
-/// 이 라벨을 보고 있을 때 항목 탭이 상세가 아니라 이어쓰기로 열리게 한다.
+/// 'drafts' text [MailProvider] text Draft text text(`_isDraftsLabel`)text translated text,
+/// text translated text text text text text text translated text translated text translated text translated text text.
 const List<String> kMailSystemLabels = ['inbox', 'drafts', 'sent'];
 
-/// 시스템 라벨의 현지화된 표시 이름.
+/// translated text translated text translated text display name.
 String mailLabelName(AppLocalizations t, String label) => switch (label) {
       'draft' || 'drafts' => t.labelDrafts,
       'sent' => t.labelSent,
       _ => t.labelInbox,
     };
 
-/// 메일 목록 화면 — NR0003 §7 초기 구현(읽기 슬라이스).
+/// text text screen — NR0003 §7 initial implementation(text translated text).
 ///
-/// MainScreen(ShellRoute) 본문에 표시된다. 스토리지 타입이 'mail'일 때
-/// StorageDispatcher가 FileListScreen 대신 이 화면을 렌더한다.
-/// 항목 탭 → 상세 화면(전체 화면 push). 스크롤 끝 도달 시 다음 묶음 로드.
+/// MainScreen(ShellRoute) Bodytext displaytext. storage translated text 'mail'text text
+/// StorageDispatchertext FileListScreen text text screentext translated text.
+/// text text → text screen(text screen push). translated text text text text text text text.
 class MailListScreen extends StatefulWidget {
   final String? storageUuid;
 
@@ -49,19 +49,19 @@ class _MailListScreenState extends State<MailListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _enterMail());
   }
 
-  /// 메일 진입 게이트(NR0003 §5.5) — inbox 를 긁기 전에 연결된 계정이 있는지
-  /// 먼저 확인한다. 계정이 0개면 inbox 를 호출하지 않고(사용자가 본 "에러+Retry"
-  /// 의 근본) 온보딩 화면으로 흘려보낸다. 1개 이상일 때만 loadInbox 한다.
+  /// text text translated text(NR0003 §5.5) — inbox text text text translated text accounttext translated text
+  /// text translated text. accounttext 0text inbox text translated text text(translated text text "error+Retry"
+  /// text text) translated text screentext translated text. 1text and abovetext text loadInbox text.
   Future<void> _enterMail() async {
     final accounts = context.read<AccountProvider>();
-    // 낙관적 렌더(TR0005 §증상1): 캐시된 마지막 계정 유무로 화면을 즉시 그린다.
-    // 캐시상 계정이 있었으면 네트워크 응답 전이라도 inbox 를 선로딩한다.
+    // translated text text(TR0005 §symptom1): translated text translated text account translated text screentext text translated text.
+    // translated text accounttext translated text translated text text translated text inbox text textloadingtext.
     final primed = await accounts.primeFromCache();
     if (!mounted) return;
     if (primed && accounts.hasAccounts) {
       context.read<MailProvider>().loadInbox();
     }
-    // 실로드로 재조정한다(이미 ready 면 스피너로 되돌지 않음).
+    // translated text translated text(text ready text translated text translated text text).
     await accounts.load();
     if (!mounted) return;
     final mail = context.read<MailProvider>();
@@ -70,8 +70,8 @@ class _MailListScreenState extends State<MailListScreen> {
     }
   }
 
-  /// 계정 연결 화면으로 이동. 돌아왔을 때 계정이 생겼으면 inbox 를 로드한다
-  /// (AccountConnectScreen 이 공유 AccountProvider 를 갱신하므로 즉시 반영됨).
+  /// account text screentext navigate. translated text text accounttext translated text inbox text translated text
+  /// (AccountConnectScreen text text AccountProvider text refreshtranslated text text translated text).
   Future<void> _openAccounts() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AccountConnectScreen()),
@@ -97,7 +97,7 @@ class _MailListScreenState extends State<MailListScreen> {
     }
   }
 
-  /// 초안 라벨(시스템) 여부 — 초안 항목 탭은 상세가 아니라 이어쓰기로 연다.
+  /// Draft text(translated text) text — Draft text text translated text translated text translated text text.
   static bool _isDraftsLabel(String label) =>
       label == 'draft' || label == 'drafts';
 
@@ -113,7 +113,7 @@ class _MailListScreenState extends State<MailListScreen> {
     );
   }
 
-  /// 초안 이어쓰기(§7.9) — 초안을 불러와 작성 화면을 연다. 닫힌 뒤 목록 갱신.
+  /// Draft translated text(§7.9) — Drafttext translated text compose screentext text. text text text refresh.
   Future<void> _openDraft(MailSummary m) async {
     final provider = context.read<MailProvider>();
     final draft = await provider.loadDraft(m.mailId);
@@ -141,7 +141,7 @@ class _MailListScreenState extends State<MailListScreen> {
     }
   }
 
-  /// 라벨 전환 — 이미 보고 있는 라벨이면 무시(불필요한 재로드 방지).
+  /// text text — text text text translated text text(translated text translated text text).
   void _switchLabel(String label) {
     final provider = context.read<MailProvider>();
     if (provider.currentLabel == label) return;
@@ -153,10 +153,10 @@ class _MailListScreenState extends State<MailListScreen> {
     final t = AppLocalizations.of(context);
     final accounts = context.watch<AccountProvider>();
 
-    // ── 계정 게이트(NR0003 §5.5) — inbox 표시 이전에 계정 유무로 분기한다. ──
-    // 아직 확인 전/확인 중이면 스피너. "진짜" 조회 실패(네트워크/세션, 무계정과
-    // 구분)면 블랙아웃이 아니라 비차단 안내(NR0004 §4). 확인됐는데 0개면 온보딩.
-    // ≥1개일 때만 메일 UI.
+    // ── account translated text(NR0003 §5.5) — inbox display translated text account translated text branchtext. ──
+    // text text text/text translated text translated text. "text" lookup failed(translated text/session, textaccounttext
+    // textminutes)text translated text translated text translated text text(NR0004 §4). translated text 0text translated text.
+    // ≥1text text text UI.
     if (accounts.gate == AccountGateState.error) {
       return _buildGateError(context, t, accounts);
     }
@@ -167,8 +167,8 @@ class _MailListScreenState extends State<MailListScreen> {
       return _buildOnboarding(context, t);
     }
 
-    // 셸(MainScreen) 본문에 작성 FAB를 더하기 위해 내부 Scaffold로 감싼다
-    // (AppBar는 셸이 제공하므로 두지 않는다).
+    // text(MainScreen) Bodytext compose FABtext translated text text text Scaffoldtext translated text
+    // (AppBartext text translated text text translated text).
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
@@ -188,14 +188,14 @@ class _MailListScreenState extends State<MailListScreen> {
     );
   }
 
-  /// 계정 읽기 실패 게이트 — NR0004 §4 (썬더버드 패리티).
+  /// account text failed translated text — NR0004 §4 (translated text translated text).
   ///
-  /// 전체 화면 ErrorRetry 로 앱을 블랙아웃하던 것이 사용자가 화내던 차단 화면의
-  /// 근원이었다. 대신 상단에 **비차단** 인라인 배너(원인별 문구·재시도)를 두고,
-  /// 그 아래 온보딩(계정 연결 CTA)을 그대로 노출해 계정 추가 도달성을 보존한다.
-  /// (설정 화면은 별개 셸 라우트라 이와 무관하게 항상 도달 가능하다.)
-  /// 401/403(세션 만료)은 "다시 로그인" 신호로, 그 외(네트워크 등)는 일시 오류로
-  /// 구분해 안내한다.
+  /// text screen ErrorRetry text text translated text text translated text translated text text screentext
+  /// translated text. text translated text **translated text** translated text banner(translated text message·retry)text text,
+  /// text text translated text(account text CTA)text as-is translated text account add translated text preservedtext.
+  /// (text screentext text text translated text text translated text text text translated text.)
+  /// 401/403(session expired)text "again login" translated text, text text(translated text text)text text errortext
+  /// textminutestext translated text.
   Widget _buildGateError(
       BuildContext context, AppLocalizations t, AccountProvider accounts) {
     final theme = Theme.of(context);
@@ -242,14 +242,14 @@ class _MailListScreenState extends State<MailListScreen> {
     );
   }
 
-  /// 무계정 온보딩 — 무서운 "메일을 불러오지 못했습니다 + Retry" 대신, 계정을
-  /// 연결하라는 안내와 연결 버튼을 보여준다(NR0003 §5.6).
+  /// textaccount translated text — translated text "translated text translated text translated text + Retry" text, accounttext
+  /// translated text translated text text translated text translated text(NR0003 §5.6).
   Widget _buildOnboarding(BuildContext context, AppLocalizations t) {
     return Center(child: _buildOnboardingCard(context, t));
   }
 
-  /// 온보딩 카드 본문(Center 미포함) — 무계정 게이트와 에러 게이트(인라인 배너
-  /// 아래)에서 공유한다. ListView 안에서도 안전하도록 mainAxisSize.min Column.
+  /// translated text text Body(Center translated text) — textaccount translated text error translated text(translated text banner
+  /// text)text translated text. ListView translated text translated text mainAxisSize.min Column.
   Widget _buildOnboardingCard(BuildContext context, AppLocalizations t) {
     final theme = Theme.of(context);
     return Padding(
@@ -327,10 +327,10 @@ class _MailListScreenState extends State<MailListScreen> {
   }
 }
 
-/// 라벨 스위처 — 받은편지함/임시보관함/보낸편지함 사이를 전환한다.
+/// text translated text — Inbox/Drafts/Sent translated text translated text.
 ///
-/// 초안 이어쓰기(§7.9)의 UI 진입점: 임시보관함을 골라야 목록의 초안 항목을
-/// 탭해 작성 화면(이어쓰기)으로 들어갈 수 있다(TR0009 잔여 "라벨 스위처").
+/// Draft translated text(§7.9)text UI translated text: Draftstext translated text translated text Draft translated text
+/// text compose screen(translated text)text translated text text text(TR0009 remaining work "text translated text").
 class _LabelSwitcher extends StatelessWidget {
   final String current;
   final ValueChanged<String> onSelected;
@@ -424,7 +424,7 @@ class _MailListTile extends StatelessWidget {
     );
   }
 
-  /// ISO-8601 문자열에서 날짜 부분만 간단 표기(상세 포맷은 후속 i18n 작업).
+  /// ISO-8601 stringtext text textminutestext text text(text translated text text i18n text).
   static String _shortTime(String iso) {
     final dt = DateTime.tryParse(iso);
     if (dt == null) return '';

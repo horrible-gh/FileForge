@@ -5,17 +5,17 @@ import 'package:path_provider/path_provider.dart';
 import 'download_web_interop.dart'
     if (dart.library.io) 'download_web_interop_stub.dart';
 
-// ── 플랫폼별 저장 헬퍼 ────────────────────────────────────────────────────────
+// ── translated text save text ────────────────────────────────────────────────────────
 
-/// 플랫폼별 저장 헬퍼
-/// - web: `dart:js_interop`으로 브라우저 Blob 다운로드 트리거
-/// - Android: MethodChannel을 통해 네이티브 Downloads 폴더에 저장
+/// translated text save text
+/// - web: `dart:js_interop`text browser Blob download translated text
+/// - Android: MethodChanneltext text translated text Downloads foldertext save
 /// - non-web: `getApplicationDocumentsDirectory` + `dart:io File.writeAsBytes`
 class DownloadSaveService {
   static const _channel =
       MethodChannel('com.fileforge.file_forge_app/downloads');
 
-  /// 바이트를 플랫폼에 맞는 방식으로 저장한다.
+  /// bytestext translated text text translated text savetext.
   static Future<void> saveBytes({
     required List<int> bytes,
     required String filename,
@@ -29,10 +29,10 @@ class DownloadSaveService {
     }
   }
 
-  /// Content-Disposition 헤더값에서 파일명을 추출한다.
-  /// RFC 5987 확장 형식(`filename*=UTF-8''encoded`)을 우선 처리하고,
-  /// 없으면 단순 형식(`filename="name"`)으로 fallback한다.
-  /// 파싱 실패 또는 null 입력 시 null 반환.
+  /// Content-Disposition translated text filetext translated text.
+  /// RFC 5987 text text(`filename*=UTF-8''encoded`)text text translated text,
+  /// translated text text text(`filename="name"`)text fallbacktext.
+  /// parse failed text null text text null return.
   static String? extractFilename(String? contentDisposition) {
     if (contentDisposition == null || contentDisposition.isEmpty) return null;
 
@@ -49,14 +49,14 @@ class DownloadSaveService {
       }
     }
 
-    // 단순 형식: filename="name" 또는 filename=name
+    // text text: filename="name" text filename=name
     final simpleMatch =
         RegExp(r'''filename\s*=\s*["\']?([^"\';\r\n]+)["\']?''')
             .firstMatch(contentDisposition);
     return simpleMatch?.group(1)?.trim();
   }
 
-  // ── 내부 구현 ──────────────────────────────────────────────────────────────
+  // ── text text ──────────────────────────────────────────────────────────────
 
   static Future<void> _saveToAndroidDownloads(
       List<int> bytes, String filename) async {

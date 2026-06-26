@@ -5,9 +5,9 @@ import 'package:file_forge_app/services/mail_envelope.dart';
 void main() {
   group('MailAddress', () {
     test('parses name+address and falls back to address for display', () {
-      final a = MailAddress.fromJson({'name': '결제팀', 'address': 'b@shop.com'});
-      expect(a.name, '결제팀');
-      expect(a.display, '결제팀');
+      final a = MailAddress.fromJson({'name': 'Billing Team', 'address': 'b@shop.com'});
+      expect(a.name, 'Billing Team');
+      expect(a.display, 'Billing Team');
       final b = MailAddress.fromJson({'address': 'b@shop.com'});
       expect(b.name, '');
       expect(b.display, 'b@shop.com');
@@ -19,16 +19,16 @@ void main() {
       final s = MailSummary.fromJson({
         'mail_id': 'm_8f21',
         'thread_id': 't_4a90',
-        'from': {'name': '결제팀', 'address': 'billing@shop.com'},
-        'subject': '6월 영수증',
-        'snippet': '내역 확인',
+        'from': {'name': 'Billing Team', 'address': 'billing@shop.com'},
+        'subject': 'June receipt',
+        'snippet': 'Review details',
         'received_at': '2026-06-21T08:03:11Z',
         'is_read': false,
         'has_attachment': true,
         'labels': ['inbox', 'lbl_receipt'],
       });
       expect(s.mailId, 'm_8f21');
-      expect(s.from.display, '결제팀');
+      expect(s.from.display, 'Billing Team');
       expect(s.isRead, false);
       expect(s.hasAttachment, true);
       expect(s.labels, ['inbox', 'lbl_receipt']);
@@ -55,15 +55,15 @@ void main() {
     test('parses to/cc/body/attachments (P0007 §3.2)', () {
       final d = MailDetail.fromJson({
         'mail_id': 'm_8f21',
-        'from': {'name': '결제팀', 'address': 'billing@shop.com'},
+        'from': {'name': 'Billing Team', 'address': 'billing@shop.com'},
         'to': [
-          {'name': '홍길동', 'address': 'user@example.com'}
+          {'name': 'Hong Gil Dong', 'address': 'user@example.com'}
         ],
         'cc': [],
-        'subject': '6월 영수증',
+        'subject': 'June receipt',
         'received_at': '2026-06-21T08:03:11Z',
         'is_read': true,
-        'body': {'format': 'html', 'content': '<p>내역</p>'},
+        'body': {'format': 'html', 'content': '<p>Details</p>'},
         'attachments': [
           {
             'attachment_id': 'a_77c1',
@@ -74,7 +74,7 @@ void main() {
         ],
         'labels': ['inbox'],
       });
-      expect(d.to.single.display, '홍길동');
+      expect(d.to.single.display, 'Hong Gil Dong');
       expect(d.cc, isEmpty);
       expect(d.body.isHtml, true);
       expect(d.attachments.single.sizeBytes, 84213);
@@ -92,10 +92,10 @@ void main() {
           {'address': 'peer@example.com'}
         ],
         'bcc': [],
-        'subject': '주간 보고(작성중)',
-        'body': {'format': 'text', 'content': '초안...'},
+        'subject': 'Weekly report(drafting)',
+        'body': {'format': 'text', 'content': 'Draft...'},
         'attachments': [
-          {'attachment_id': 'a_91be', 'filename': '보고.pdf', 'size_bytes': 10}
+          {'attachment_id': 'a_91be', 'filename': 'report.pdf', 'size_bytes': 10}
         ],
         'updated_at': '2026-06-21T10:30:00Z',
       });
@@ -103,13 +103,13 @@ void main() {
       expect(d.to.single.address, 'boss@example.com');
       expect(d.cc.single.address, 'peer@example.com');
       expect(d.bcc, isEmpty);
-      expect(d.subject, '주간 보고(작성중)');
-      expect(d.body.content, '초안...');
+      expect(d.subject, 'Weekly report(drafting)');
+      expect(d.body.content, 'Draft...');
       expect(d.attachments.single.attachmentId, 'a_91be');
-      expect(d.updatedAt, '2026-06-21T10:30:00Z'); // base_updated_at 출처
+      expect(d.updatedAt, '2026-06-21T10:30:00Z'); // base_updated_at text
     });
 
-    test('tolerates missing fields (흡수 단계 Go 백엔드 정합)', () {
+    test('tolerates missing fields (merge stage Go backend compatibility)', () {
       final d = MailDraft.fromJson({'draft_id': 'd_1'});
       expect(d.draftId, 'd_1');
       expect(d.to, isEmpty);
@@ -171,7 +171,7 @@ void main() {
           'ok': false,
           'error': {
             'code': 'MAIL_NOT_FOUND',
-            'message': '없음',
+            'message': 'None',
             'request_id': 'req_1',
           },
         }, httpStatus: 404),
@@ -200,7 +200,7 @@ void main() {
 
     test('expectMapData on non-Map success data → MALFORMED_RESPONSE (not TypeError)',
         () {
-      // NR0016 §3 MINOR #2: ok:true 인데 data가 비-Map인 비정상 성공응답.
+      // NR0016 §3 MINOR #2: ok:true text datatext text-Maptext translated text successtext.
       expect(
         () => expectMapData('not-an-object', httpStatus: 200),
         throwsA(isA<MailApiException>()

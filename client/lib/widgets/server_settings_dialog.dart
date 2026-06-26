@@ -37,12 +37,12 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
     setState(() => _controller.text = saved);
   }
 
-  /// 입력값 검증. null 반환 시 유효.
+  /// translated text verify. null return text text.
   ///
-  /// 유효한 형식:
-  ///   1. `scheme://host:port` — Uri.tryParse() 사용, hasAuthority == true
-  ///   2. `scheme://host`      — 포트 없는 도메인 URL
-  ///   3. `host:port`          — scheme 없음, 포트는 숫자 1~65535
+  /// translated text text:
+  ///   1. `scheme://host:port` — Uri.tryParse() text, hasAuthority == true
+  ///   2. `scheme://host`      — text text translated text URL
+  ///   3. `host:port`          — scheme None, translated text text 1~65535
   String? _validate(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
@@ -56,7 +56,7 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
       return null;
     }
 
-    // scheme 없음 → host:port 형식 필요
+    // scheme None → host:port text text
     final colonIndex = trimmed.lastIndexOf(':');
     if (colonIndex == -1) {
       return 'Port number is required (e.g., 192.168.1.10:8000 or https://example.com)';
@@ -70,7 +70,7 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
     return null;
   }
 
-  /// http:// 시작이거나 scheme 없는 입력(→ http 처리)이면 경고 표시.
+  /// http:// translated text scheme text text(→ http text)text text display.
   bool get _showHttpWarning {
     final t = _controller.text.trim();
     if (t.isEmpty) return false;

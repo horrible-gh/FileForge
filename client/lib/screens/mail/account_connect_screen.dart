@@ -7,17 +7,17 @@ import '../../providers/account_provider.dart';
 import '../../services/mail_envelope.dart';
 import '../../widgets/app_toast.dart';
 
-/// 메일 계정 연결 화면 — NR0003 §5.4 / TR0005 §증상2(브라우저 OAuth 전환).
+/// text account text screen — NR0003 §5.4 / TR0005 §symptom2(browser OAuth text).
 ///
-/// OAuth 제공자(gmail/outlook)는 "동의 URL 발급(GET /accounts/oauth/authorize)
-/// → 브라우저 로그인 → 서버 콜백이 백채널로 코드 교환·계정연결" 경로로 연결한다.
-/// 사용자는 코드를 손으로 만지지 않는다(CH0007 "인증코드 붙여넣기" 제거). 브라우저
-/// 에서 돌아오면(앱 resume) 계정 목록을 자동 재조회해 연결을 감지한다 — 레거시
-/// MailAnchor 의 "팝업 + 폴링" 패턴을 모바일에 맞춘 형태(NR0003 §4 레퍼런스).
+/// OAuth provider(gmail/outlook)text "consent URL issue(GET /accounts/oauth/authorize)
+/// → browser login → server translated text translated text text text·accounttext" pathtext translated text.
+/// translated text translated text translated text translated text translated text(CH0007 "authenticationtext translated text" text). browser
+/// text translated text(text resume) account translated text text textlookuptext translated text translated text — translated text
+/// MailAnchor text "text + text" translated text translated text text text(NR0003 §4 translated text).
 ///
-/// imap 은 비밀번호 기반이라 동의 URL 이 없어, 기존 코드/비밀번호 직접 입력 경로를
-/// 쓴다. OAuth 제공자에서도 "고급: 코드 직접 입력"으로 폴백 경로를 남겨 둔다(서버
-/// 의 POST /accounts {auth_code} 가 하위호환으로 유지됨).
+/// imap text password translated text consent URL text text, text text/password manual entry pathtext
+/// text. OAuth providertranslated text "text: text manual entry"text text pathtext text text(server
+/// text POST /accounts {auth_code} text backward compatibilitytext keeptext).
 class AccountConnectScreen extends StatefulWidget {
   const AccountConnectScreen({super.key});
 
@@ -29,11 +29,11 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     with WidgetsBindingObserver {
   String _provider = kMailProviders.first;
   final TextEditingController _authCode = TextEditingController();
-  bool _connecting = false; // 수동(코드) 연결 진행 중
-  bool _oauthBusy = false; // 동의 URL 발급/브라우저 실행 중
-  bool _awaitingReturn = false; // 브라우저로 나갔고 복귀 대기 중
-  bool _showAdvanced = false; // OAuth 제공자에서 코드 직접 입력 펼침
-  MailApiException? _oauthError; // 동의 URL 발급 실패(인라인 배너 — NR0007 §6 L3)
+  bool _connecting = false; // text(text) text text text
+  bool _oauthBusy = false; // consent URL issue/browser text text
+  bool _awaitingReturn = false; // browsertext translated text text text text
+  bool _showAdvanced = false; // OAuth providertext text manual entry text
+  MailApiException? _oauthError; // consent URL issue failed(translated text banner — NR0007 §6 L3)
 
   bool get _isOAuthProvider => kOAuthProviders.contains(_provider);
 
@@ -50,8 +50,8 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     super.dispose();
   }
 
-  /// 브라우저에서 동의 후 앱으로 복귀하면(resumed) 계정을 자동 재조회해 연결을
-  /// 감지한다(딥링크 없이도 "코드 안 만지는" 흐름을 닫는 핵심 — TR0005 §증상2).
+  /// browsertext text text translated text translated text(resumed) accounttext text textlookuptext translated text
+  /// translated text(translated text translated text "text text translated text" translated text text core — TR0005 §symptom2).
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _awaitingReturn) {
@@ -59,18 +59,18 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     }
   }
 
-  /// OAuth 시작: 동의 URL 을 받아 외부 브라우저로 연다.
+  /// OAuth text: consent URL text text text browsertext text.
   Future<void> _startOAuth() async {
     final t = AppLocalizations.of(context);
     setState(() {
       _oauthBusy = true;
-      _oauthError = null; // 재시도 시 직전 실패 배너 제거
+      _oauthError = null; // retry text text failed banner text
     });
     final res = await context.read<AccountProvider>().oauthAuthorizeUrl(_provider);
     if (!mounted) return;
     if (res.url == null) {
-      // 토스트-후-막힘(NR0007 §5.4) 대신 분화된 인라인 실패 배너로 남긴다 —
-      // 원인(L1)+진단(L2)+재시도/대체경로(L3)를 한자리에서 제공한다.
+      // toast-text-text(NR0007 §5.4) text minutestext translated text failed bannertext translated text —
+      // text(L1)+diagnostic(L2)+retry/fallback path(L3)text translated text translated text.
       setState(() {
         _oauthBusy = false;
         _oauthError = res.error;
@@ -94,7 +94,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     if (!launched) AppToast.error(context, t.accountOAuthLaunchFailed);
   }
 
-  /// 복귀 후(또는 "연결 확인" 탭) 계정 목록을 재조회해 새 계정을 감지한다.
+  /// text text(text "text text" text) account translated text textlookuptext text accounttext translated text.
   Future<void> _refreshAfterReturn() async {
     final t = AppLocalizations.of(context);
     final accounts = context.read<AccountProvider>();
@@ -125,12 +125,12 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
       AppToast.success(context, t.accountConnected);
       return;
     }
-    // 수동(코드) 경로도 분화된 문구 + 진단 꼬리표(L1·L2)로 알린다.
+    // text(text) pathtext minutestext message + diagnostic translated text(L1·L2)text translated text.
     AppToast.error(context, '${_connectErrorMessage(t, err)}  (${diagnosticLabel(err)})');
   }
 
-  /// 서버 에러를 사용자 문구로 — NR0007 §6 L1. catch-all 단일 토스트를 원인별로
-  /// 분화한다(분류는 [classifyConnectFailure], mail_envelope §순수함수).
+  /// server errortext translated text messagetext — NR0007 §6 L1. catch-all text toasttext translated text
+  /// minutestranslated text(minutestext [classifyConnectFailure], mail_envelope §translated text).
   String _connectErrorMessage(AppLocalizations t, MailApiException e) {
     switch (classifyConnectFailure(e)) {
       case ConnectFailureKind.conflict:
@@ -196,7 +196,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── 온보딩 안내(무계정일 때 강조) ──────────────────────────────
+          // ── translated text text(textaccounttext text text) ──────────────────────────────
           if (!accounts.hasAccounts) ...[
             _OnboardingHeader(
               title: t.accountOnboardingTitle,
@@ -205,7 +205,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
             const SizedBox(height: 24),
           ],
 
-          // ── 연결된 계정 ────────────────────────────────────────────────
+          // ── translated text account ────────────────────────────────────────────────
           Text(t.accountSectionConnected,
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -232,7 +232,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
 
           const Divider(height: 32),
 
-          // ── 계정 추가 ──────────────────────────────────────────────────
+          // ── account add ──────────────────────────────────────────────────
           Text(t.accountSectionAdd,
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
@@ -266,7 +266,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     );
   }
 
-  // ── OAuth(브라우저) 경로 ──────────────────────────────────────────────
+  // ── OAuth(browser) path ──────────────────────────────────────────────
   List<Widget> _buildOAuthSection(AppLocalizations t) {
     if (_awaitingReturn) {
       return [
@@ -328,9 +328,9 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     ];
   }
 
-  /// 동의 URL 발급 실패 인라인 배너 — NR0007 §6 L3. 토스트만 띄우고 막다른
-  /// 화면으로 두던 것 대신, OAuth 섹션에 **원인(L1) + 진단 꼬리표(L2) + 다시 시도
-  /// / 코드 직접 입력 전환** 을 한자리에 둔다(게이트 인라인 배너 패턴 재사용).
+  /// consent URL issue failed translated text banner — NR0007 §6 L3. toasttext translated text translated text
+  /// screentext text text text, OAuth translated text **text(L1) + diagnostic translated text(L2) + again text
+  /// / text manual entry text** text translated text text(translated text translated text banner text translated text).
   Widget _buildOAuthError(AppLocalizations t, MailApiException e) {
     final theme = Theme.of(context);
     return Card(
@@ -358,7 +358,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
               ],
             ),
             const SizedBox(height: 8),
-            // 진단 꼬리표(code · HTTP status · requestId) — 지원/디버그용.
+            // diagnostic translated text(code · HTTP status · requestId) — text/translated text.
             Text(
               diagnosticLabel(e),
               style: theme.textTheme.bodySmall?.copyWith(
@@ -406,7 +406,7 @@ class _AccountConnectScreenState extends State<AccountConnectScreen>
     );
   }
 
-  // ── 수동(코드/비밀번호 직접 입력) 경로 ─────────────────────────────────
+  // ── text(text/password manual entry) path ─────────────────────────────────
   List<Widget> _buildManualSection(AppLocalizations t) {
     return [
       const SizedBox(height: 4),

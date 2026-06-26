@@ -21,8 +21,8 @@ import '../../services/download_save_service.dart';
 import '../../services/storage_service.dart';
 import '../preview/file_preview_screen.dart';
 
-/// 인증 후 진입하는 메인 Scaffold — Drawer + AppBar + Body(child)
-/// GoRouter ShellRoute의 shell 역할을 한다.
+/// authentication text translated text text Scaffold — Drawer + AppBar + Body(child)
+/// GoRouter ShellRoutetext shell translated text text.
 class MainScreen extends StatefulWidget {
   final Widget child;
 
@@ -47,7 +47,7 @@ class _MainScreenState extends State<MainScreen> {
     final fileProvider = context.read<FileProvider>();
     storageProvider.selectStorage(storage);
     fileProvider.reset();
-    Navigator.of(context).pop(); // Drawer 닫기
+    Navigator.of(context).pop(); // Drawer text
     context.go('/${storage.storageUuid}');
     fileProvider.loadChildren(
       storage.storageUuid,
@@ -59,7 +59,7 @@ class _MainScreenState extends State<MainScreen> {
     final storageProvider = context.read<StorageProvider>();
     final storageUuid = storageProvider.currentStorage?.storageUuid;
     if (storageUuid == null) return;
-    Navigator.of(context).pop(); // Drawer 닫기
+    Navigator.of(context).pop(); // Drawer text
     if (node.nodeUuid != null) {
       context.go('/$storageUuid/${node.nodeUuid}');
     } else {
@@ -252,7 +252,7 @@ class _MainScreenState extends State<MainScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-          // 새 노트 — note 스토리지만 (T048)
+          // text text — note storagetext (T048)
             if (storageType == 'note')
               ListTile(
                 leading: const Icon(Icons.note_add_rounded),
@@ -262,7 +262,7 @@ class _MainScreenState extends State<MainScreen> {
                   _createNote(context);
                 },
               ),
-            // 업로드 — file 스토리지만
+            // upload — file storagetext
             if (storageType == 'file')
               ListTile(
                 leading: const Icon(Icons.upload_file_rounded),
@@ -272,7 +272,7 @@ class _MainScreenState extends State<MainScreen> {
                   _pickAndUploadFiles(context);
                 },
               ),
-            // 새 폴더 — file, note 스토리지
+            // text folder — file, note storage
             ListTile(
               leading: const Icon(Icons.create_new_folder_rounded),
               title: const Text('New Folder'),
@@ -287,8 +287,8 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  /// note 생성 — _createFolder 패턴 준용
-  /// dialog close 후 upload: _handleNoteCreate 본문 재구현이 아닌 최소 대체 연결 (T048 §3 priority-3)
+  /// note create — _createFolder text text
+  /// dialog close text upload: _handleNoteCreate Body translated text text text text text (T048 §3 priority-3)
   Future<void> _createNote(BuildContext context) async {
     final input = await FileOperationDialogs.showRenameDialog(
       context,
@@ -379,7 +379,7 @@ class _MainScreenState extends State<MainScreen> {
 
     if (files.isEmpty) return;
 
-    // 업로드 완료 시 목록 새로고침 콜백 설정
+    // upload complete text text translated text text text
     uploadProvider.onUploadComplete = () {
       fileProvider.loadChildren(storageUuid, userUuid,
           nodeUuid: fileProvider.currentNode.nodeUuid);
@@ -424,18 +424,18 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  // ── 벌크 액션 (선택 모드) ────────────────────────────────────────────────
+  // ── text text (selection text) ────────────────────────────────────────────────
 
   void _triggerBulkDownload(BuildContext context) {
-    // FileListScreen에서 처리하기 위해 콜백 패턴 대신
-    // SelectionProvider의 selectedUuids를 읽어서 FileListScreen 액션 호출
-    // 여기서는 직접 처리
+    // FileListScreentext translated text text text text text
+    // SelectionProvidertext selectedUuidstext translated text FileListScreen text text
+    // translated text text text
     final selectionProvider = context.read<SelectionProvider>();
     final selectedUuids = selectionProvider.selectedUuids;
     if (selectedUuids.isEmpty) return;
 
-    // FileListScreen의 _handleBulkDownload를 호출해야 하지만,
-    // MainScreen에서는 StorageService를 직접 사용
+    // FileListScreentext _handleBulkDownloadtext translated text translated text,
+    // MainScreentranslated text StorageServicetext text text
     _doBulkDownload(context, selectedUuids);
   }
 
@@ -521,7 +521,7 @@ class _MainScreenState extends State<MainScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // 사용자 정보
+            // translated text text
             DrawerHeader(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primaryContainer,
@@ -543,10 +543,10 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ),
             ),
-            // 스토리지 선택
+            // storage selection
             StorageSelector(onStorageSelected: _onStorageSelected),
             const Divider(),
-            // 폴더 트리
+            // folder text
             if (fileProvider.isTreeLoading)
               const Padding(
                 padding: EdgeInsets.all(16),

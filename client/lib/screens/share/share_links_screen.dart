@@ -6,11 +6,11 @@ import '../../models/share_link.dart';
 import '../../config/env.dart';
 import '../../widgets/app_toast.dart';
 
-/// D004 §2-2 — 공유 링크 목록 화면
-/// - 진입 시 ShareLinkProvider.fetchList() 호출
-/// - 로딩 / 빈 상태 / 목록 상태 분기
-/// - 각 항목: nodeType 아이콘, nodeName, createdAt, hasPassword 자물쇠,
-///   복사 버튼(2초 피드백), 삭제 버튼(확인 다이얼로그)
+/// D004 §2-2 — text text text screen
+/// - text text ShareLinkProvider.fetchList() text
+/// - loading / empty state / text state branch
+/// - text text: nodeType translated text, nodeName, createdAt, hasPassword translated text,
+///   text text(2text translated text), delete text(text translated text)
 class ShareLinksScreen extends StatefulWidget {
   const ShareLinksScreen({super.key});
 
@@ -19,19 +19,19 @@ class ShareLinksScreen extends StatefulWidget {
 }
 
 class _ShareLinksScreenState extends State<ShareLinksScreen> {
-  // 항목 단위 복사 피드백을 위한 token 추적
+  // text text text translated text text token text
   String? _copiedToken;
 
   @override
   void initState() {
     super.initState();
-    // 화면 진입 시 목록 로드
+    // screen text text text text
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ShareLinkProvider>().fetchList();
     });
   }
 
-  /// P005 §1 기준: Env.shareBaseUrl에 /share/{token} 조합
+  /// P005 §1 text: Env.shareBaseUrltext /share/{token} text
   String _buildShareUrl(String token) {
     return '${Env.shareBaseUrl}/share/$token';
   }

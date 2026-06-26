@@ -19,7 +19,7 @@ class MainActivity : FlutterActivity() {
     private val downloadsChannel = "com.fileforge.file_forge_app/downloads"
     private val requestCodeWriteStorage = 1001
 
-    // API 28 이하 런타임 권한 요청 중 보류 중인 호출 상태
+    // API 28 and below runtime permission text text pending text text state
     private var pendingResult: MethodChannel.Result? = null
     private var pendingFilename: String? = null
     private var pendingBytes: ByteArray? = null
@@ -36,7 +36,7 @@ class MainActivity : FlutterActivity() {
                             this, Manifest.permission.WRITE_EXTERNAL_STORAGE
                         ) != PackageManager.PERMISSION_GRANTED
                     ) {
-                        // 권한 미허용 상태: 결과를 보류하고 런타임 요청
+                        // permission denied state: resulttext pendingtext runtime text
                         pendingResult = result
                         pendingFilename = filename
                         pendingBytes = bytes
@@ -82,14 +82,14 @@ class MainActivity : FlutterActivity() {
                 result.error("SAVE_FAILED", e.message, null)
             }
         } else {
-            result.error("PERMISSION_DENIED", "WRITE_EXTERNAL_STORAGE 권한이 거부되었습니다", null)
+            result.error("PERMISSION_DENIED", "WRITE_EXTERNAL_STORAGE permission was denied", null)
         }
     }
 
     private fun saveToDownloads(filename: String, bytes: ByteArray) {
         val mimeType = getMimeType(filename)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // API 29+ (Android 10+): MediaStore.Downloads 사용
+            // API 29+ (Android 10+): MediaStore.Downloads text
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, filename)
                 put(MediaStore.Downloads.MIME_TYPE, mimeType)
@@ -105,7 +105,7 @@ class MainActivity : FlutterActivity() {
             values.put(MediaStore.Downloads.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
         } else {
-            // API 28 이하: public Downloads 폴더 직접 저장
+            // API 28 and below: public Downloads folder text save
             @Suppress("DEPRECATION")
             val downloadsDir = Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS

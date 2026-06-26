@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../services/download_save_service.dart';
 
-/// L004 ST-L4-01 기준 — SharePage 5-상태 머신
+/// L004 ST-L4-01 text — SharePage 5-state text
 enum SharePageState { loading, password, file, folder, error }
 
-/// 폴더 내 항목 모델
+/// folder text text text
 class ShareItem {
   final String uuid;
   final String name;
@@ -33,7 +33,7 @@ class ShareItem {
   }
 }
 
-/// 파일 공유 메타 모델
+/// file text text text
 class ShareFileInfo {
   final String name;
   final int? fileSize;
@@ -54,12 +54,12 @@ class ShareFileInfo {
   }
 }
 
-/// L004 §2 SharePage 상태 머신 Provider.
-/// - app.dart MultiProvider에 전역 등록 금지 (L004 ST-L4-02).
-/// - SharePage 위젯 내부에서 ChangeNotifierProvider(create: ...) 로 직접 생성.
-/// - 공개 API 전용 별도 Dio 사용 — ApiClient/authProvider 불필요.
+/// L004 §2 SharePage state text Provider.
+/// - app.dart MultiProvidertext text register prohibited (L004 ST-L4-02).
+/// - SharePage text translated text ChangeNotifierProvider(create: ...) text text create.
+/// - public API text text Dio text — ApiClient/authProvider translated text.
 class SharePageProvider extends ChangeNotifier {
-  // ── 상태 ────────────────────────────────────────────────────────────────
+  // ── state ────────────────────────────────────────────────────────────────
   SharePageState _state = SharePageState.loading;
   String _token = '';
   String? _verifiedPassword;
@@ -70,7 +70,7 @@ class SharePageProvider extends ChangeNotifier {
   String? _errorMessage;
   List<String> _breadcrumbs = [];
 
-  // ── 공개 API 전용 Dio (AppConfig.baseUrl 기반; 인증 헤더 없음) ────────────
+  // ── public API text Dio (AppConfig.baseUrl text; authentication text None) ────────────
   late final Dio _dio;
 
   SharePageProvider() {
@@ -78,11 +78,11 @@ class SharePageProvider extends ChangeNotifier {
       baseUrl: AppConfig.baseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) => true, // 에러 코드도 직접 처리
+      validateStatus: (status) => true, // error translated text text text
     ));
   }
 
-  // ── 읽기 전용 ─────────────────────────────────────────────────────────
+  // ── read-only ─────────────────────────────────────────────────────────
   SharePageState get state => _state;
   String get token => _token;
   String get currentPath => _currentPath;
@@ -92,16 +92,16 @@ class SharePageProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<String> get breadcrumbs => List.unmodifiable(_breadcrumbs);
 
-  /// T075: 비밀번호 보호 공유 여부. 비밀번호 없이 메타 조회 성공 시 false.
+  /// T075: password text text text. password text text lookup success text false.
   bool get isPasswordProtected => _verifiedPassword != null;
 
-  // ── 내부 헬퍼 ─────────────────────────────────────────────────────────
+  // ── internal helper ─────────────────────────────────────────────────────────
 
   Map<String, String> get _passwordHeader => _verifiedPassword != null
       ? {'X-Share-Password': _verifiedPassword!}
       : {};
 
-  /// currentPath → breadcrumbs 파싱 (BT-L4-02)
+  /// currentPath → breadcrumbs text (BT-L4-02)
   List<String> _parseBreadcrumbs(String path) {
     if (path.isEmpty) return ['Home'];
     final segments = path.split('/').where((s) => s.isNotEmpty).toList();
@@ -126,9 +126,9 @@ class SharePageProvider extends ChangeNotifier {
     }
   }
 
-  // ── 공개 API ──────────────────────────────────────────────────────────
+  // ── public API ──────────────────────────────────────────────────────────
 
-  /// ST-L4-01 #1~#5: 공유 링크 메타 조회.
+  /// ST-L4-01 #1~#5: text text text lookup.
   Future<void> loadMeta(String token) async {
     _token = token;
     _state = SharePageState.loading;
@@ -173,7 +173,7 @@ class SharePageProvider extends ChangeNotifier {
     }
   }
 
-  /// ST-L4-01 #6~#8: 비밀번호 제출.
+  /// ST-L4-01 #6~#8: password text.
   Future<void> submitPassword(String pw) async {
     _state = SharePageState.loading;
     _errorMessage = null;
@@ -193,7 +193,7 @@ class SharePageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ST-L4-01 #9~#10: 서브폴더 탐색.
+  /// ST-L4-01 #9~#10: textfolder text.
   Future<void> navigateFolder(
     String folderName, {
     required void Function(String) onToast,
@@ -215,11 +215,11 @@ class SharePageProvider extends ChangeNotifier {
         _applyMetaResponse(response.data ?? {});
       } else if (status == 404) {
         onToast('Folder not found');
-        // 루트로 복귀 (error 상태로 전이 금지 — L004 ST-L4-01 #10)
+        // translated text text (error statetext text prohibited — L004 ST-L4-01 #10)
         await _loadRoot();
         return;
       } else {
-        _state = SharePageState.folder; // 현재 상태 복구
+        _state = SharePageState.folder; // current state text
       }
     } catch (e) {
       _state = SharePageState.folder;
@@ -227,10 +227,10 @@ class SharePageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ST-L4-01 #11: 빵부스러기 클릭.
+  /// ST-L4-01 #11: translated text text.
   Future<void> clickBreadcrumb(int index) async {
-    // index 0 = '홈' → path = ""
-    // index N → breadcrumbs[1..N] 조합
+    // index 0 = 'text' → path = ""
+    // index N → breadcrumbs[1..N] text
     final segments = _breadcrumbs.skip(1).take(index).toList();
     final targetPath = segments.join('/');
     _state = SharePageState.loading;
@@ -255,9 +255,9 @@ class SharePageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ST-L4-01 #12~#13: 파일 다운로드.
-  /// - file 상태: GET /share/{token}
-  /// - folder 상태 내 항목: GET /share/{token}/{fileUuid}
+  /// ST-L4-01 #12~#13: file download.
+  /// - file state: GET /share/{token}
+  /// - folder state text text: GET /share/{token}/{fileUuid}
   Future<void> downloadFile({
     String? fileUuid,
     required void Function(String) onToast,
@@ -298,7 +298,7 @@ class SharePageProvider extends ChangeNotifier {
     }
   }
 
-  /// 루트 폴더로 복귀해 재조회.
+  /// text foldertext translated text textlookup.
   Future<void> _loadRoot() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -319,7 +319,7 @@ class SharePageProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    // ST-L4-02 #4: dispose 시 verifiedPassword 폐기
+    // ST-L4-02 #4: dispose text verifiedPassword text
     _verifiedPassword = null;
     super.dispose();
   }

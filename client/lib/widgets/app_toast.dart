@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 
-/// 토스트 유형.
+/// toast text.
 enum ToastType { success, error, warning, info }
 
-/// 앱 전역 토스트 유틸.
+/// text text toast text.
 ///
-/// 사용법:
+/// translated text:
 /// ```dart
-/// AppToast.success(context, '파일 업로드 완료');
-/// AppToast.error(context, '서버 연결 실패');
-/// AppToast.warning(context, '저장 공간이 부족합니다');
-/// AppToast.info(context, '검색 결과가 없습니다');
+/// AppToast.success(context, 'file upload complete');
+/// AppToast.error(context, 'server Connection failed');
+/// AppToast.warning(context, 'save translated text translated text');
+/// AppToast.info(context, 'text resulttext translated text');
 /// ```
 class AppToast {
-  // ── 퍼블릭 API ─────────────────────────────────────────────────────────────
+  // ── translated text API ─────────────────────────────────────────────────────────────
 
   static void success(BuildContext context, String message,
           {Duration duration = const Duration(seconds: 2)}) =>
@@ -31,7 +31,7 @@ class AppToast {
           {Duration duration = const Duration(seconds: 2)}) =>
       _show(context, message, type: ToastType.info, duration: duration);
 
-  // ── 내부 구현 ───────────────────────────────────────────────────────────────
+  // ── text text ───────────────────────────────────────────────────────────────
 
   static void _show(
     BuildContext context,
@@ -53,7 +53,7 @@ class AppToast {
   }
 }
 
-// ── 내부 위젯 ───────────────────────────────────────────────────────────────
+// ── text text ───────────────────────────────────────────────────────────────
 
 class _ToastWidget extends StatefulWidget {
   final String message;

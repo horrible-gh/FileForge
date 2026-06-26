@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/storage.dart';
 import '../providers/storage_provider.dart';
 
-/// 바이트 값을 읽기 쉬운 단위 문자열로 변환
+/// bytes text text text text stringtext convert
 String _formatBytes(int bytes) {
   if (bytes >= 1024 * 1024 * 1024) {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
@@ -15,10 +15,10 @@ String _formatBytes(int bytes) {
   return '$bytes B';
 }
 
-/// Drawer 내 스토리지 선택 위젯
-/// L002 ST-02 Row2: 스토리지 전환 시 파일 목록은 FileProvider가 초기화한다.
+/// Drawer text storage selection text
+/// L002 ST-02 Row2: storage text text file translated text FileProvidertext initializetext.
 class StorageSelector extends StatelessWidget {
-  /// 스토리지 선택 후 호출 (FileProvider 초기화 및 루트 이동 처리를 호출부에서 담당)
+  /// storage selection text text (FileProvider initialize text text navigate translated text translated text text)
   final void Function(Storage storage) onStorageSelected;
 
   const StorageSelector({super.key, required this.onStorageSelected});

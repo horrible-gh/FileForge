@@ -1,12 +1,12 @@
-/// MailAnchor 도메인 모델 — P0007(프로토콜 마스터) §3 공통 DTO 와이어 형태.
+/// MailAnchor translated text text — P0007(translated text translated text) §3 text DTO translated text text.
 ///
-/// 설계 출처: mailanchor.design.0002.0007-P §3.1~§3.8, §4 페이지네이션.
-/// 식별자는 서버 발급 불투명(opaque) 문자열로 취급하고, 클라이언트는 형식을
-/// 가정하지 않는다(P0007 표기 규칙). 시각은 ISO-8601 UTC 문자열이다.
+/// text text: mailanchor.design.0002.0007-P §3.1~§3.8, §4 translated text.
+/// translated text server issue translated text(opaque) stringtext translated text, translated text translated text
+/// translated text translated text(P0007 notation rule). translated text ISO-8601 UTC stringtext.
 library;
 
-/// P0007 §3.3 — 메일 주소.
-/// `name`은 없을 수 있고(빈 문자열/생략), `address`는 필수다.
+/// P0007 §3.3 — text text.
+/// `name`text text text text(empty string/text), `address`text requiredtext.
 class MailAddress {
   final String name;
   final String address;
@@ -20,11 +20,11 @@ class MailAddress {
     );
   }
 
-  /// 표시용 — name이 있으면 name, 없으면 address.
+  /// displaytext — nametext translated text name, translated text address.
   String get display => name.isNotEmpty ? name : address;
 }
 
-/// P0007 §3.4 — 첨부 메타.
+/// P0007 §3.4 — text text.
 class MailAttachment {
   final String attachmentId;
   final String filename;
@@ -48,8 +48,8 @@ class MailAttachment {
   }
 }
 
-/// P0007 §3.5 — 라벨.
-/// `type`: "system"(inbox/sent/draft 등 고정) | "user"(사용자 생성).
+/// P0007 §3.5 — text.
+/// `type`: "system"(inbox/sent/draft text text) | "user"(translated text create).
 class MailLabel {
   final String labelId;
   final String name;
@@ -75,9 +75,9 @@ class MailLabel {
   bool get isSystem => type == 'system';
 }
 
-/// P0007 §3.2 — 본문(텍스트/HTML).
+/// P0007 §3.2 — Body(translated text/HTML).
 class MailBody {
-  /// "text" | "html" (P0007 §3.2). 미지원 포맷은 빈 본문으로 처리한다.
+  /// "text" | "html" (P0007 §3.2). translated text translated text empty Bodytext translated text.
   final String format;
   final String content;
 
@@ -93,7 +93,7 @@ class MailBody {
   bool get isHtml => format == 'html';
 }
 
-/// P0007 §3.1 — 목록 항목(MailSummary).
+/// P0007 §3.1 — text text(MailSummary).
 class MailSummary {
   final String mailId;
   final String threadId;
@@ -134,7 +134,7 @@ class MailSummary {
     );
   }
 
-  /// 읽음 표시만 바꾼 사본 — 로컬 낙관적 갱신용.
+  /// text displaytext text text — local translated text refreshtext.
   MailSummary copyWithRead(bool read) => MailSummary(
         mailId: mailId,
         threadId: threadId,
@@ -148,7 +148,7 @@ class MailSummary {
       );
 }
 
-/// P0007 §3.2 — 상세(MailDetail).
+/// P0007 §3.2 — text(MailDetail).
 class MailDetail {
   final String mailId;
   final String threadId;
@@ -205,8 +205,8 @@ class MailDetail {
   }
 }
 
-/// P0007 §4 — 커서 페이지네이션 한 묶음.
-/// `meta.next_cursor`가 null이거나 `has_more`가 false면 마지막 묶음.
+/// P0007 §4 — text translated text text text.
+/// `meta.next_cursor`text nulltranslated text `has_more`text falsetext translated text text.
 class MailPage {
   final List<MailSummary> items;
   final String? nextCursor;
@@ -220,8 +220,8 @@ class MailPage {
     this.count = 0,
   });
 
-  /// P0007 §1.1 성공 봉투의 `data`(배열)+`meta`로부터 한 묶음을 만든다.
-  /// [data]는 이미 봉투에서 벗긴 `data`(List), [meta]는 `meta`(Map|null).
+  /// P0007 §1.1 success translated text `data`(text)+`meta`translated text text translated text translated text.
+  /// [data]text text translated text text `data`(List), [meta]text `meta`(Map|null).
   factory MailPage.fromEnvelopeParts(
     List<dynamic> data,
     Map<String, dynamic>? meta,
@@ -238,11 +238,11 @@ class MailPage {
   }
 }
 
-/// P0007 §6.2/§7.9 — 초안(GET /drafts/{id} 의 data).
+/// P0007 §6.2/§7.9 — Draft(GET /drafts/{id} text data).
 ///
-/// 발송 페이로드와 같은 필드(받는이·제목·본문·첨부)에 더해 낙관적 경합용
-/// `updated_at`(§7.10 base_updated_at 의 출처)을 보유한다. 서버가 일부 필드를
-/// 생략해도 견디도록(흡수 단계 Go 백엔드 정합) 모든 키를 관용적으로 읽는다.
+/// text translated text text text(translated text·text·Body·text)text text translated text translated text
+/// `updated_at`(§7.10 base_updated_at text text)text translated text. servertext text translated text
+/// translated text translated text(merge stage Go backend compatibility) all text translated text translated text.
 class MailDraft {
   final String draftId;
   final List<MailAddress> to;
@@ -252,7 +252,7 @@ class MailDraft {
   final MailBody body;
   final List<MailAttachment> attachments;
 
-  /// 갱신 시 base_updated_at 으로 되돌려보내 경합을 감지한다(§7.10).
+  /// refresh text base_updated_at text translated text translated text translated text(§7.10).
   final String updatedAt;
 
   const MailDraft({

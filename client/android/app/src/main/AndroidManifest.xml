@@ -43,9 +43,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- url_launcher (TR0005 §증상2): Android 11+(API30) 가시성 규칙상 https URL을
-             브라우저로 열려면 ACTION_VIEW + https 스킴 질의가 있어야 한다. 없으면
-             OAuth 동의 URL launch 가 조용히 실패한다. -->
+        <!-- url_launcher (TR0005 §symptom2): Android 11+(API30) translated text translated text https URLtext
+             browsertext translated text ACTION_VIEW + https text translated text translated text text. translated text
+             OAuth consent URL launch text translated text failedtext. -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>

@@ -1,11 +1,11 @@
 import 'env.dart';
 
 class AppConfig {
-  /// baseUrl — SERVER_URL 환경설정값을 그대로 API 루트로 사용한다 (T077).
-  /// SERVER_URL 에 컨텍스트 경로(/fileforge)까지 포함해 설정한다.
+  /// baseUrl — SERVER_URL translated text as-is API translated text uses (T077).
+  /// SERVER_URL text translated text path(/fileforge)text translated text translated text.
   static String get baseUrl => Env.serverUrl;
 
-  /// MailAnchor(Go) API base URL — NR0003 §3.3. 메일 모듈 전용 Dio가 사용한다.
+  /// MailAnchor(Go) API base URL — NR0003 §3.3. text text text Diotext uses.
   static String get mailBaseUrl => Env.mailServerUrl;
 
   // SecureStorage keys

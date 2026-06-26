@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
         final tempToken = authProvider.tempToken ?? '';
         context.go(AppRoutes.loginTotp, extra: tempToken);
       case LoginResult.failed:
-        // _error가 AuthProvider에 설정됨 → Consumer가 리빌드하여 표시
+        // _errortext AuthProvidertext translated text → Consumertext textbuildtext display
         break;
     }
   }
@@ -186,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       (v == null || v.isEmpty) ? 'Please enter your password' : null,
                 ),
                 const SizedBox(height: 8),
-                // 서버 에러 메시지 (L002 ST-01 기준)
+                // server error translated text (L002 ST-01 text)
                 Consumer<AuthProvider>(
                   builder: (_, auth, _) {
                     if (auth.error == null) return const SizedBox.shrink();

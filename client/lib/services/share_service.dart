@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
 
-/// D004 Phase 5 — 공유 링크 API 래퍼
-/// 인증 토큰은 ApiClient 인터셉터에 의존한다.
+/// D004 Phase 5 — text text API text
+/// authentication tokentext ApiClient translated text translated text.
 class ShareService {
   final Dio _dio;
 
   ShareService(this._dio);
 
   /// POST /share/create
-  /// 반환: 생성된 공유 링크 응답 JSON (Map)
+  /// return: createtext text text text JSON (Map)
   Future<Map<String, dynamic>> createLink(
     String nodeUuid,
     String nodeType, [
@@ -24,14 +24,14 @@ class ShareService {
   }
 
   /// GET /share/list
-  /// 반환: 공유 링크 배열 (raw JSON List)
+  /// return: text text text (raw JSON List)
   Future<List<dynamic>> fetchList() async {
     final response = await _dio.get('/share/list');
     return response.data as List<dynamic>;
   }
 
   /// DELETE /share/{token}
-  /// 반환: 삭제 응답 JSON (Map)
+  /// return: delete text JSON (Map)
   Future<Map<String, dynamic>> deleteLink(String token) async {
     final response = await _dio.delete('/share/$token');
     return response.data as Map<String, dynamic>;

@@ -5,7 +5,7 @@ import '../models/user.dart';
 import '../models/auth_exception.dart';
 import '../utils/secure_storage.dart';
 
-/// 로그인 성공 응답 모델
+/// login success text text
 class AuthLoginResponse {
   final String accessToken;
   final String refreshToken;
@@ -29,14 +29,14 @@ class AuthLoginResponse {
   }
 }
 
-/// 인증 관련 API 호출 래퍼
-/// 엔드포인트는 서버 routers/login/login.py, logout.py 기준
+/// authentication text API text text
+/// endpointstext server routers/login/login.py, logout.py text
 class AuthService {
   final Dio _dio;
 
   AuthService(this._dio);
 
-  /// DioException의 response body에서 detail 문자열을 추출한다.
+  /// DioExceptiontext response bodytext detail stringtext translated text.
   String _extractDetail(DioException e) {
     try {
       final data = e.response?.data;
@@ -49,8 +49,8 @@ class AuthService {
 
   /// POST /login
   /// Content-Type: application/x-www-form-urlencoded
-  /// 반환: {access_token, refresh_token, ...} 또는 {totp_required, temp_token}
-  /// 실패: AuthException(detail)
+  /// return: {access_token, refresh_token, ...} text {totp_required, temp_token}
+  /// failed: AuthException(detail)
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await _dio.post(
@@ -75,7 +75,7 @@ class AuthService {
 
   /// POST /login/totp/verify
   /// Body: {temp_token, code}
-  /// 실패: AuthException('invalid_code') 또는 AuthException('token_expired')
+  /// failed: AuthException('invalid_code') text AuthException('token_expired')
   Future<AuthLoginResponse> verifyTotp(String tempToken, String code) async {
     try {
       final response = await _dio.post(
@@ -97,7 +97,7 @@ class AuthService {
 
   /// POST /login/refresh
   /// Body: {refresh_token}
-  /// 반환: 새 access_token (새 refresh_token은 SecureStorage에 저장)
+  /// return: text access_token (text refresh_tokentext SecureStoragetext save)
   Future<String> refreshToken(String refreshToken) async {
     final response = await _dio.post(
       '/login/refresh',

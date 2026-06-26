@@ -2,12 +2,12 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 
-/// MailAnchor(Go 서비스) 전용 Dio 클라이언트 — NR0003 §1/§3.3.
+/// MailAnchor(Go translated text) text Dio translated text — NR0003 §1/§3.3.
 ///
-/// 흡수 아키텍처에서 메일은 FileForge 세션을 그대로 탄다(별도 로그인 없음).
-/// 따라서 본 클라이언트는 토큰을 **발급하지 않고**, FileForge AuthProvider가
-/// 보유한 access token을 주입하고, 401이면 동일 AuthProvider의 리프레시를
-/// 트리거한 뒤 원요청을 재시도한다(L0010 §2.2 사후 리프레시 + 단일비행).
+/// merge translated text translated text FileForge sessiontext as-is text(text login None).
+/// translated text text translated text tokentext **issuetext text**, FileForge AuthProvidertext
+/// translated text access tokentext translated text, 401text text AuthProvidertext translated text
+/// translated text text translated text retrytext(L0010 §2.2 text translated text + translated text).
 class MailApiClient {
   late final Dio _dio;
 
@@ -27,8 +27,8 @@ class MailApiClient {
     _setupInterceptors();
   }
 
-  /// AuthProvider의 토큰 접근자/리프레시/세션만료 콜백을 등록한다.
-  /// 리프레시는 FileForge dio에서 수행되며, 새 access token이 여기로 공유된다.
+  /// AuthProvidertext token translated text/translated text/sessionexpired translated text registertext.
+  /// translated text FileForge diotext translated text, text access tokentext translated text translated text.
   void configure({
     required String? Function() getAccessToken,
     required Future<bool> Function() onRefreshToken,
@@ -55,7 +55,7 @@ class MailApiClient {
             return;
           }
 
-          // 리프레시 진행 중이면 대기열에 합류(단일비행).
+          // translated text text translated text translated text text(translated text).
           if (_isRefreshing) {
             final completer = Completer<String?>();
             _pendingRequests.add(completer);

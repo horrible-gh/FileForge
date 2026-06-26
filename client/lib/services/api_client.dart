@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 
-/// Dio 기반 API 클라이언트.
-/// - 모든 요청에 Bearer 토큰 자동 주입
-/// - 401 수신 시 refresh 요청 → 성공이면 원래 요청 재시도
-/// - refresh 중 중복 401은 대기열로 처리
-/// - refresh 실패 시 onSessionExpired 콜백 호출
+/// Dio text API translated text.
+/// - all translated text Bearer token text text
+/// - 401 text text refresh text → successtext text text retry
+/// - refresh text text 401text translated text text
+/// - refresh failed text onSessionExpired text text
 class ApiClient {
   late final Dio _dio;
 
@@ -26,7 +26,7 @@ class ApiClient {
     _setupInterceptors();
   }
 
-  /// AuthProvider에서 콜백을 등록한다.
+  /// AuthProvidertext translated text registertext.
   void configure({
     required String? Function() getAccessToken,
     required Future<bool> Function() onRefreshToken,
@@ -53,7 +53,7 @@ class ApiClient {
             return;
           }
 
-          // refresh 엔드포인트 자체의 401은 재시도하지 않는다.
+          // refresh endpoints translated text 401text retrytext translated text.
           final isRefreshEndpoint =
               error.requestOptions.path.contains('/login/refresh');
           if (isRefreshEndpoint) {
@@ -61,7 +61,7 @@ class ApiClient {
             return;
           }
 
-          // refresh 중 중복 401 → 대기열에 추가
+          // refresh text text 401 → translated text add
           if (_isRefreshing) {
             final completer = Completer<String?>();
             _pendingRequests.add(completer);
@@ -119,13 +119,13 @@ class ApiClient {
     );
   }
 
-  /// 서버 주소 문자열을 받아 baseUrl을 동적으로 업데이트한다.
+  /// server text stringtext text baseUrltext translated text translated text.
   ///
-  /// 처리 순서:
+  /// text text:
   ///   1. trim()
-  ///   2. trailing slash 제거
-  ///   3. scheme 없으면 'http://' 추가
-  ///   4. 이미 '/fileforge'로 끝나면 그대로, 아니면 '/fileforge' 추가
+  ///   2. trailing slash text
+  ///   3. scheme translated text 'http://' add
+  ///   4. text '/fileforge'text translated text as-is, translated text '/fileforge' add
   void setBaseUrl(String hostPort) {
     final trimmed = hostPort.trim();
     if (trimmed.isEmpty) {
@@ -133,16 +133,16 @@ class ApiClient {
       return;
     }
 
-    // trailing slash 제거
+    // trailing slash text
     String normalized = trimmed.replaceAll(RegExp(r'/+$'), '');
 
-    // scheme 없으면 http:// 추가
+    // scheme translated text http:// add
     if (!normalized.startsWith('http://') &&
         !normalized.startsWith('https://')) {
       normalized = 'http://$normalized';
     }
 
-    // /fileforge 경로 추가 (중복 방지)
+    // /fileforge path add (text text)
     if (!normalized.endsWith('/fileforge')) {
       normalized = '$normalized/fileforge';
     }

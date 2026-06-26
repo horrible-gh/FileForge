@@ -25,18 +25,18 @@ import 'preview_web_interop.dart'
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// 텍스트 미저장 변경 다이얼로그 선택 결과 — P007 §4
+/// translated text textsave change translated text selection result — P007 §4
 enum _UnsavedAction { save, discard, cancel }
 
-/// Phase 6 파일 미리보기 — image/text/unsupported 구현, pdf/video/audio placeholder — D006 §4, §6, §12, L006 §3~§5
+/// Phase 6 file translated text — image/text/unsupported text, pdf/video/audio placeholder — D006 §4, §6, §12, L006 §3~§5
 ///
-/// 진입: Navigator.push (GoRouter 라우트 미추가 — D006 §12)
-/// 반환: Navigator.pop(bool) — true이면 FileProvider.loadChildren() 호출 필요
+/// text: Navigator.push (GoRouter translated text textadd — D006 §12)
+/// return: Navigator.pop(bool) — truetext FileProvider.loadChildren() text text
 ///
-/// 화면 상태 (L006 ST-L6-01):
-///   _isLoading == true                    → 로딩 인디케이터
-///   _error != null                        → ErrorRetry 위젯
-///   _isLoading == false && _error == null  → previewType별 분기
+/// screen state (L006 ST-L6-01):
+///   _isLoading == true                    → loading translated text
+///   _error != null                        → ErrorRetry text
+///   _isLoading == false && _error == null  → previewTypetext branch
 class FilePreviewScreen extends StatefulWidget {
   final Node node;
   final String storageUuid;
@@ -58,32 +58,32 @@ class FilePreviewScreen extends StatefulWidget {
 }
 
 class _FilePreviewScreenState extends State<FilePreviewScreen> {
-  // ── 화면 수준 상태 (L006 §3 ST-L6-01) ──────────────────────────────────────
+  // ── screen text state (L006 §3 ST-L6-01) ──────────────────────────────────────
   bool _isLoading = false;
   String? _error;
   Uint8List? _fileBytes;
 
-  /// _fileSizeChanged: 텍스트 편집 저장 성공 시 true.
-  /// pop 결과로 전달 → FileListScreen이 목록 갱신 여부를 판단 (L006 §7 ST-L6-07).
+  /// _fileSizeChanged: translated text text save success text true.
+  /// pop resulttext text → FileListScreentext text refresh translated text text (L006 §7 ST-L6-07).
   bool _fileSizeChanged = false;
 
   late final PreviewType _previewType;
 
-  // ── PDF 상태 (T033) ────────────────────────────────────────────────────────
+  // ── PDF state (T033) ────────────────────────────────────────────────────────
   PdfControllerPinch? _pdfController;
   File? _pdfTempFile;
 
-  // ── 비디오 상태 (T040) ────────────────────────────────────────────────────────
+  // ── translated text state (T040) ────────────────────────────────────────────────────────
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   File? _videoTempFile;
-  /// 웹 전용: Blob URL — dispose 시 _previewRevokeObjectUrl 호출 대상.
+  /// text text: Blob URL — dispose text _previewRevokeObjectUrl text text.
   String? _videoBlobUrl;
 
-  // ── 오디오 상태 (T041) ────────────────────────────────────────────────────────
+  // ── translated text state (T041) ────────────────────────────────────────────────────────
   AudioPlayer? _audioPlayer;
   File? _audioTempFile;
-  /// 웹 전용: Blob URL — dispose 시 _previewRevokeObjectUrl 호출 대상.
+  /// text text: Blob URL — dispose text _previewRevokeObjectUrl text text.
   String? _audioBlobUrl;
   Duration _audioDuration = Duration.zero;
   Duration _audioPosition = Duration.zero;
@@ -93,7 +93,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   StreamSubscription<void>? _audioCompleteSub;
   StreamSubscription<PlayerState>? _audioStateSub;
 
-  // ── 텍스트 편집 상태 (L006 §3 ST-L6-02) ────────────────────────────────────
+  // ── translated text text state (L006 §3 ST-L6-02) ────────────────────────────────────
   String? _textContent;
   String? _editedContent;
   bool _isEditMode = false;
@@ -101,21 +101,21 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   late final TextEditingController _textController;
   final FocusNode _textFocusNode = FocusNode();
 
-  // ── 서비스 ─────────────────────────────────────────────────────────────────
+  // ── translated text ─────────────────────────────────────────────────────────────────
   StorageService get _storageService =>
       StorageService(context.read<AuthProvider>().dio);
 
-  /// StorageService에 updateFileContent가 미추가된 상태이므로 Dio 직접 사용.
+  /// StorageServicetext updateFileContenttext textaddtext statetranslated text Dio text text.
   Dio get _dio => context.read<AuthProvider>().dio;
 
-  // ── 라이프사이클 ────────────────────────────────────────────────────────────
+  // ── lifecycle ────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _textController = TextEditingController();
     _previewType = FileTypeHelper.getPreviewType(widget.node.name);
-    // unsupported: 다운로드 API 자동 호출 금지 (L006 ST-L6-01 #3)
+    // unsupported: download API text text prohibited (L006 ST-L6-01 #3)
     if (_previewType != PreviewType.unsupported) {
       _loadFile();
     }
@@ -151,13 +151,13 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     super.dispose();
   }
 
-  // ── 파일 로드 ───────────────────────────────────────────────────────────────
+  // ── file text ───────────────────────────────────────────────────────────────
 
-  /// GET /storages/download → _fileBytes 수신.
-  /// 에러 시 메시지 분기 (P007 §2 기준):
-  ///   404 → "파일을 찾을 수 없습니다"
-  ///   403 → "접근 권한이 없습니다"
-  ///   나머지 → "파일을 불러올 수 없습니다"
+  /// GET /storages/download → _fileBytes text.
+  /// error text translated text branch (P007 §2 text):
+  ///   404 → "filetext text text translated text"
+  ///   403 → "text permissiontext translated text"
+  ///   translated text → "filetext translated text text translated text"
   Future<void> _loadFile() async {
     setState(() {
       _isLoading = true;
@@ -176,7 +176,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       setState(() {
         _fileBytes = bytes;
         _isLoading = false;
-        // text 타입: UTF-8 디코딩 → 뷰어/편집 상태 초기화 (L006 §4, P007 §4)
+        // text text: UTF-8 translated text → text/text state initialize (L006 §4, P007 §4)
         if (_previewType == PreviewType.text && bytes != null) {
           _textContent = utf8.decode(bytes, allowMalformed: true);
           _editedContent = _textContent;
@@ -199,7 +199,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         });
       }
       AppLogger.info(
-          'FilePreviewScreen', '파일 로드 완료: ${widget.node.name}');
+          'FilePreviewScreen', 'file text complete: ${widget.node.name}');
     } on DioException catch (e) {
       if (!mounted) return;
       final statusCode = e.response?.statusCode;
@@ -209,14 +209,14 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
               ? 'Access denied'
               : 'Unable to load file';
       AppLogger.error(
-          'FilePreviewScreen', '파일 로드 실패: $statusCode ${e.message}');
+          'FilePreviewScreen', 'file text failed: $statusCode ${e.message}');
       setState(() {
         _isLoading = false;
         _error = message;
       });
     } catch (e) {
       if (!mounted) return;
-      AppLogger.error('FilePreviewScreen', '파일 로드 실패(기타): $e');
+      AppLogger.error('FilePreviewScreen', 'file text failed(text): $e');
       setState(() {
         _isLoading = false;
         _error = 'Unable to load file';
@@ -224,10 +224,10 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     }
   }
 
-  // ── 다운로드 ───────────────────────────────────────────────────────────────
+  // ── download ───────────────────────────────────────────────────────────────
 
-  /// AppBar 다운로드 버튼 핸들러.
-  /// 이미 로드된 _fileBytes가 있으면 재사용, 없으면 API 재호출 (unsupported 타입 등).
+  /// AppBar download text translated text.
+  /// text translated text _fileBytestext translated text translated text, translated text API translated text (unsupported text text).
   Future<void> _handleDownload() async {
     try {
       List<int> bytes;
@@ -255,16 +255,16 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       }
 
       await DownloadSaveService.saveBytes(bytes: bytes, filename: filename);
-      AppLogger.info('FilePreviewScreen', '다운로드 완료: $filename');
+      AppLogger.info('FilePreviewScreen', 'download complete: $filename');
       if (mounted) AppToast.success(context, 'Download complete');
     } on DioException catch (e) {
       AppLogger.error(
-          'FilePreviewScreen', '다운로드 실패: ${e.response?.statusCode}');
+          'FilePreviewScreen', 'download failed: ${e.response?.statusCode}');
       if (mounted) AppToast.error(context, 'Download failed');
     }
   }
 
-  // ── 텍스트 편집 ────────────────────────────────────────────────────────────
+  // ── translated text text ────────────────────────────────────────────────────────────
 
   void _enterEditMode() {
     setState(() {
@@ -277,7 +277,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   }
 
   void _cancelEdit() {
-    // 취소: 원본 복원, 변경 감지 없이 즉시 폐기 (L006 ST-L6-02 #2)
+    // cancel: text text, change text text text text (L006 ST-L6-02 #2)
     setState(() {
       _editedContent = _textContent;
       _textController.text = _textContent ?? '';
@@ -285,9 +285,9 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     });
   }
 
-  /// PUT /storages/update_file_content — 텍스트 저장 (P007 §5)
-  /// 성공: 뷰어 복귀 + 성공 토스트 + _fileSizeChanged = true
-  /// 실패: 에러 토스트 + 편집 모드 유지 (수정 내용 보존)
+  /// PUT /storages/update_file_content — translated text save (P007 §5)
+  /// success: text text + success toast + _fileSizeChanged = true
+  /// failed: error toast + text text keep (update content preserved)
   Future<void> _saveFile() async {
     if (_editedContent == null) return;
     setState(() => _isSaving = true);
@@ -308,7 +308,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         _isSaving = false;
         _fileSizeChanged = true;
       });
-      AppLogger.info('FilePreviewScreen', '텍스트 저장 완료: ${widget.node.name}');
+      AppLogger.info('FilePreviewScreen', 'translated text save complete: ${widget.node.name}');
       AppToast.success(context, 'Saved');
     } on DioException catch (e) {
       if (!mounted) return;
@@ -319,18 +319,18 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           : statusCode == 403
               ? 'No permission to save'
               : 'Save failed';
-      AppLogger.error('FilePreviewScreen', '텍스트 저장 실패: $statusCode');
+      AppLogger.error('FilePreviewScreen', 'translated text save failed: $statusCode');
       AppToast.error(context, message);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      AppLogger.error('FilePreviewScreen', '텍스트 저장 실패(기타): $e');
+      AppLogger.error('FilePreviewScreen', 'translated text save failed(text): $e');
       AppToast.error(context, 'Save failed');
     }
   }
 
-  /// 미저장 변경사항 확인 다이얼로그 — P007 §4, L006 §5
-  /// 선택지: 저장 / 저장 안 함 / 취소
+  /// textsave changetext text translated text — P007 §4, L006 §5
+  /// choices: save / save text text / cancel
   Future<void> _showUnsavedChangesDialog() async {
     final result = await showDialog<_UnsavedAction>(
       context: context,
@@ -358,45 +358,45 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       case _UnsavedAction.save:
         await _saveFile();
         if (!mounted) return;
-        // 저장 성공 시 _isEditMode==false → pop(true), 실패 시 편집 유지
+        // save success text _isEditMode==false → pop(true), failed text text keep
         if (!_isEditMode) Navigator.of(context).pop(true);
       case _UnsavedAction.discard:
-        // 저장 안 함: 이전 저장 이력(_fileSizeChanged) 유지하여 전달
+        // save text text: text save text(_fileSizeChanged) keeptext text
         Navigator.of(context).pop(_fileSizeChanged);
       case _UnsavedAction.cancel:
       case null:
-        break; // 편집 화면 유지
+        break; // text screen keep
     }
   }
 
-  // ── 뒤로가기 ───────────────────────────────────────────────────────────────
+  // ── translated text ───────────────────────────────────────────────────────────────
 
-  /// 뒤로가기 분기 — L006 §5 ST-L6-05 결정 트리
+  /// translated text branch — L006 §5 ST-L6-05 text text
   void _onBack() {
-    // saving 중: pop 차단
+    // saving text: pop text
     if (_isSaving) return;
     if (_isEditMode) {
       if (_editedContent != _textContent) {
-        // 변경 있음: 3선택 다이얼로그
+        // change text: 3selection translated text
         _showUnsavedChangesDialog();
         return;
       }
-      // 변경 없음: 편집 모드 해제 후 즉시 pop
+      // change None: text text text text text pop
       setState(() => _isEditMode = false);
     }
     Navigator.of(context).pop(_fileSizeChanged);
   }
 
-  // ── AppBar 액션 빌더 ────────────────────────────────────────────────────────
+  // ── AppBar text text ────────────────────────────────────────────────────────
 
-  /// 상태/previewType에 따라 AppBar actions를 반환한다 (D006 §4, L006 ST-L6-02).
+  /// state/previewTypetext text AppBar actionstext returntext (D006 §4, L006 ST-L6-02).
   List<Widget> _buildAppBarActions() {
-    // loading 중이거나 에러 상태에서는 버튼 미표시 (L006 ST-L6-01 #4)
+    // loading translated text error statetranslated text text textdisplay (L006 ST-L6-01 #4)
     if (_isLoading || _error != null) return const [];
 
     if (_previewType == PreviewType.text) {
       if (_isEditMode) {
-        // 편집 모드: [저장] [취소] — saving 중 비활성화
+        // text text: [save] [cancel] — saving text translated text
         return [
           TextButton(
             onPressed: _isSaving ? null : _saveFile,
@@ -414,7 +414,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           ),
         ];
       }
-      // 뷰어 모드: [편집] [다운로드]
+      // text text: [text] [download]
       return [
         IconButton(
           icon: const Icon(Icons.edit_rounded),
@@ -439,7 +439,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     ];
   }
 
-  // ── 빌드 ──────────────────────────────────────────────────────────────────
+  // ── build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -476,7 +476,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     return _buildPreview();
   }
 
-  /// 에러 뷰 — PDF/video 타입은 ErrorRetry + 다운로드 버튼, 나머지는 ErrorRetry만.
+  /// error text — PDF/video translated text ErrorRetry + download text, translated text ErrorRetrytext.
   Widget _buildErrorView() {
     if (_previewType == PreviewType.pdf || _previewType == PreviewType.video || _previewType == PreviewType.audio) {
       return Center(
@@ -506,7 +506,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     );
   }
 
-  /// previewType별 분기 — image/text/unsupported/pdf 구현, video/audio T034~T035 범위.
+  /// previewTypetext branch — image/text/unsupported/pdf text, video/audio T034~T035 text.
   Widget _buildPreview() {
     switch (_previewType) {
       case PreviewType.image:
@@ -524,10 +524,10 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     }
   }
 
-  // ── 이미지 뷰어 (P007 §3, D006 FP05) ────────────────────────────────────────
+  // ── translated text text (P007 §3, D006 FP05) ────────────────────────────────────────
 
-  /// `InteractiveViewer` + `Image.memory` — 핀치 줌/패닝 지원.
-  /// 디코딩 실패 시 post-frame callback으로 `_error` 설정 → ErrorRetry 전환.
+  /// `InteractiveViewer` + `Image.memory` — text text/text text.
+  /// translated text failed text post-frame callbacktext `_error` text → ErrorRetry text.
   Widget _buildImagePreview() {
     return InteractiveViewer(
       minScale: 0.5,
@@ -536,8 +536,8 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         child: Image.memory(
           _fileBytes!,
           errorBuilder: (context, error, stackTrace) {
-            // Image.memory는 errorBuilder를 build 중에 호출하므로,
-            // setState는 post-frame callback으로 예약한다.
+            // Image.memorytext errorBuildertext build text translated text,
+            // setStatetext post-frame callbacktext exampletranslated text.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 setState(() => _error = 'Unable to display image');
@@ -550,10 +550,10 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     );
   }
 
-  // ── 텍스트 뷰어/편집 (P007 §4, D006 FP06~FP10) ──────────────────────────────
+  // ── translated text text/text (P007 §4, D006 FP06~FP10) ──────────────────────────────
 
-  /// 뷰어 모드: `SingleChildScrollView + SelectableText` 모노스페이스.
-  /// 편집 모드: `TextField(maxLines: null)` — `_textController` 바인딩.
+  /// text text: `SingleChildScrollView + SelectableText` translated text.
+  /// text text: `TextField(maxLines: null)` — `_textController` translated text.
   Widget _buildTextPreview() {
     if (_isEditMode) {
       return SingleChildScrollView(
@@ -577,16 +577,16 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     );
   }
 
-  // ── PDF 뷰어 (T033, P007 §6, §12, L006 §3 ST-L6-05) ──────────────────────────
+  // ── PDF text (T033, P007 §6, §12, L006 §3 ST-L6-05) ──────────────────────────
 
-  /// bytes를 PdfControllerPinch에 연결.
-  /// kIsWeb: PdfDocument.openData(bytes) 사용 (dart:io / getTemporaryDirectory 우회).
-  /// 비웹: 임시 파일로 저장 후 PdfDocument.openFile() 사용.
-  /// 실패 시 _error = "PDF를 표시할 수 없습니다" 로 전환.
+  /// bytestext PdfControllerPinchtext text.
+  /// kIsWeb: PdfDocument.openData(bytes) text (dart:io / getTemporaryDirectory text).
+  /// text: text filetext save text PdfDocument.openFile() text.
+  /// failed text _error = "PDFtext displaytext text translated text" text text.
   Future<void> _initPdfController(Uint8List bytes) async {
     try {
       if (kIsWeb) {
-        // 웹: dart:io File / getTemporaryDirectory() 미지원 → openData로 우회 (T035)
+        // text: dart:io File / getTemporaryDirectory() translated text → openDatatext text (T035)
         final controller = PdfControllerPinch(
           document: PdfDocument.openData(bytes),
         );
@@ -616,15 +616,15 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         });
       }
     } catch (e) {
-      AppLogger.error('FilePreviewScreen', 'PDF 초기화 실패: $e');
+      AppLogger.error('FilePreviewScreen', 'PDF initialize failed: $e');
       if (mounted) {
         setState(() => _error = 'Cannot display PDF');
       }
     }
   }
 
-  /// PdfControllerPinch가 준비되면 PdfViewPinch 렌더링.
-  /// 준비 전이면 로딩 인디케이터, 초기화 실패 시 에러+다운로드 버튼.
+  /// PdfControllerPinchtext translated text PdfViewPinch translated text.
+  /// text translated text loading translated text, initialize failed text error+download text.
   Widget _buildPdfPreview() {
     if (_pdfController == null) {
       return const Center(child: CircularProgressIndicator());
@@ -632,7 +632,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     return PdfViewPinch(
       controller: _pdfController!,
       onDocumentError: (error) {
-        AppLogger.error('FilePreviewScreen', 'PDF 렌더링 오류: $error');
+        AppLogger.error('FilePreviewScreen', 'PDF translated text Error: $error');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() => _error = 'Unable to display PDF');
@@ -642,12 +642,12 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     );
   }
 
-  // ── 비디오 플레이어 (T040, P007 §7, §12, L006 §3 ST-L6-06) ───────────────────
+  // ── translated text translated text (T040, P007 §7, §12, L006 §3 ST-L6-06) ───────────────────
 
-  /// bytes → VideoPlayerController 초기화.
-  /// 웹(kIsWeb): bytes → Blob URL → VideoPlayerController.networkUrl() 경로 (NR019).
-  /// 비웹: 임시 파일 저장 후 VideoPlayerController.file() 경로.
-  /// 실패 시 _error = "비디오를 재생할 수 없습니다"로 전환.
+  /// bytes → VideoPlayerController initialize.
+  /// text(kIsWeb): bytes → Blob URL → VideoPlayerController.networkUrl() path (NR019).
+  /// text: text file save text VideoPlayerController.file() path.
+  /// failed text _error = "translated text translated text text translated text"text text.
   Future<void> _initVideoController(Uint8List bytes) async {
     if (kIsWeb) {
       String? blobUrl;
@@ -664,7 +664,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         }[ext] ?? 'video/mp4';
         AppLogger.info(
           'FilePreviewScreen',
-          '비디오 웹 초기화 시작: name=${widget.node.name}, '
+          'translated text text initialize text: name=${widget.node.name}, '
               'bytes=${bytes.length}, copiedBytes=${uint8.length}, '
               'ext=$ext, mime=$mimeType',
         );
@@ -673,18 +673,18 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         final roundTripUrl = parsedUri.toString();
         AppLogger.info(
           'FilePreviewScreen',
-          '비디오 웹 Blob URL 생성: scheme=${parsedUri.scheme}, '
+          'translated text text Blob URL create: scheme=${parsedUri.scheme}, '
               'roundTripEqual=${roundTripUrl == blobUrl}, url=$blobUrl',
         );
         final videoController = VideoPlayerController.networkUrl(parsedUri);
         AppLogger.info(
           'FilePreviewScreen',
-          '비디오 웹 controller.initialize() 호출',
+          'translated text text controller.initialize() text',
         );
         await videoController.initialize();
         AppLogger.info(
           'FilePreviewScreen',
-          '비디오 웹 초기화 성공: '
+          'translated text text initialize success: '
               'initialized=${videoController.value.isInitialized}, '
               'durationMs=${videoController.value.duration.inMilliseconds}, '
               'size=${videoController.value.size}',
@@ -708,12 +708,12 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       } catch (e, st) {
         AppLogger.error(
           'FilePreviewScreen',
-          '비디오 초기화 실패(웹): type=${e.runtimeType}, '
+          'translated text initialize failed(text): type=${e.runtimeType}, '
               'error=$e, blobUrl=$blobUrl',
         );
         AppLogger.error(
           'FilePreviewScreen',
-          '비디오 초기화 실패(웹) stack: $st',
+          'translated text initialize failed(text) stack: $st',
         );
         if (mounted) setState(() => _error = 'Unable to play video');
       }
@@ -748,15 +748,15 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         _chewieController = chewieController;
       });
     } catch (e) {
-      AppLogger.error('FilePreviewScreen', '비디오 초기화 실패: $e');
+      AppLogger.error('FilePreviewScreen', 'translated text initialize failed: $e');
       if (mounted) {
         setState(() => _error = 'Cannot play video');
       }
     }
   }
 
-  /// ChewieController가 준비되면 Chewie 위젯 렌더링.
-  /// 준비 전이면 로딩 인디케이터.
+  /// ChewieControllertext translated text Chewie text translated text.
+  /// text translated text loading translated text.
   Widget _buildVideoPreview() {
     if (_chewieController == null) {
       return const Center(child: CircularProgressIndicator());
@@ -764,10 +764,10 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     return Chewie(controller: _chewieController!);
   }
 
-  // ── 오디오 플레이어 (T041, P007 §8, §10, §12, L006 §3 ST-L6-06) ───────────────
+  // ── translated text translated text (T041, P007 §8, §10, §12, L006 §3 ST-L6-06) ───────────────
 
-  /// bytes → 임시 파일 저장 → AudioPlayer 초기화 → 재생.
-  /// 실패 시 _error = "오디오를 재생할 수 없습니다"로 전환.
+  /// bytes → text file save → AudioPlayer initialize → text.
+  /// failed text _error = "translated text translated text text translated text"text text.
   Future<void> _initAudioController(Uint8List bytes) async {
     if (kIsWeb) {
       try {
@@ -864,8 +864,8 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     }
   }
 
-  /// AudioPlayer가 준비되면 오디오 플레이어 UI 렌더링.
-  /// 준비 전이면 로딩 인디케이터.
+  /// AudioPlayertext translated text translated text translated text UI translated text.
+  /// text translated text loading translated text.
   Widget _buildAudioPreview() {
     if (_audioPlayer == null) {
       return const Center(child: CircularProgressIndicator());
@@ -970,10 +970,10 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     return '$minutes:$seconds';
   }
 
-  // ── 미지원 안내 (D006 §4-7, FP14) ──────────────────────────────────────────
+  // ── translated text text (D006 §4-7, FP14) ──────────────────────────────────────────
 
-  /// 파일 아이콘 + 안내 문구 + 다운로드 버튼.
-  /// `_loadFile()` 미호출 상태 (L006 ST-L6-01 #3).
+  /// file translated text + text message + download text.
+  /// `_loadFile()` translated text state (L006 ST-L6-01 #3).
   Widget _buildUnsupportedPreview() {
     return Center(
       child: Padding(

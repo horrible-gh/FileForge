@@ -5,12 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:file_forge_app/providers/account_provider.dart';
 import 'package:file_forge_app/services/account_service.dart';
 
-/// 계정 서비스/Provider — TS0006 시나리오 1~3(목록 게이트·연결·해제).
+/// account translated text/Provider — TS0006 scenario 1~3(text translated text·text·text).
 ///
-/// 네트워크 없이 서버 응답을 흉내내는 stub HttpClientAdapter 로 실 봉투 파싱과
-/// 에러 코드 분기를 그대로 검증한다(http_mock_adapter 의존성 미추가).
+/// translated text text server translated text translated text stub HttpClientAdapter text text text translated text
+/// error text branchtext as-is verifytext(http_mock_adapter translated text textadd).
 class _StubAdapter implements HttpClientAdapter {
-  /// (METHOD path) → (status, jsonBody). path 는 쿼리 제외.
+  /// (METHOD path) → (status, jsonBody). path text text text.
   final Map<String, (int, Object?)> routes;
   final List<String> calls = [];
 
@@ -80,7 +80,7 @@ void main() {
           }
         })
       })));
-      // 봉투 에러는 던지지 않고 받아 MailApiException 으로 환원되어야 한다.
+      // text errortext translated text text text MailApiException text translated text text.
       expect(
         () => svc.connectAccount(provider: 'gmail', authCode: 'x'),
         throwsA(isA<Object>().having((e) => '$e', 'msg', contains('UPSTREAM_UNAVAILABLE'))),

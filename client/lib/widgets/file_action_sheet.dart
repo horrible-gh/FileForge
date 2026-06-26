@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/node.dart';
 
-/// D003 §2-3 — 케밥메뉴 (BottomSheet)
-/// 파일: 다운로드, 이름 변경, 공유 (disabled), 미리보기 (disabled), 삭제
-/// 폴더: 다운로드, 이름 변경, 공유 (disabled), 삭제
-/// note 스토리지: 다운로드 미노출
+/// D003 §2-3 — translated text (BottomSheet)
+/// file: download, name change, text (disabled), translated text (disabled), delete
+/// folder: download, name change, text (disabled), delete
+/// note storage: download translated text
 enum FileAction { download, rename, share, preview, delete }
 
 class FileActionSheet extends StatelessWidget {

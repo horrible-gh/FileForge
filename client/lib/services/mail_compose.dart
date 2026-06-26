@@ -1,28 +1,28 @@
 import '../models/mail.dart';
 
-/// 작성/발송 페이로드 조립 + 사전 검증 — P0007 §7.5/§7.6, L0012 §1/§2.4/§4.1.
+/// compose/text translated text text + text verify — P0007 §7.5/§7.6, L0012 §1/§2.4/§4.1.
 ///
-/// 클라이언트 검증은 best-effort 선검사다(최종 권위는 서버 — L0012 §2.4).
-/// 서버가 RECIPIENT_INVALID(422)/VALIDATION_FAILED(400)을 돌려주면 작성 내용을
-/// 보존하고 해당 필드를 표시한다(P0007 §7.7 / L0010 USER_ACTION).
+/// translated text verifytext best-effort translated text(text translated text server — L0012 §2.4).
+/// servertext RECIPIENT_INVALID(422)/VALIDATION_FAILED(400)text translated text compose contenttext
+/// preservedtext text translated text displaytext(P0007 §7.7 / L0010 USER_ACTION).
 
-/// L0012 §2.4.1 — 작성 모드. 답장/전달은 원본에서 수신자·제목을 파생한다.
+/// L0012 §2.4.1 — compose text. text/translated text translated text translated text·translated text translated text.
 enum ComposeMode { newMail, reply, replyAll, forward }
 
-/// L0012 §1 한도.
-const int kRecipientsMax = 100; // to+cc+bcc 합산
-const int kSubjectMaxChars = 998; // RFC 5322 라인 한도
+/// L0012 §1 text.
+const int kRecipientsMax = 100; // to+cc+bcc text
+const int kSubjectMaxChars = 998; // RFC 5322 text text
 
-/// 간이 이메일 형식 검사(L0012 §2.4 is_valid_email의 클라 선검사).
-/// 서버 검증을 대체하지 않는다 — 명백한 오타만 거른다.
+/// text translated text text text(L0012 §2.4 is_valid_emailtext text translated text).
+/// server verifytext translated text translated text — translated text translated text translated text.
 final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
 bool isValidEmail(String address) => _emailRe.hasMatch(address.trim());
 
-/// 자유 입력 문자열을 주소 목록으로 분해한다(쉼표/세미콜론/공백/줄바꿈 구분).
-/// 빈 토큰·중복(소문자 기준)은 제거하고 입력 순서를 보존한다. 형식 검증은
-/// 하지 않는다 — 칩 표시 단계에서 `isValidEmail` 로 무효 주소를 강조한다.
-/// 수신자 태그 입력 위젯(RecipientField)과 작성 화면이 공유하는 순수 함수.
+/// text text stringtext text translated text minutestranslated text(text/translated text/text/translated text textminutes).
+/// empty token·text(translated text text)text translated text text translated text preservedtext. text verifytext
+/// text translated text — text display stagetext `isValidEmail` text text translated text translated text.
+/// translated text text text text(RecipientField)text compose screentext translated text text text.
 List<MailAddress> parseAddresses(String raw) {
   final seen = <String>{};
   final out = <MailAddress>[];
@@ -34,18 +34,18 @@ List<MailAddress> parseAddresses(String raw) {
   return out;
 }
 
-/// 검증 결과 — 비어 있으면 통과.
+/// verify result — text translated text text.
 class ComposeValidation {
-  /// 형식이 잘못된 주소(원본 문자열).
+  /// translated text translated text text(text string).
   final List<String> invalidAddresses;
 
-  /// 수신자 0명.
+  /// translated text 0text.
   final bool noRecipients;
 
-  /// 수신자 한도 초과.
+  /// translated text text exceeded.
   final bool tooManyRecipients;
 
-  /// 제목 길이 초과(절단 권고).
+  /// text text exceeded(text text).
   final bool subjectTooLong;
 
   const ComposeValidation({
@@ -62,7 +62,7 @@ class ComposeValidation {
       !subjectTooLong;
 }
 
-/// 발송 페이로드 — P0007 §7.5(새 메일)/§7.6(답장·전달).
+/// text translated text — P0007 §7.5(text text)/§7.6(text·text).
 class SendPayload {
   final List<MailAddress> to;
   final List<MailAddress> cc;
@@ -71,13 +71,13 @@ class SendPayload {
   final MailBody body;
   final List<String> attachmentIds;
 
-  /// 답장/전달일 때만 — 원본 메일 id.
+  /// text/translated text text — text text id.
   final String? inReplyTo;
 
-  /// "reply" | "reply_all" | "forward" (P0007 §7.6). 새 메일이면 null.
+  /// "reply" | "reply_all" | "forward" (P0007 §7.6). text translated text null.
   final String? replyType;
 
-  /// 초안에서 발송할 때 — 발송 후 서버가 초안 삭제·첨부 재귀속(L0012 §2.4).
+  /// Drafttext translated text text — text text servertext Draft delete·text translated text(L0012 §2.4).
   final String? fromDraftId;
 
   const SendPayload({
@@ -92,7 +92,7 @@ class SendPayload {
     this.fromDraftId,
   });
 
-  /// 발송 전 사전 검증(L0012 §4.1 평가 순서를 클라에서 선반영).
+  /// text text text verify(L0012 §4.1 text translated text translated text translated text).
   ComposeValidation validate() {
     final all = [...to, ...cc, ...bcc];
     final invalid = all
@@ -128,8 +128,8 @@ class SendPayload {
   }
 }
 
-/// L0012 §2.4.1 — 원본 메일에서 답장/전달 초기 폼을 파생한다.
-/// `selfAddress`는 reply_all에서 자기 자신을 cc에서 제외하는 데 쓴다.
+/// L0012 §2.4.1 — text translated text text/text text text translated text.
+/// `selfAddress`text reply_alltext text translated text cctext translated text text text.
 SendPayload composeFrom(
   ComposeMode mode,
   MailDetail original, {

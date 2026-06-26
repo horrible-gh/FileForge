@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
 
-/// 스토리지/파일 API 래퍼 — P003/P004 프로토콜 기준
-/// 인증 토큰은 ApiClient 인터셉터에 의존한다.
+/// storage/file API text — P003/P004 translated text text
+/// authentication tokentext ApiClient translated text translated text.
 class StorageService {
   final Dio _dio;
 
   StorageService(this._dio);
 
   /// GET /storages/get_user_storages
-  /// 반환: 스토리지 배열 (raw JSON List)
+  /// return: storage text (raw JSON List)
   Future<List<dynamic>> getUserStorages({
     required String userUuid,
     String? groupUuid,
@@ -24,7 +24,7 @@ class StorageService {
   }
 
   /// GET /storages/get_directory_trees
-  /// 반환: { "storage_uuid": ..., "tree": [...] }
+  /// return: { "storage_uuid": ..., "tree": [...] }
   Future<Map<String, dynamic>> getDirectoryTrees({
     required String storageUuid,
     required String userUuid,
@@ -40,8 +40,8 @@ class StorageService {
   }
 
   /// GET /storages/get_node_children
-  /// 반환: { "storage_uuid": ..., "current_node": ..., "breadcrumb_path": [...], "children": [...] }
-  /// search가 빈 문자열이면 전송하지 않는다 (L002 ST-02 Row7).
+  /// return: { "storage_uuid": ..., "current_node": ..., "breadcrumb_path": [...], "children": [...] }
+  /// searchtext empty stringtext translated text translated text (L002 ST-02 Row7).
   Future<Map<String, dynamic>> getNodeChildren({
     required String storageUuid,
     required String userUuid,
@@ -60,11 +60,11 @@ class StorageService {
     return response.data as Map<String, dynamic>;
   }
 
-  // ── Phase 4 파일 조작 API ─────────────────────────────────────────────────
+  // ── Phase 4 file text API ─────────────────────────────────────────────────
 
   /// POST /storages/upload (multipart/form-data)
-  /// [onSendProgress] dio의 진행률 콜백.
-  /// [cancelToken] 업로드 취소용.
+  /// [onSendProgress] diotext translated text text.
+  /// [cancelToken] upload canceltext.
   Future<Map<String, dynamic>> upload({
     required String storageUuid,
     required String parentUuid,
@@ -93,7 +93,7 @@ class StorageService {
     return response.data as Map<String, dynamic>;
   }
 
-  /// GET /storages/download — 단일 파일/폴더 다운로드 (바이너리)
+  /// GET /storages/download — text file/folder download (translated text)
   Future<Response<List<int>>> download({
     required String storageUuid,
     required String userUuid,
@@ -171,7 +171,7 @@ class StorageService {
     return response.data as Map<String, dynamic>;
   }
 
-  /// POST /storages/bulk/download — 벌크 ZIP 다운로드
+  /// POST /storages/bulk/download — text ZIP download
   Future<Response<List<int>>> bulkDownload({
     required List<String> nodeUuids,
   }) async {
@@ -182,7 +182,7 @@ class StorageService {
     );
   }
 
-  /// POST /storages/bulk/delete — 벌크 삭제
+  /// POST /storages/bulk/delete — text delete
   Future<Map<String, dynamic>> bulkDelete({
     required List<String> nodeUuids,
   }) async {

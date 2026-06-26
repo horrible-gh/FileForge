@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../config/routes.dart';
 
-/// 앱 시작 화면 — SecureStorage 토큰 확인 후 메인 또는 로그인으로 분기
-/// [redirectPath]: 자동 로그인 성공 시 이동할 원래 목적 경로 (딥링크 F5 복귀용)
+/// text text screen — SecureStorage token text text text text logintext branch
+/// [redirectPath]: text login success text navigatetext text text path (translated text F5 translated text)
 class SplashScreen extends StatefulWidget {
   final String? redirectPath;
 
@@ -30,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       loggedIn = await authProvider.tryAutoLogin();
     } catch (_) {
-      // tryAutoLogin 예외 시 로그인 화면으로 이동 (분기 보강)
+      // tryAutoLogin exampletext text login screentext navigate (branch text)
     }
     if (!mounted) return;
     if (loggedIn) {

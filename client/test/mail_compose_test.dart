@@ -14,7 +14,7 @@ void main() {
     });
   });
 
-  group('parseAddresses (수신자 태그 입력)', () {
+  group('parseAddresses (translated text text text)', () {
     test('splits on comma/semicolon/whitespace, drops empties', () {
       final xs = parseAddresses('a@x.com, b@y.com; c@z.com  d@w.com');
       expect(xs.map((e) => e.address).toList(),
@@ -31,7 +31,7 @@ void main() {
       expect(parseAddresses('  ,; \n '), isEmpty);
     });
 
-    test('keeps malformed tokens (검증은 칩 표시 단계 담당)', () {
+    test('keeps malformed tokens (verifytext text display stage text)', () {
       final xs = parseAddresses('ok@x.com, broken-address');
       expect(xs.map((e) => e.address).toList(), ['ok@x.com', 'broken-address']);
     });
@@ -74,16 +74,16 @@ void main() {
   group('SendPayload.toJson (P0007 §7.5/§7.6)', () {
     test('new mail omits empty cc/bcc/reply fields', () {
       final json = SendPayload(
-        to: [const MailAddress(name: '보스', address: 'boss@x.com')],
-        subject: '주간 보고',
-        body: const MailBody(format: 'text', content: '본문'),
+        to: [const MailAddress(name: 'Boss', address: 'boss@x.com')],
+        subject: 'Weekly report',
+        body: const MailBody(format: 'text', content: 'Body'),
       ).toJson();
       expect(json['to'], [
-        {'name': '보스', 'address': 'boss@x.com'}
+        {'name': 'Boss', 'address': 'boss@x.com'}
       ]);
       expect(json.containsKey('cc'), false);
       expect(json.containsKey('in_reply_to'), false);
-      expect(json['body'], {'format': 'text', 'content': '본문'});
+      expect(json['body'], {'format': 'text', 'content': 'Body'});
     });
 
     test('attachment_ids included when present, omitted when empty (§7.11)', () {
@@ -98,7 +98,7 @@ void main() {
       expect(noAtt.containsKey('attachment_ids'), false);
     });
 
-    test('html body carries format=html (HTML 작성)', () {
+    test('html body carries format=html (HTML compose)', () {
       final json = SendPayload(
         to: [const MailAddress(address: 'a@b.com')],
         body: const MailBody(format: 'html', content: '<p>hi</p>'),
@@ -121,44 +121,44 @@ void main() {
   group('composeFrom (L0012 §2.4.1)', () {
     final original = MailDetail(
       mailId: 'm_orig',
-      from: const MailAddress(name: '결제팀', address: 'billing@shop.com'),
+      from: const MailAddress(name: 'Billing Team', address: 'billing@shop.com'),
       to: [
         const MailAddress(address: 'me@example.com'),
         const MailAddress(address: 'peer@example.com'),
       ],
       cc: [const MailAddress(address: 'cc@example.com')],
-      subject: '6월 영수증',
-      body: const MailBody(format: 'text', content: '원문 본문'),
+      subject: 'June receipt',
+      body: const MailBody(format: 'text', content: 'Original body'),
     );
 
-    test('reply → to=원본 from, Re: 프리픽스, in_reply_to', () {
+    test('reply → to=text from, Re: translated text, in_reply_to', () {
       final r = composeFrom(ComposeMode.reply, original);
       expect(r.to.single.address, 'billing@shop.com');
-      expect(r.subject, 'Re: 6월 영수증');
+      expect(r.subject, 'Re: June receipt');
       expect(r.inReplyTo, 'm_orig');
       expect(r.replyType, 'reply');
     });
 
-    test('reply_all → cc=원본 to+cc 에서 self·from 제외', () {
+    test('reply_all → cc=text to+cc text self·from text', () {
       final r = composeFrom(ComposeMode.replyAll, original,
           selfAddress: 'me@example.com');
       expect(r.to.single.address, 'billing@shop.com');
       final ccAddrs = r.cc.map((a) => a.address).toList();
-      expect(ccAddrs.contains('me@example.com'), false); // self 제외
-      expect(ccAddrs.contains('billing@shop.com'), false); // from 제외
+      expect(ccAddrs.contains('me@example.com'), false); // self text
+      expect(ccAddrs.contains('billing@shop.com'), false); // from text
       expect(ccAddrs.contains('peer@example.com'), true);
       expect(ccAddrs.contains('cc@example.com'), true);
     });
 
-    test('forward → Fwd: 프리픽스, 본문에 원문 인용, to 비움', () {
+    test('forward → Fwd: translated text, Bodytext text text, to text', () {
       final r = composeFrom(ComposeMode.forward, original);
-      expect(r.subject, 'Fwd: 6월 영수증');
+      expect(r.subject, 'Fwd: June receipt');
       expect(r.to, isEmpty);
-      expect(r.body.content.contains('원문 본문'), true);
+      expect(r.body.content.contains('Original body'), true);
       expect(r.replyType, 'forward');
     });
 
-    test('이미 Re: 가 붙은 제목은 중복 프리픽스 안 함', () {
+    test('text Re: text text translated text text translated text text text', () {
       final once = composeFrom(ComposeMode.reply, original);
       final twice = composeFrom(
         ComposeMode.reply,
@@ -167,7 +167,7 @@ void main() {
             from: const MailAddress(address: 'x@y.com'),
             subject: once.subject),
       );
-      expect(twice.subject, 'Re: 6월 영수증'); // Re: Re: 아님
+      expect(twice.subject, 'Re: June receipt'); // Re: Re: text
     });
   });
 }

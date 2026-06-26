@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// 네트워크/API 오류 시 표시하는 에러 + 재시도 위젯
-/// L002 ST-02 Row9: 빈 화면 금지, 에러 상태를 명확히 표시.
+/// translated text/API error text displaytext error + retry text
+/// L002 ST-02 Row9: empty screen prohibited, error statetext translated text display.
 class ErrorRetry extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;

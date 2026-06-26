@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/node.dart';
 
-/// 파일 이름에서 확장자를 제거한 노트 제목을 반환한다.
-/// 이름이 점으로 시작하거나 확장자가 없으면 원본을 반환한다.
+/// file nametext translated text translated text text translated text returntext.
+/// nametext translated text translated text translated text translated text translated text returntext.
 String getNoteName(String name) {
   final lastDot = name.lastIndexOf('.');
   return lastDot > 0 ? name.substring(0, lastDot) : name;
 }
 
-/// [T043] modifiedAt 기반 상대 시간 문자열 반환.
-/// null 이면 빈 문자열 반환.
+/// [T043] modifiedAt text text text string return.
+/// null text empty string return.
 String formatRelativeDate(DateTime? modifiedAt) {
   if (modifiedAt == null) return '';
   final diff = DateTime.now().difference(modifiedAt);
@@ -19,9 +19,9 @@ String formatRelativeDate(DateTime? modifiedAt) {
   return '${modifiedAt.month}/${modifiedAt.day}';
 }
 
-/// note 스토리지 전용 카드 위젯.
-/// - type=file: 제목/preview/날짜 + 케밥(비선택모드) or 체크박스(선택모드)
-/// - type=folder: 폴더 아이콘/폴더명/날짜 + 체크박스(선택모드)
+/// note storage text text text.
+/// - type=file: text/preview/text + text(textselectiontext) or translated text(selectiontext)
+/// - type=folder: folder translated text/foldertext/text + translated text(selectiontext)
 class NoteCard extends StatelessWidget {
   final Node node;
   final bool isSelectionMode;
@@ -64,7 +64,7 @@ class NoteCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 헤더: 제목 + 케밥(비선택모드) or 체크박스(선택모드)
+        // text: text + text(textselectiontext) or translated text(selectiontext)
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -86,7 +86,7 @@ class NoteCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        // 본문: preview 최대 3줄
+        // Body: preview text 3text
         Expanded(
           child: node.preview != null && node.preview!.isNotEmpty
               ? Text(
@@ -102,7 +102,7 @@ class NoteCard extends StatelessWidget {
               : const SizedBox.shrink(),
         ),
         const SizedBox(height: 4),
-        // 푸터: 상대 시간
+        // text: text text
         Text(
           formatRelativeDate(node.modifiedAt),
           style: TextStyle(
@@ -119,7 +119,7 @@ class NoteCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 헤더: 폴더 아이콘 + 폴더명 + 체크박스(선택모드)
+        // text: folder translated text + foldertext + translated text(selectiontext)
         Row(
           children: [
             Icon(Icons.folder_rounded, size: 18, color: colorScheme.primary),
@@ -138,9 +138,9 @@ class NoteCard extends StatelessWidget {
             if (isSelectionMode) _SelectionCheckbox(isSelected: isSelected),
           ],
         ),
-        // 본문 없음
+        // Body None
         const Spacer(),
-        // 푸터: 수정일
+        // text: updatetext
         Text(
           formatRelativeDate(node.modifiedAt),
           style: TextStyle(

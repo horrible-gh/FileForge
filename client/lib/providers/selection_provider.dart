@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-/// D003 M01~M05 — 다중 선택 모드 상태 관리
+/// D003 M01~M05 — text selection text state management
 class SelectionProvider extends ChangeNotifier {
   bool _isSelectionMode = false;
   final Set<String> _selectedUuids = {};
 
-  // ── 읽기 전용 ─────────────────────────────────────────────────────────────
+  // ── read-only ─────────────────────────────────────────────────────────────
   bool get isSelectionMode => _isSelectionMode;
   Set<String> get selectedUuids => Set.unmodifiable(_selectedUuids);
   int get selectedCount => _selectedUuids.length;
@@ -13,7 +13,7 @@ class SelectionProvider extends ChangeNotifier {
 
   bool isSelected(String nodeUuid) => _selectedUuids.contains(nodeUuid);
 
-  // ── 선택 모드 진입/해제 ───────────────────────────────────────────────────
+  // ── selection text text/text ───────────────────────────────────────────────────
 
   void enterSelectionMode([String? initialNodeUuid]) {
     _isSelectionMode = true;
@@ -29,7 +29,7 @@ class SelectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── 선택 토글 ─────────────────────────────────────────────────────────────
+  // ── selection text ─────────────────────────────────────────────────────────────
 
   void toggle(String nodeUuid) {
     if (_selectedUuids.contains(nodeUuid)) {
@@ -43,7 +43,7 @@ class SelectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── 전체 선택 ─────────────────────────────────────────────────────────────
+  // ── text selection ─────────────────────────────────────────────────────────────
 
   void selectAll(List<String> allUuids) {
     _selectedUuids.addAll(allUuids);

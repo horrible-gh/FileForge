@@ -5,10 +5,10 @@ import '../services/mail_service.dart';
 import '../services/mail_compose.dart';
 import '../services/mail_envelope.dart';
 
-/// 초안 갱신 결과 분류(§7.10) — 작성 화면이 경합/오류를 분기한다.
+/// Draft refresh result minutestext(§7.10) — compose screentext text/errortext branchtext.
 enum DraftUpdateStatus { saved, conflict, error }
 
-/// 초안 갱신 결과 — saved 면 [updatedAt], conflict 면 [serverUpdatedAt] 동반.
+/// Draft refresh result — saved text [updatedAt], conflict text [serverUpdatedAt] text.
 class DraftUpdateResult {
   final DraftUpdateStatus status;
   final String? updatedAt;
@@ -24,10 +24,10 @@ class DraftUpdateResult {
   bool get isSaved => status == DraftUpdateStatus.saved;
 }
 
-/// 메일(C) 상태 관리 Provider — NR0003 §2.3 / §7 초기 구현(읽기 슬라이스).
+/// text(C) state management Provider — NR0003 §2.3 / §7 initial implementation(text translated text).
 ///
-/// 책임: 목록(커서 페이지네이션)·상세·읽음 처리. FileProvider의 seq 가드
-/// 패턴을 따라 stale 응답을 무시한다. 작성/라벨/계정/동기화는 후속 T.
+/// text: text(text translated text)·text·text text. FileProvidertext seq guard
+/// translated text text stale translated text translated text. compose/text/account/synctext text T.
 class MailProvider extends ChangeNotifier {
   late final MailService _service;
 
@@ -35,7 +35,7 @@ class MailProvider extends ChangeNotifier {
     _service = MailService(dio);
   }
 
-  // ── 목록 상태 ──────────────────────────────────────────────────────────────
+  // ── text state ──────────────────────────────────────────────────────────────
   final List<MailSummary> _mails = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -52,7 +52,7 @@ class MailProvider extends ChangeNotifier {
   bool get hasMore => _hasMore;
   String get currentLabel => _currentLabel;
 
-  // ── 상세 상태 ──────────────────────────────────────────────────────────────
+  // ── text state ──────────────────────────────────────────────────────────────
   MailDetail? _detail;
   bool _detailLoading = false;
   String? _detailError;
@@ -62,9 +62,9 @@ class MailProvider extends ChangeNotifier {
   bool get detailLoading => _detailLoading;
   String? get detailError => _detailError;
 
-  // ── 목록 로드 ──────────────────────────────────────────────────────────────
+  // ── text text ──────────────────────────────────────────────────────────────
 
-  /// 첫 페이지 로드(라벨 전환 포함). 기존 목록을 비우고 새로 채운다.
+  /// text translated text text(text text text). text translated text translated text text translated text.
   Future<void> loadInbox({String label = 'inbox'}) async {
     _currentLabel = label;
     final seq = ++_loadSeq;
@@ -89,25 +89,25 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 당겨서 새로고침 — 현재 라벨 기준 첫 페이지 재로드.
+  /// translated text translated text — current text text text translated text translated text.
   Future<void> refresh() => loadInbox(label: _currentLabel);
 
-  /// 다음 묶음(커서) 로드 — 마지막 묶음이거나 이미 로딩 중이면 무시한다.
+  /// text text(text) text — translated text translated text text loading translated text translated text.
   Future<void> loadMore() async {
     if (!_hasMore || _isLoadingMore || _isLoading) return;
     final cursor = _nextCursor;
     if (cursor == null || cursor.isEmpty) return;
-    final seq = _loadSeq; // 같은 로드 세션에서만 이어붙인다.
+    final seq = _loadSeq; // text text sessiontranslated text translated text.
     _isLoadingMore = true;
     notifyListeners();
     try {
       final page = await _service.listMails(label: _currentLabel, cursor: cursor);
-      if (seq != _loadSeq) return; // 그 사이 새로고침됨
+      if (seq != _loadSeq) return; // text text translated text
       _mails.addAll(page.items);
       _nextCursor = page.nextCursor;
       _hasMore = page.hasMore;
     } catch (_) {
-      // 추가 로드 실패는 전체 에러로 승격하지 않는다(보조 동작).
+      // add text failedtext text errortext translated text translated text(text text).
     } finally {
       if (seq == _loadSeq) {
         _isLoadingMore = false;
@@ -116,9 +116,9 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  // ── 상세 로드 ──────────────────────────────────────────────────────────────
+  // ── text text ──────────────────────────────────────────────────────────────
 
-  /// 상세 로드 후, 안읽음이면 읽음 처리(P0007 §7.3)를 자동 수행한다.
+  /// text text text, translated text text text(P0007 §7.3)text text translated text.
   Future<void> openMail(String mailId) async {
     final seq = ++_detailSeq;
     _detail = null;
@@ -130,7 +130,7 @@ class MailProvider extends ChangeNotifier {
       if (seq != _detailSeq) return;
       _detail = d;
       if (!d.isRead) {
-        // 읽음 처리는 best-effort — 실패해도 상세 표시는 유지한다.
+        // text translated text best-effort — failedtext text displaytext keeptext.
         markRead(mailId);
       }
     } catch (e) {
@@ -143,7 +143,7 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 읽음 처리 + 로컬 목록/상세 낙관적 갱신.
+  /// text text + local text/text translated text refresh.
   Future<void> markRead(String mailId, {bool isRead = true}) async {
     try {
       await _service.setRead(mailId, isRead);
@@ -151,18 +151,18 @@ class MailProvider extends ChangeNotifier {
       if (idx >= 0) _mails[idx] = _mails[idx].copyWithRead(isRead);
       notifyListeners();
     } catch (_) {
-      // 읽음 처리 실패는 조용히 무시(다음 동기화에서 수렴).
+      // text text failedtext translated text text(text synctext text).
     }
   }
 
-  // ── 작성/발송/초안 (P0007 §7.5~§7.10) ───────────────────────────────────────
+  // ── compose/text/Draft (P0007 §7.5~§7.10) ───────────────────────────────────────
 
-  /// 발송. 성공 시 null, 실패 시 분류된 예외를 반환한다(작성 화면이 분기).
-  /// USER_ACTION(RECIPIENT_INVALID 등)은 작성 내용을 보존하라는 신호다.
+  /// text. success text null, failed text minutestext exampletext returntext(compose screentext branch).
+  /// USER_ACTION(RECIPIENT_INVALID text)text compose contenttext preservedtranslated text translated text.
   Future<MailApiException?> sendMail(SendPayload payload) async {
     try {
       await _service.sendMail(payload);
-      // 보낸편지함을 보고 있었다면 새로고침(그 외에는 화면이 목록 복귀 처리).
+      // Senttext text translated text translated text(text translated text screentext text text text).
       if (_currentLabel == 'sent') {
         await refresh();
       }
@@ -174,7 +174,7 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 초안 저장 — 성공 시 draft_id, 실패 시 null(작성 화면이 토스트 처리).
+  /// Draft save — success text draft_id, failed text null(compose screentext toast text).
   Future<String?> saveDraft(SendPayload payload) async {
     try {
       final d = await _service.saveDraft(payload);
@@ -184,7 +184,7 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 초안 불러오기(이어쓰기) — 실패 시 null.
+  /// Draft load(translated text) — failed text null.
   Future<MailDraft?> loadDraft(String draftId) async {
     try {
       return await _service.getDraft(draftId);
@@ -193,8 +193,8 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 초안 갱신(낙관적 경합, §7.10). DRAFT_CONFLICT 면 서버 최신 시각을 담아
-  /// 작성 화면이 "재적재 안내"를 띄울 수 있게 분류 결과를 돌려준다.
+  /// Draft refresh(translated text text, §7.10). DRAFT_CONFLICT text server text translated text text
+  /// compose screentext "translated text text"text text text text minutestext resulttext translated text.
   Future<DraftUpdateResult> updateDraft(
     String draftId,
     SendPayload payload,
@@ -219,8 +219,8 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 작성용 첨부 업로드(§7.11) — 성공 시 첨부 메타, 실패 시 null.
-  /// [onProgress]는 (전송, 전체) 바이트 진행률.
+  /// composetext text upload(§7.11) — success text text text, failed text null.
+  /// [onProgress]text (text, text) bytes translated text.
   Future<MailAttachment?> uploadAttachment({
     required String filename,
     required List<int> bytes,
@@ -237,9 +237,9 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  // ── 초기화 ────────────────────────────────────────────────────────────────
+  // ── initialize ────────────────────────────────────────────────────────────────
 
-  /// 로그아웃/세션 만료 시 상태 초기화(app.dart 리셋 콜백에서 호출).
+  /// logout/session expired text state initialize(app.dart text translated text text).
   void reset() {
     _mails.clear();
     _isLoading = false;

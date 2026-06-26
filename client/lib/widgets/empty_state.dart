@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// 빈 목록/빈 폴더 표시 위젯
-/// L002 ST-02 Row8: 빈 폴더 시 "파일이 없습니다" 표시.
+/// empty text/empty folder display text
+/// L002 ST-02 Row8: empty folder text "filetext translated text" display.
 class EmptyState extends StatelessWidget {
   final String message;
   final IconData icon;

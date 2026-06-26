@@ -1,23 +1,23 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 계정 유무(presence) 캐시 — TR0005 §증상1(진입 지연) 낙관적 렌더용.
+/// account text(presence) text — TR0005 §symptom1(text text) translated text translated text.
 ///
-/// 진입 게이트가 매 콜드스타트마다 `GET /accounts` 응답을 기다린 뒤에야
-/// 온보딩/목록을 결정하던 것이 "어카운트 작성 화면까지 너무 느리다"의 한 축이다.
-/// 마지막으로 알려진 "계정이 있었나" 한 비트만 영속해 두면, 다음 진입에서 화면을
-/// 즉시 그리고(스피너 제거) 네트워크는 백그라운드로 재조정할 수 있다.
+/// text translated text text translated text `GET /accounts` translated text translated text translated text
+/// translated text/translated text translated text text "translated text compose screentext text translated text"text text translated text.
+/// translated text translated text "accounttext translated text" text translated text translated text text, text translated text screentext
+/// text translated text(translated text text) translated text translated text translated text text text.
 ///
-/// 인터페이스로 추상화해 단위 테스트가 플러그인(SharedPreferences) 없이 인메모리
-/// 더블로 게이트 로직을 검증하게 한다.
+/// interfacetext translated text text translated text translated text(SharedPreferences) text textnotetext
+/// translated text translated text translated text verifytext text.
 abstract class AccountPresenceCache {
-  /// 마지막으로 알려진 계정 유무. 한 번도 기록된 적 없으면 null.
+  /// translated text translated text account text. text text translated text text translated text null.
   Future<bool?> getHasAccounts();
 
-  /// 성공적인 로드/연결/해제 후 계정 유무를 갱신한다(베스트에포트).
+  /// successtext text/text/text text account translated text refreshtext(translated text).
   Future<void> setHasAccounts(bool value);
 }
 
-/// SharedPreferences 백엔드 기본 구현(이미 pubspec 의존성).
+/// SharedPreferences backend text text(text pubspec translated text).
 class SharedPrefsAccountCache implements AccountPresenceCache {
   static const String _key = 'mail_has_accounts_v1';
 

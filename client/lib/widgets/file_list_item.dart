@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 import '../models/node.dart';
 
-/// 파일/폴더 목록 아이템 위젯
-/// Phase 4: 케밥 버튼, 선택 모드 체크, 롱프레스 진입.
+/// file/folder text translated text text
+/// Phase 4: text text, selection text text, translated text text.
 class FileListItem extends StatelessWidget {
   final Node node;
 
-  /// 폴더 탭 시 호출. 파일은 null.
+  /// folder text text text. filetext null.
   final VoidCallback? onFolderTap;
 
-  /// 파일 탭 시 호출 (T039: ListTile.onTap 직접 연결용).
+  /// file text text text (T039: ListTile.onTap text translated text).
   final VoidCallback? onFileTap;
 
-  /// 케밥메뉴 탭 시 호출.
+  /// translated text text text text.
   final VoidCallback? onKebabTap;
 
-  /// 롱프레스 시 호출.
+  /// translated text text text.
   final VoidCallback? onLongPress;
 
-  /// 선택 모드 탭 시 호출.
+  /// selection text text text text.
   final VoidCallback? onSelectionTap;
 
-  /// 선택 모드 여부.
+  /// selection text text.
   final bool isSelectionMode;
 
-  /// 선택 여부.
+  /// selection text.
   final bool isSelected;
 
   const FileListItem({

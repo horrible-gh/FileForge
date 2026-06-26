@@ -23,14 +23,14 @@ external String _previewCreateObjectUrl(_PreviewJsBlob blob);
 @JS('URL.revokeObjectURL')
 external void _previewRevokeObjectUrl(String url);
 
-/// bytes + mimeType로부터 Blob URL을 생성한다 (웹 전용).
+/// bytes + mimeTypetranslated text Blob URLtext createtext (text text).
 String previewCreateBlobUrl(List<int> bytes, String mimeType) {
-  // bytes.toList() 경유 fresh copy로 detached ArrayBuffer 영향 회피 (T036)
+  // bytes.toList() text fresh copytext detached ArrayBuffer text text (T036)
   final uint8 = Uint8List.fromList(bytes.toList());
   final blob =
       _PreviewJsBlob([uint8.toJS].toJS, _BlobPropertyBag(type: mimeType));
   return _previewCreateObjectUrl(blob);
 }
 
-/// Blob URL을 해제한다 (웹 전용).
+/// Blob URLtext translated text (text text).
 void previewRevokeBlobUrl(String url) => _previewRevokeObjectUrl(url);

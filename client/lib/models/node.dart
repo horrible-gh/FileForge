@@ -1,6 +1,6 @@
-/// P003 § 2-3 — 파일/폴더 노드 모델
+/// P003 § 2-3 — file/folder text text
 /// type: 'file' | 'folder'
-/// parentUuid: 폴더 트리에서 사용 (get_directory_trees 응답)
+/// parentUuid: folder translated text text (get_directory_trees text)
 class Node {
   final String? nodeUuid;
   final String name;
@@ -32,6 +32,6 @@ class Node {
     );
   }
 
-  /// 루트 노드 표현. node_uuid == null.
+  /// text text text. node_uuid == null.
   factory Node.root() => const Node(nodeUuid: null, name: 'Root', type: 'folder');
 }

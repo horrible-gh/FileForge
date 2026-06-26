@@ -8,11 +8,11 @@ import 'package:file_forge_app/providers/mail_provider.dart';
 import 'package:file_forge_app/providers/account_provider.dart';
 import 'package:file_forge_app/screens/mail/mail_list_screen.dart';
 
-/// 라벨 스위처(초안 이어쓰기 UI 진입) — TR0009 잔여작업의 동작 검증.
+/// text translated text(Draft translated text UI text) — TR0009 remaining worktranslated text text verify.
 ///
-/// 네트워크 없이 라벨 전환만 확인하기 위해 [MailProvider.loadInbox] 를
-/// 가로채는 페이크를 쓴다. 계정 게이트(T0004)가 추가되어 라벨 스위처는
-/// 계정이 1개 이상일 때만 보이므로, 계정 보유 상태의 페이크 게이트를 함께 건다.
+/// translated text text text translated text translated text text [MailProvider.loadInbox] text
+/// translated text faketext text. account translated text(T0004)text addtext text translated text
+/// accounttext 1text and abovetext text translated text, account text statetext fake translated text text text.
 class _FakeMailProvider extends MailProvider {
   _FakeMailProvider() : super(Dio());
 
@@ -25,7 +25,7 @@ class _FakeMailProvider extends MailProvider {
   }
 }
 
-/// 계정 1개 보유로 게이트를 통과시키는 페이크(네트워크 없음).
+/// account 1text translated text translated text translated text fake(no network).
 class _ConnectedAccountProvider extends AccountProvider {
   _ConnectedAccountProvider() : super(Dio());
 
@@ -63,8 +63,8 @@ void main() {
 
   testWidgets('shows the three system labels', (tester) async {
     await tester.pumpWidget(harness(_FakeMailProvider()));
-    await tester.pump(); // 게이트 통과(계정 보유)
-    await tester.pump(); // 초기 postFrame loadInbox
+    await tester.pump(); // translated text text(account text)
+    await tester.pump(); // text postFrame loadInbox
 
     expect(find.text('Inbox'), findsOneWidget);
     expect(find.text('Drafts'), findsOneWidget);
@@ -78,7 +78,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(fake.loaded, contains('inbox')); // 게이트 통과 후 받은편지함 로드
+    expect(fake.loaded, contains('inbox')); // translated text text text Inbox text
 
     await tester.tap(find.text('Drafts'));
     await tester.pump();
@@ -90,7 +90,7 @@ void main() {
     final en = await AppLocalizations.delegate.load(const Locale('en'));
     expect(mailLabelName(en, 'inbox'), 'Inbox');
     expect(mailLabelName(en, 'drafts'), 'Drafts');
-    expect(mailLabelName(en, 'draft'), 'Drafts'); // 단수 별칭도 임시보관함
+    expect(mailLabelName(en, 'draft'), 'Drafts'); // text translated text Drafts
     expect(mailLabelName(en, 'sent'), 'Sent');
     expect(kMailSystemLabels, ['inbox', 'drafts', 'sent']);
   });

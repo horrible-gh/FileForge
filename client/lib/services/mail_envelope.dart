@@ -1,36 +1,36 @@
-/// P0007 §1 공통 응답 봉투 해석 + L0010 §2.3 에러 코드 분류.
+/// P0007 §1 text text text text + L0010 §2.3 error text minutestext.
 ///
-/// 설계 출처: mailanchor.design.0002.0007-P §1.1/§1.2/§5,
+/// text text: mailanchor.design.0002.0007-P §1.1/§1.2/§5,
 ///            mailanchor.design.0002.0010-L §2.3 classify.
 ///
-/// 분기는 항상 `error.code`로만 한다(P0007 §1.2 — `message`는 로케일 종속이라
-/// UI 분기에 쓰지 않는다). dio에 의존하지 않도록, 디코드된 응답 본문(Map)을
-/// 입력으로 받는 순수 함수로 둔다(단위 테스트 용이).
+/// branchtext text `error.code`text text(P0007 §1.2 — `message`text translated text translated text
+/// UI branchtext text translated text). diotext translated text translated text, translated text text Body(Map)text
+/// translated text text text translated text text(text translated text text).
 library;
 
-/// L0010 §2.3 — 클라이언트 분기용 에러 범주.
+/// L0010 §2.3 — translated text branchtext error text.
 enum MailErrorCategory {
-  /// `TOKEN_EXPIRED` — 리프레시 후 재시도 대상.
+  /// `TOKEN_EXPIRED` — translated text text retry text.
   refreshable,
 
-  /// `TOKEN_INVALID`/`FORBIDDEN`/`AUTH_INVALID_CREDENTIALS` — 인증 흐름.
+  /// `TOKEN_INVALID`/`FORBIDDEN`/`AUTH_INVALID_CREDENTIALS` — authentication text.
   auth,
 
-  /// `UPSTREAM_UNAVAILABLE`/`SEND_FAILED` — 일시 오류(백오프 재시도 대상).
+  /// `UPSTREAM_UNAVAILABLE`/`SEND_FAILED` — text error(translated text retry text).
   transient,
 
   /// `VALIDATION_FAILED`/`RECIPIENT_INVALID`/`DRAFT_CONFLICT`/`LABEL_DUPLICATE`
-  /// — 사용자 조치 필요.
+  /// — translated text text text.
   userAction,
 
   /// `MAIL_NOT_FOUND`/`ATTACHMENT_NOT_FOUND`/`LABEL_NOT_FOUND`.
   notFound,
 
-  /// 미정의 코드 / 네트워크 오류 — 일반 오류(P0007 §5 기본값).
+  /// translated text text / translated text error — text error(P0007 §5 default value).
   generic,
 }
 
-/// L0010 §2.3 — `error.code` → 범주 매핑. 미정의 코드는 generic.
+/// L0010 §2.3 — `error.code` → text text. translated text translated text generic.
 MailErrorCategory classifyMailErrorCode(String code) {
   switch (code) {
     case 'TOKEN_EXPIRED':
@@ -56,47 +56,47 @@ MailErrorCategory classifyMailErrorCode(String code) {
   }
 }
 
-/// 계정 연결(authorize/connect) 실패의 **사용자노출 범주** — NR0007 §6 L1.
+/// account text(authorize/connect) failedtext **translated text text** — NR0007 §6 L1.
 ///
-/// TR0005 가 OAuth 브라우저 전환을 넣으며 실패 표면을 같이 설계하지 않아,
-/// `_connectErrorMessage` 의 catch-all 한 분기가 5종 실패(네트워크/404·MALFORMED/
-/// 세션401/VALIDATION/oauth-exchange-failed)를 단일 불투명 토스트로 뭉갰다
-/// (NR0007 §5 — 진단가능성 붕괴 → "왜 실패했는지 모른 채 진행 불가"). 이 enum 은
-/// 그 catch-all 을 원인별로 분화해 사용자/운영자가 다음 행동을 할 수 있게 한다.
+/// TR0005 text OAuth browser translated text translated text failed translated text text translated text text,
+/// `_connectErrorMessage` text catch-all text branchtext 5text failed(translated text/404·MALFORMED/
+/// session401/VALIDATION/oauth-exchange-failed)text text translated text toasttext translated text
+/// (NR0007 §5 — diagnostictranslated text text → "text failedtranslated text text text text text"). text enum text
+/// text catch-all text translated text minutestext translated text/translated text text translated text text text text text.
 enum ConnectFailureKind {
-  /// 이미 연결된 계정(`ACCOUNT_DUPLICATE`).
+  /// text translated text account(`ACCOUNT_DUPLICATE`).
   conflict,
 
-  /// 서버에 OAuth env 미설정(`UPSTREAM_UNAVAILABLE` reason=`oauth not configured`).
+  /// servertext OAuth env not configured(`UPSTREAM_UNAVAILABLE` reason=`oauth not configured`).
   oauthNotConfigured,
 
-  /// OAuth 코드 교환 실패(`UPSTREAM_UNAVAILABLE` reason=`oauth exchange failed`).
-  /// NR0007 §5.2 — reason 분기가 한 가지만 처리해 일반 토스트로 새던 케이스.
+  /// OAuth text text failed(`UPSTREAM_UNAVAILABLE` reason=`oauth exchange failed`).
+  /// NR0007 §5.2 — reason branchtext text translated text translated text text toasttext text translated text.
   oauthExchangeFailed,
 
-  /// 세션 만료/거부(401·403 또는 auth/refreshable 범주) — 재로그인 신호.
-  /// NR0007 §5.3 — connect/authorize 경로엔 세션 승격이 없던 누락.
+  /// session expired/text(401·403 text auth/refreshable text) — textlogin text.
+  /// NR0007 §5.3 — connect/authorize pathtext session translated text text text.
   session,
 
-  /// 메일 서버 미도달/네트워크 단절 또는 업스트림 일시 불가.
+  /// text server translated text/translated text text text translated text text text.
   network,
 
-  /// 비-봉투 응답(404·리버스프록시 HTML 등) → `MALFORMED_RESPONSE`.
-  /// NR0007 §4 H1 — 신규 authorize 라우트 미배포의 가장 유력한 표면.
+  /// text-text text(404·translated text HTML text) → `MALFORMED_RESPONSE`.
+  /// NR0007 §4 H1 — text authorize translated text translated text text translated text text.
   malformed,
 
-  /// provider 화이트리스트 밖/입력 검증 실패 등 사용자 조치 대상.
+  /// provider translated text text/text verify failed text translated text text text.
   invalid,
 
-  /// 위 어디에도 안 잡히는 미정의 실패(최후 폴백).
+  /// text translated text text translated text translated text failed(text text).
   generic,
 }
 
-/// [MailApiException] 을 [ConnectFailureKind] 로 분류한다(NR0007 §6 L1).
+/// [MailApiException] text [ConnectFailureKind] text minutestranslated text(NR0007 §6 L1).
 ///
-/// 분기는 `code`/`httpStatus`/`category`/`details.reason` 만 본다(`message` 는
-/// 로케일 종속이라 쓰지 않음 — P0007 §1.2). 순서가 중요하다: 구체 코드(중복·OAuth
-/// reason) → 세션(상태/범주) → 네트워크/일시 → MALFORMED → 입력검증 → 폴백.
+/// branchtext `code`/`httpStatus`/`category`/`details.reason` text text(`message` text
+/// translated text translated text text text — P0007 §1.2). translated text translated text: text text(text·OAuth
+/// reason) → session(state/text) → translated text/text → MALFORMED → textverify → text.
 ConnectFailureKind classifyConnectFailure(MailApiException e) {
   if (e.code == 'ACCOUNT_DUPLICATE') return ConnectFailureKind.conflict;
   if (e.code == 'UPSTREAM_UNAVAILABLE') {
@@ -114,8 +114,8 @@ ConnectFailureKind classifyConnectFailure(MailApiException e) {
       e.category == MailErrorCategory.refreshable) {
     return ConnectFailureKind.session;
   }
-  // UNKNOWN(네트워크 단절) 과 transient(UPSTREAM_UNAVAILABLE/SEND_FAILED, reason
-  // 미상)은 모두 "서버에 닿지 못함/일시 불가" → 재시도 안내.
+  // UNKNOWN(translated text text) text transient(UPSTREAM_UNAVAILABLE/SEND_FAILED, reason
+  // text)text text "servertext text text/text text" → retry text.
   if (e.code == 'UNKNOWN' || e.category == MailErrorCategory.transient) {
     return ConnectFailureKind.network;
   }
@@ -126,9 +126,9 @@ ConnectFailureKind classifyConnectFailure(MailApiException e) {
   return ConnectFailureKind.generic;
 }
 
-/// 토스트/배너에 붙이는 **진단 꼬리표**(NR0007 §6 L2) — 사용자/운영자가 원인을
-/// 짚을 수 있도록 `code`·`httpStatus`·`requestId` 를 로케일 중립으로 노출한다.
-/// `MailApiException` 에 이미 다 실려 있다(mail_envelope §60-100).
+/// toast/bannertext translated text **diagnostic translated text**(NR0007 §6 L2) — translated text/translated text translated text
+/// text text translated text `code`·`httpStatus`·`requestId` text translated text translated text translated text.
+/// `MailApiException` text text text text text(mail_envelope §60-100).
 String diagnosticLabel(MailApiException e) {
   final parts = <String>[e.code];
   if (e.httpStatus != null) parts.add('HTTP ${e.httpStatus}');
@@ -138,7 +138,7 @@ String diagnosticLabel(MailApiException e) {
   return parts.join(' · ');
 }
 
-/// P0007 §1.2 에러 봉투를 표현하는 예외.
+/// P0007 §1.2 error translated text translated text exampletext.
 class MailApiException implements Exception {
   final String code;
   final String message;
@@ -164,7 +164,7 @@ class MailApiException implements Exception {
     this.requestId,
   });
 
-  /// P0007 §1.2 에러 봉투(Map)로부터 예외를 만든다.
+  /// P0007 §1.2 error text(Map)translated text exampletext translated text.
   factory MailApiException.fromEnvelope(
     Map<String, dynamic> body, {
     int? httpStatus,
@@ -185,8 +185,8 @@ class MailApiException implements Exception {
   String toString() => 'MailApiException($code: $message)';
 }
 
-/// P0007 §1.1/§1.2 — 성공 봉투에서 `data`를 벗긴다. 실패 봉투면 던진다.
-/// 본문이 봉투 형태가 아니면(예: 비정상 응답) generic 예외로 환원한다.
+/// P0007 §1.1/§1.2 — success translated text `data`text translated text. failed translated text translated text.
+/// Bodytext text translated text translated text(example: translated text text) generic exampletext translated text.
 dynamic unwrapEnvelope(dynamic body, {int? httpStatus}) {
   if (body is! Map) {
     throw MailApiException(
@@ -202,10 +202,10 @@ dynamic unwrapEnvelope(dynamic body, {int? httpStatus}) {
   throw MailApiException.fromEnvelope(map, httpStatus: httpStatus);
 }
 
-/// 성공 봉투의 `data`가 객체(Map)임을 보장하고 `Map<String, dynamic>`로 캐스트한다.
-/// 봉투는 [unwrapEnvelope]가 검증하지만, `ok:true` 인데 내부 `data`가 비-Map인
-/// 비정상 성공응답이면 무가드 캐스트가 raw `TypeError`로 크래시한다(NR0016 §3 MINOR).
-/// 이를 generic `MALFORMED_RESPONSE` 예외로 우아하게 환원한다.
+/// success translated text `data`text text(Map)text translated text `Map<String, dynamic>`text translated text.
+/// translated text [unwrapEnvelope]text verifytranslated text, `ok:true` text text `data`text text-Maptext
+/// translated text successtranslated text textguard translated text raw `TypeError`text translated text(NR0016 §3 MINOR).
+/// text generic `MALFORMED_RESPONSE` exampletext translated text translated text.
 Map<String, dynamic> expectMapData(dynamic data, {int? httpStatus}) {
   if (data is! Map) {
     throw MailApiException(
@@ -217,9 +217,9 @@ Map<String, dynamic> expectMapData(dynamic data, {int? httpStatus}) {
   return data.cast<String, dynamic>();
 }
 
-/// [expectMapData]의 List 대응 — 성공 봉투의 `data`가 배열임을 보장한다.
-/// `null`은 빈 리스트로 허용(목록 응답에서 data 생략 가능)하되, 비-List 비정상
-/// 응답은 raw `TypeError` 대신 `MALFORMED_RESPONSE` 예외로 환원한다.
+/// [expectMapData]text List text — success translated text `data`text translated text translated text.
+/// `null`text empty translated text allowed(text translated text data text text)text, text-List translated text
+/// translated text raw `TypeError` text `MALFORMED_RESPONSE` exampletext translated text.
 List<dynamic> expectListData(dynamic data, {int? httpStatus}) {
   if (data == null) return const [];
   if (data is! List) {
@@ -232,7 +232,7 @@ List<dynamic> expectListData(dynamic data, {int? httpStatus}) {
   return data;
 }
 
-/// 성공 봉투의 `meta`(목록 페이지네이션 등)를 꺼낸다. 없으면 null.
+/// success translated text `meta`(text translated text text)text translated text. translated text null.
 Map<String, dynamic>? envelopeMeta(dynamic body) {
   if (body is Map) {
     return (body['meta'] as Map?)?.cast<String, dynamic>();

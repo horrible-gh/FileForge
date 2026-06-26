@@ -42,7 +42,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
     });
   }
 
-  /// 입력값 검증. null 반환 시 유효.
+  /// translated text verify. null return text text.
   String? _validate(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
@@ -54,7 +54,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
       hostPort = hostPort.substring(8);
     }
 
-    // 스킴 중복 검사
+    // text text text
     if (hostPort.startsWith('http://') || hostPort.startsWith('https://')) {
       return 'Invalid format';
     }

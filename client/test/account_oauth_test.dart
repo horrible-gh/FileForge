@@ -7,8 +7,8 @@ import 'package:file_forge_app/services/account_cache.dart';
 import 'package:file_forge_app/services/account_service.dart';
 import 'package:file_forge_app/services/mail_envelope.dart';
 
-/// TR0005 — 증상1(진입 지연: 게이트 타임아웃 + 캐시 낙관 렌더) / 증상2(브라우저
-/// OAuth: 동의 URL 발급)의 로직을 네트워크 없이 stub 어댑터로 검증한다.
+/// TR0005 — symptom1(text text: translated text translated text + text text text) / symptom2(browser
+/// OAuth: consent URL issue)text translated text translated text text stub translated text verifytext.
 class _StubAdapter implements HttpClientAdapter {
   final Map<String, (int, Object?)> routes;
   final List<String> calls = [];
@@ -47,7 +47,7 @@ Dio _dioWith(_StubAdapter adapter) {
   return dio;
 }
 
-/// 인메모리 계정 유무 캐시 더블(SharedPreferences 플러그인 불필요).
+/// textnotetext account text text text(SharedPreferences translated text translated text).
 class _MemCache implements AccountPresenceCache {
   bool? value;
   _MemCache([this.value]);
@@ -58,7 +58,7 @@ class _MemCache implements AccountPresenceCache {
 }
 
 void main() {
-  group('증상2 — authorize URL (브라우저 OAuth)', () {
+  group('symptom2 — authorize URL (browser OAuth)', () {
     test('authorizeUrl parses auth_url from the envelope', () async {
       final adapter = _StubAdapter({
         'GET /accounts/oauth/authorize': (200, {
@@ -126,7 +126,7 @@ void main() {
     });
   });
 
-  group('증상1 — 게이트 타임아웃', () {
+  group('symptom1 — translated text translated text', () {
     test('listAccounts carries the short gate timeout', () async {
       final adapter = _StubAdapter({
         'GET /accounts': (200, {'ok': true, 'data': []})
@@ -134,12 +134,12 @@ void main() {
       await AccountService(_dioWith(adapter)).listAccounts();
       expect(adapter.lastOptions!.receiveTimeout, AccountService.kGateTimeout);
       expect(adapter.lastOptions!.sendTimeout, AccountService.kGateTimeout);
-      // 전역 30s 가 아니라 게이트용으로 짧게 끊어야 한다.
+      // text 30s text translated text translated text text translated text text.
       expect(adapter.lastOptions!.receiveTimeout!.inSeconds, lessThan(30));
     });
   });
 
-  group('증상1 — 캐시 낙관 렌더', () {
+  group('symptom1 — text text text', () {
     test('primeFromCache(true) resolves the gate optimistically before load', () async {
       final p = AccountProvider(
         _dioWith(_StubAdapter({'GET /accounts': (200, {'ok': true, 'data': []})})),
@@ -147,7 +147,7 @@ void main() {
       );
       final primed = await p.primeFromCache();
       expect(primed, true);
-      // 네트워크 응답 전: 화면을 즉시 그릴 수 있도록 ready + hasAccounts.
+      // translated text text text: screentext text text text translated text ready + hasAccounts.
       expect(p.gate, AccountGateState.ready);
       expect(p.isResolved, true);
       expect(p.hasAccounts, true);
@@ -169,7 +169,7 @@ void main() {
       final seen = <AccountGateState>[];
       p.addListener(() => seen.add(p.gate));
       await p.load();
-      // 재조정 동안 loading(스피너)로 돌아가지 않는다.
+      // translated text text loading(translated text)text translated text translated text.
       expect(seen, isNot(contains(AccountGateState.loading)));
       expect(p.gate, AccountGateState.ready);
       expect(p.hasAccounts, true);
@@ -183,10 +183,10 @@ void main() {
         cache: cache,
       );
       await p.primeFromCache();
-      expect(p.hasAccounts, true); // 낙관(stale)
+      expect(p.hasAccounts, true); // text(stale)
       await p.load();
-      expect(p.hasAccounts, false); // 실로드로 정정 → 온보딩
-      expect(cache.value, false); // 캐시도 갱신
+      expect(p.hasAccounts, false); // translated text text → translated text
+      expect(cache.value, false); // translated text refresh
     });
 
     test('successful load persists presence to the cache', () async {
@@ -223,7 +223,7 @@ void main() {
       );
       await p.primeFromCache();
       await p.load(); // transient failure
-      // 일시 오류면 직전(stale) 낙관 화면을 유지한다(블랙아웃 금지).
+      // text errortext text(stale) text screentext keeptext(translated text prohibited).
       expect(p.gate, AccountGateState.ready);
       expect(p.hasAccounts, true);
     });

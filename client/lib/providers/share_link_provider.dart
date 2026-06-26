@@ -3,29 +3,29 @@ import 'package:flutter/foundation.dart';
 import '../models/share_link.dart';
 import '../services/share_service.dart';
 
-/// D004 Phase 5 — 공유 링크 목록/생성/삭제 상태 관리
+/// D004 Phase 5 — text text text/create/delete state management
 class ShareLinkProvider extends ChangeNotifier {
-  // ── 상태 ────────────────────────────────────────────────────────────────────
+  // ── state ────────────────────────────────────────────────────────────────────
   List<ShareLink> _links = [];
   bool _isLoading = false;
   String? _error;
 
-  // ── 서비스 ────────────────────────────────────────────────────────────────
+  // ── translated text ────────────────────────────────────────────────────────────────
   late final ShareService _shareService;
 
   ShareLinkProvider(Dio dio) {
     _shareService = ShareService(dio);
   }
 
-  // ── 읽기 전용 ────────────────────────────────────────────────────────────
+  // ── read-only ────────────────────────────────────────────────────────────
   List<ShareLink> get links => _links;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ── 메서드 ────────────────────────────────────────────────────────────────
+  // ── translated text ────────────────────────────────────────────────────────────────
 
   /// GET /share/list
-  /// 서버 목록 응답을 ShareLink 모델 리스트로 갱신한다.
+  /// server text translated text ShareLink text translated text refreshtext.
   Future<void> fetchList() async {
     _isLoading = true;
     _error = null;
@@ -45,9 +45,9 @@ class ShareLinkProvider extends ChangeNotifier {
   }
 
   /// POST /share/create
-  /// P005 기준 응답: { "token": "...", "url": "..." }
-  /// 생성 응답을 그대로 반환하고, 후속 UI가 즉시 사용할 수 있게 한다.
-  /// 목록 갱신은 호출부에서 필요 시 fetchList()로 수행한다.
+  /// P005 text text: { "token": "...", "url": "..." }
+  /// create translated text as-is returntext, text UItext text translated text text text text.
+  /// text refreshtext translated text text text fetchList()text translated text.
   Future<Map<String, dynamic>?> createLink(
     String nodeUuid,
     String nodeType, [
@@ -69,7 +69,7 @@ class ShareLinkProvider extends ChangeNotifier {
   }
 
   /// DELETE /share/{token}
-  /// 성공 시 links에서 해당 토큰 항목을 제거한다.
+  /// success text linkstext text token translated text translated text.
   Future<void> deleteLink(String token) async {
     _isLoading = true;
     _error = null;

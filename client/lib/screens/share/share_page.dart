@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../providers/share_page_provider.dart';
 
-/// D004 §2-3 — 공개 공유 링크 진입 화면.
-/// - SharePageProvider를 위젯 내부에서 직접 생성 (전역 등록 금지 — L004 ST-L4-02).
-/// - 상태별 5개 화면 분기: loading | password | file | folder | error
+/// D004 §2-3 — public text text text screen.
+/// - SharePageProvidertext text translated text text create (text register prohibited — L004 ST-L4-02).
+/// - statetext 5text screen branch: loading | password | file | folder | error
 class SharePage extends StatelessWidget {
   final String token;
 
@@ -43,7 +43,7 @@ class _SharePageContent extends StatelessWidget {
   }
 }
 
-// ── 비밀번호 입력 화면 ────────────────────────────────────────────────────────
+// ── password text screen ────────────────────────────────────────────────────────
 
 class _PasswordView extends StatefulWidget {
   const _PasswordView();
@@ -113,7 +113,7 @@ class _PasswordViewState extends State<_PasswordView> {
   }
 }
 
-// ── 파일 공유 화면 ────────────────────────────────────────────────────────────
+// ── file text screen ────────────────────────────────────────────────────────────
 
 class _FileView extends StatelessWidget {
   const _FileView();
@@ -146,7 +146,7 @@ class _FileView extends StatelessWidget {
               Text(sizeText, style: const TextStyle(color: Colors.grey)),
             ],
             const SizedBox(height: 24),
-            // T075: 비밀번호 없는 공유에서만 링크 복사 버튼 표시
+            // T075: password text translated text text text text display
             if (!provider.isPasswordProtected) ...[
               OutlinedButton.icon(
                 onPressed: () async {
@@ -191,7 +191,7 @@ class _FileView extends StatelessWidget {
   }
 }
 
-// ── 폴더 공유 화면 ────────────────────────────────────────────────────────────
+// ── folder text screen ────────────────────────────────────────────────────────────
 
 class _FolderView extends StatelessWidget {
   const _FolderView();
@@ -205,7 +205,7 @@ class _FolderView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 빵부스러기
+        // translated text
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -237,7 +237,7 @@ class _FolderView extends StatelessWidget {
           ),
         ),
         const Divider(height: 1),
-        // 목록
+        // text
         Expanded(
           child: items.isEmpty
               ? const Center(child: Text('Folder is empty'))
@@ -279,7 +279,7 @@ class _FolderItemTile extends StatelessWidget {
       title: Text(item.name),
       trailing: isFolder
           ? const Icon(Icons.chevron_right)
-          // T075: 파일 항목 — 비밀번호 없는 공유는 링크 복사 + 다운로드 병렬 제공
+          // T075: file text — password text translated text text text + download text text
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -326,7 +326,7 @@ class _FolderItemTile extends StatelessWidget {
   }
 }
 
-// ── 에러 화면 ────────────────────────────────────────────────────────────────
+// ── error screen ────────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   const _ErrorView();

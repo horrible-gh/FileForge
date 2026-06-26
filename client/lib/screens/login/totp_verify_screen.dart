@@ -47,17 +47,17 @@ class _TotpVerifyScreenState extends State<TotpVerifyScreen> {
     final authProvider = context.read<AuthProvider>();
     try {
       await authProvider.verifyTotp(widget.tempToken, code);
-      // 성공 — isAuthenticated가 true → GoRouter redirect가 /login → /home 처리.
-      // 명시적 이동도 함께 보장.
+      // success — isAuthenticatedtext true → GoRouter redirecttext /login → /home text.
+      // translated text navigatetext text text.
       if (!mounted) return;
       context.go(AppRoutes.home);
     } on AuthException catch (e) {
       if (!mounted) return;
       if (e.detail == 'token_expired') {
-        // L002 ST-01 Row 10: "인증 시간이 만료되었습니다" → 로그인 화면 이동
+        // L002 ST-01 Row 10: "authentication translated text expiredtranslated text" → login screen navigate
         context.go(AppRoutes.login);
       } else {
-        // L002 ST-01 Row 9: invalid_code → 화면 유지, 재입력 허용
+        // L002 ST-01 Row 9: invalid_code → screen keep, translated text allowed
         setState(() {
           _errorMessage = 'Invalid authentication code';
           _codeController.clear();

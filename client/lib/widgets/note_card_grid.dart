@@ -6,10 +6,10 @@ import '../providers/selection_provider.dart';
 import '../widgets/empty_state.dart';
 import 'note_card.dart';
 
-/// note 스토리지 전용 2열 그리드 위젯.
-/// - 비선택모드 마지막 칸: AddNoteCard (+아이콘 + "새 노트")
-/// - 선택모드: AddNoteCard 숨김
-/// - 빈 상태: EmptyState + "새 노트 만들기" 버튼
+/// note storage text 2text translated text text.
+/// - textselectiontext translated text text: AddNoteCard (+translated text + "text text")
+/// - selectiontext: AddNoteCard text
+/// - empty state: EmptyState + "text text translated text" text
 class NoteCardGrid extends StatelessWidget {
   final List<Node> children;
   final void Function(Node node) onNoteTap;

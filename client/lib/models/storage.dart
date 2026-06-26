@@ -1,4 +1,4 @@
-/// P003 § 1 — 스토리지 정보 모델
+/// P003 § 1 — storage text text
 class Storage {
   final String storageUuid;
   final String storageName;

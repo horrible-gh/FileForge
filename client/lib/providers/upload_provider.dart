@@ -4,7 +4,7 @@ import '../models/upload_item.dart';
 import '../services/logger.dart';
 import '../services/storage_service.dart';
 
-/// L003 — 업로드 큐/병렬 업로드/패널 상태 관리
+/// L003 — upload text/text upload/text state management
 class UploadProvider extends ChangeNotifier {
   static const int maxConcurrent = 2;
   static const String _tag = 'UploadProvider';
@@ -14,12 +14,12 @@ class UploadProvider extends ChangeNotifier {
   final List<UploadItem> _items = [];
   bool _isPanelExpanded = false;
 
-  /// 업로드 완료 시 호출할 콜백 (FileProvider.loadChildren 연결)
+  /// upload complete text translated text text (FileProvider.loadChildren text)
   VoidCallback? onUploadComplete;
 
   UploadProvider(Dio dio) : _storageService = StorageService(dio);
 
-  // ── 읽기 전용 ─────────────────────────────────────────────────────────────
+  // ── read-only ─────────────────────────────────────────────────────────────
   List<UploadItem> get items => List.unmodifiable(_items);
   bool get isPanelExpanded => _isPanelExpanded;
   bool get hasItems => _items.isNotEmpty;
@@ -33,13 +33,13 @@ class UploadProvider extends ChangeNotifier {
   int get errorCount =>
       _items.where((i) => i.status == UploadStatus.error).length;
 
-  /// 모든 항목이 completed 또는 error → "전체 삭제" 활성
+  /// all translated text completed text error → "text delete" text
   bool get canClearAll =>
       _items.isNotEmpty &&
       _items.every(
           (i) => i.status == UploadStatus.completed || i.status == UploadStatus.error);
 
-  // ── 큐 추가 (L003 ST-L3-01 #1) ──────────────────────────────────────────
+  // ── text add (L003 ST-L3-01 #1) ──────────────────────────────────────────
 
   void addFiles({
     required List<MapEntry<String, List<int>>> files,
@@ -52,12 +52,12 @@ class UploadProvider extends ChangeNotifier {
     int added = 0;
     for (final entry in files) {
       final filename = entry.key;
-      // uploading 중인 동일 파일명 재추가 금지
+      // uploading text text filetext textadd prohibited
       final isDuplicate = _items.any(
         (i) => i.filename == filename && i.status == UploadStatus.uploading,
       );
       if (isDuplicate) {
-        AppLogger.warn(_tag, '중복 파일 건너뜀: $filename');
+        AppLogger.warn(_tag, 'text file translated text: $filename');
         continue;
       }
 
@@ -82,7 +82,7 @@ class UploadProvider extends ChangeNotifier {
     }
   }
 
-  // ── 큐 소비 루프 (L003 ST-L3-02) ────────────────────────────────────────
+  // ── text text text (L003 ST-L3-02) ────────────────────────────────────────
 
   void _processQueue() {
     while (uploadingCount < maxConcurrent) {
@@ -94,7 +94,7 @@ class UploadProvider extends ChangeNotifier {
     }
   }
 
-  // ── 개별 업로드 시작 (L003 ST-L3-01 #2~#7) ──────────────────────────────
+  // ── text upload text (L003 ST-L3-01 #2~#7) ──────────────────────────────
 
   Future<void> _startUpload({required UploadItem item}) async {
     item.status = UploadStatus.uploading;
@@ -122,17 +122,17 @@ class UploadProvider extends ChangeNotifier {
         },
       );
 
-      // 성공 (L003 ST-L3-01 #5)
+      // success (L003 ST-L3-01 #5)
       item.status = UploadStatus.completed;
       item.progress = 1.0;
-      AppLogger.info(_tag, '업로드 완료: ${item.filename}');
+      AppLogger.info(_tag, 'upload complete: ${item.filename}');
       notifyListeners();
       if (pendingCount == 0 && uploadingCount == 0) {
         onUploadComplete?.call();
       }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
-        // 취소 → 이미 removeItem에서 처리됨
+        // cancel → text removeItemtext translated text
         return;
       }
       final statusCode = e.response?.statusCode;
@@ -143,35 +143,35 @@ class UploadProvider extends ChangeNotifier {
       } else {
         item.status = UploadStatus.error;
         item.errorMessage = 'Upload failed';
-        AppLogger.error(_tag, '업로드 실패: ${item.filename} ($statusCode)');
+        AppLogger.error(_tag, 'upload failed: ${item.filename} ($statusCode)');
       }
       notifyListeners();
     } catch (e) {
       item.status = UploadStatus.error;
       item.errorMessage = 'Upload failed';
-      AppLogger.error(_tag, '업로드 예외: ${item.filename} $e');
+      AppLogger.error(_tag, 'upload exampletext: ${item.filename} $e');
       notifyListeners();
     }
 
-    // 큐 재개 (L003 ST-L3-01 #5~#7)
+    // text text (L003 ST-L3-01 #5~#7)
     _processQueue();
   }
 
-  // ── 항목 제거 (L003 ST-L3-01 #8~#9) ─────────────────────────────────────
+  // ── text text (L003 ST-L3-01 #8~#9) ─────────────────────────────────────
 
   void removeItem(String id) {
     final idx = _items.indexWhere((i) => i.id == id);
     if (idx == -1) return;
     final item = _items[idx];
     if (item.status == UploadStatus.uploading) {
-      item.cancelToken?.cancel('사용자 취소');
+      item.cancelToken?.cancel('translated text cancel');
     }
     _items.removeAt(idx);
     notifyListeners();
     _processQueue();
   }
 
-  // ── 완료/에러 항목 일괄 제거 (L003 ST-L3-01 #10) ────────────────────────
+  // ── complete/error text text text (L003 ST-L3-01 #10) ────────────────────────
 
   void clearCompleted() {
     _items.removeWhere(
@@ -181,7 +181,7 @@ class UploadProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── 패널 토글 (L003 ST-L3-01 #11) ───────────────────────────────────────
+  // ── text text (L003 ST-L3-01 #11) ───────────────────────────────────────
 
   void togglePanel() {
     _isPanelExpanded = !_isPanelExpanded;

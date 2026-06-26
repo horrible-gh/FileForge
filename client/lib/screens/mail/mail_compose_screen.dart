@@ -9,24 +9,24 @@ import '../../services/mail_envelope.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/recipient_field.dart';
 
-/// 메일 작성 화면 — NR0003 §7 상세 구현(쓰기 슬라이스 마무리). P0007 §7.5~§7.11.
+/// text compose screen — NR0003 §7 text text(text translated text translated text). P0007 §7.5~§7.11.
 ///
-/// 새 메일/답장/전달/초안 이어쓰기를 한 화면으로 처리한다.
-/// - 수신자는 칩(태그) 입력(RecipientField)으로 받는다.
-/// - 첨부는 file_picker 로 골라 POST /attachments 로 올리고 attachment_ids 로
-///   발송에 연결한다(§7.11).
-/// - 본문 포맷(text/html)을 토글할 수 있다(리치 에디터는 NR0003 §6 후속).
-/// - 기존 초안([draft])을 받으면 base_updated_at 으로 낙관적 경합 갱신한다(§7.10).
+/// text text/text/text/Draft translated text text screentext translated text.
+/// - translated text text(text) text(RecipientField)text translated text.
+/// - translated text file_picker text text POST /attachments text translated text attachment_ids text
+///   translated text translated text(§7.11).
+/// - Body text(text/html)text translated text text text(text translated text NR0003 §6 text).
+/// - text Draft([draft])text translated text base_updated_at text translated text text refreshtext(§7.10).
 ///
-/// 발송 전 클라 선검증(L0012)을 수행하고, 서버가 RECIPIENT_INVALID/
-/// VALIDATION_FAILED 를 반환하면 작성 내용을 보존한다(USER_ACTION — L0010 §2.3).
+/// text text text textverify(L0012)text translated text, servertext RECIPIENT_INVALID/
+/// VALIDATION_FAILED text returntext compose contenttext preservedtext(USER_ACTION — L0010 §2.3).
 class MailComposeScreen extends StatefulWidget {
   final ComposeMode mode;
 
-  /// 답장/전달 시 원본에서 파생한 초기 페이로드(composeFrom 결과).
+  /// text/text text translated text translated text text translated text(composeFrom result).
   final SendPayload? initial;
 
-  /// 이어쓰기 시 불러온 초안 — 본문·첨부·base_updated_at 의 출처(§7.9/§7.10).
+  /// translated text text translated text Draft — Body·text·base_updated_at text text(§7.9/§7.10).
   final MailDraft? draft;
 
   const MailComposeScreen({
@@ -40,7 +40,7 @@ class MailComposeScreen extends StatefulWidget {
   State<MailComposeScreen> createState() => _MailComposeScreenState();
 }
 
-/// 진행 중인 첨부 업로드 한 건(파일명 + 0..1 진행률).
+/// text text text upload text text(filetext + 0..1 translated text).
 class _UploadTask {
   final String filename;
   double progress = 0;
@@ -48,7 +48,7 @@ class _UploadTask {
 }
 
 class _MailComposeScreenState extends State<MailComposeScreen> {
-  // 수신자 목록의 단일 진실원(칩 위젯은 이 상태를 표시·편집).
+  // translated text translated text text translated text(text translated text text statetext display·text).
   List<MailAddress> _to = const [];
   List<MailAddress> _cc = const [];
   List<MailAddress> _bcc = const [];
@@ -65,7 +65,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   bool _sending = false;
   String? _toError;
 
-  // 초안 이어쓰기 상태.
+  // Draft translated text state.
   String? _draftId;
   String? _baseUpdatedAt;
 
@@ -118,7 +118,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
   }
 
-  // ── 첨부 업로드 (§7.11) ─────────────────────────────────────────────────────
+  // ── text upload (§7.11) ─────────────────────────────────────────────────────
 
   Future<void> _pickAttachments() async {
     final result = await FilePicker.platform.pickFiles(
@@ -162,7 +162,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
 
   bool get _uploadsInFlight => _uploads.isNotEmpty;
 
-  // ── 발송 / 초안 ─────────────────────────────────────────────────────────────
+  // ── text / Draft ─────────────────────────────────────────────────────────────
 
   Future<void> _send() async {
     final t = AppLocalizations.of(context);
@@ -173,7 +173,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     setState(() => _toError = null);
     final payload = _buildPayload();
 
-    // 클라 선검증(L0012 §4.1) — 서버 왕복 전에 명백한 오류를 잡는다.
+    // text textverify(L0012 §4.1) — server text text translated text errortext translated text.
     final v = payload.validate();
     if (!v.ok) {
       setState(() {
@@ -201,7 +201,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       Navigator.of(context).pop(true);
       return;
     }
-    // 실패 — 범주별 분기(L0010 §2.3). 작성 내용은 보존한다.
+    // failed — translated text branch(L0010 §2.3). compose contenttext preservedtext.
     if (err.category == MailErrorCategory.userAction &&
         err.code == 'RECIPIENT_INVALID') {
       setState(() => _toError = t.serverRejectedRecipient);
@@ -221,7 +221,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final payload = _buildPayload();
 
     if (_draftId == null) {
-      // 신규 초안.
+      // text Draft.
       final id = await provider.saveDraft(payload);
       if (!mounted) return;
       setState(() => _sending = false);
@@ -234,7 +234,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       return;
     }
 
-    // 기존 초안 갱신(낙관적 경합, §7.10).
+    // text Draft refresh(translated text text, §7.10).
     final result =
         await provider.updateDraft(_draftId!, payload, _baseUpdatedAt ?? '');
     if (!mounted) return;
@@ -251,7 +251,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     }
   }
 
-  /// §7.10 — 초안이 다른 곳에서 수정됨. 서버 최신본 재적재를 안내한다.
+  /// §7.10 — Drafttext text translated text updatetext. server translated text translated text translated text.
   Future<void> _handleDraftConflict() async {
     final t = AppLocalizations.of(context);
     final reload = await showDialog<bool>(
@@ -382,8 +382,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     );
   }
 
-  /// 본문 포맷 선택(text/html). 리치 에디터는 NR0003 §6 후속 — 현재 HTML 은
-  /// 소스 입력으로 받아 그대로 전송한다(format='html').
+  /// Body text selection(text/html). text translated text NR0003 §6 text — current HTML text
+  /// text translated text text as-is translated text(format='html').
   Widget _formatToggle(AppLocalizations t) {
     return Row(
       children: [

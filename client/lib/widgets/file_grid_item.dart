@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 import '../models/node.dart';
 
-/// 그리드 뷰용 파일/폴더 셀 위젯 (T052, T054)
-/// 구조: Card(clipBehavior) → InkWell → Padding → Column (NoteCard 패턴)
+/// translated text text file/folder text text (T052, T054)
+/// text: Card(clipBehavior) → InkWell → Padding → Column (NoteCard text)
 class FileGridItem extends StatelessWidget {
   final Node node;
 
-  /// 폴더 탭 시 호출. 파일은 null.
+  /// folder text text text. filetext null.
   final VoidCallback? onFolderTap;
 
-  /// 파일 탭 시 호출.
+  /// file text text text.
   final VoidCallback? onFileTap;
 
-  /// 케밥 메뉴 탭 시 호출.
+  /// text text text text text.
   final VoidCallback? onKebabTap;
 
-  /// 롱프레스 시 호출.
+  /// translated text text text.
   final VoidCallback? onLongPress;
 
-  /// 선택 모드 탭 시 호출.
+  /// selection text text text text.
   final VoidCallback? onSelectionTap;
 
-  /// 선택 모드 여부.
+  /// selection text text.
   final bool isSelectionMode;
 
-  /// 선택 여부.
+  /// selection text.
   final bool isSelected;
 
   const FileGridItem({
@@ -52,20 +52,20 @@ class FileGridItem extends StatelessWidget {
         onLongPress: onLongPress,
         child: Stack(
           children: [
-            // ── 메인 콘텐츠 ─────────────────────────────────────────
+            // ── text translated text ─────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(8),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 아이콘 (선택 모드일 때 체크박스로 교체)
+                  // translated text (selection translated text text translated text text)
                   if (isSelectionMode)
                     _SelectionCheckbox(isSelected: isSelected)
                   else
                     _buildIcon(context),
                   const SizedBox(height: 6),
-                  // 파일명 — 최대 2줄 ellipsis
+                  // filetext — text 2text ellipsis
                   SizedBox(
                     width: double.infinity,
                     child: Text(
@@ -79,7 +79,7 @@ class FileGridItem extends StatelessWidget {
                 ],
               ),
             ),
-            // ── 케밥 버튼 (오른쪽 상단, 비선택 모드) ─────────────────
+            // ── text text (translated text text, textselection text) ─────────────────
             if (!isSelectionMode && onKebabTap != null)
               Positioned(
                   top: 0,
@@ -146,7 +146,7 @@ class FileGridItem extends StatelessWidget {
   }
 }
 
-/// NoteCard._SelectionCheckbox 패턴과 동일한 체크박스 위젯 (T054)
+/// NoteCard._SelectionCheckbox translated text translated text translated text text (T054)
 class _SelectionCheckbox extends StatelessWidget {
   final bool isSelected;
 

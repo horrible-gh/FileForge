@@ -26,13 +26,13 @@ import '../../widgets/share_link_bottom_sheet.dart';
 import '../../utils/file_type_helper.dart';
 import '../preview/file_preview_screen.dart';
 
-// 웹 전용 import — kIsWeb 가드 하에서만 사용
+// text text import — kIsWeb guard translated text text
 import 'package:flutter_dropzone/flutter_dropzone.dart'
     if (dart.library.io) '../../utils/dropzone_stub.dart';
 import '../../utils/web_directory_drop.dart'
     if (dart.library.io) '../../utils/web_directory_drop_stub.dart';
 
-/// 파일/폴더 목록 화면 — Phase 3+4 메인 콘텐츠
+/// file/folder text screen — Phase 3+4 text translated text
 class FileListScreen extends StatefulWidget {
   final String? storageUuid;
   final String? nodeUuid;
@@ -48,7 +48,7 @@ class FileListScreen extends StatefulWidget {
 }
 
 class _FileListScreenState extends State<FileListScreen> {
-  // 웹 드롭존 컨트롤러 (kIsWeb + file 타입일 때만 사용)
+  // text translated text translated text (kIsWeb + file translated text text text)
   DropzoneViewController? _dropController;
   bool _isDragging = false;
 
@@ -138,7 +138,7 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  // ── 파일 조작 핸들러 ──────────────────────────────────────────────────────
+  // ── file text translated text ──────────────────────────────────────────────────────
 
   String get _storageType =>
       context.read<StorageProvider>().currentStorage?.storageType ?? 'file';
@@ -156,7 +156,7 @@ class _FileListScreenState extends State<FileListScreen> {
   StorageService get _storageService =>
       StorageService(context.read<AuthProvider>().dio);
 
-  /// 케밥메뉴 오픈
+  /// translated text text
   void _onKebabTap(Node node) async {
     final action = await FileActionSheet.show(
       context,
@@ -179,8 +179,8 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  /// 파일 탭 → previewType 분기: unsupported이면 다운로드, 그 외는 미리보기 (T038)
-  /// 폴더인 경우 폴더 진입 유지 (방어 가드)
+  /// file text → previewType branch: unsupportedtext download, text text translated text (T038)
+  /// foldertext text folder text keep (text guard)
   void _onItemTap(Node node) async {
     if (node.isFolder) {
       _navigateToFolder(context, node.nodeUuid);
@@ -194,8 +194,8 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  /// 미리보기 화면 진입 — Navigator.push 방식 (D006 §12)
-  /// pop 결과 bool 수신 → true이면 FileProvider.loadChildren() 갱신
+  /// translated text screen text — Navigator.push text (D006 §12)
+  /// pop result bool text → truetext FileProvider.loadChildren() refresh
   Future<void> _handlePreview(Node node, {bool autoEdit = false}) async {
     if (!mounted) return;
     final result = await Navigator.push<bool>(
@@ -220,7 +220,7 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  /// 공유 링크 생성 BottomSheet 오픈
+  /// Create a shared link BottomSheet text
   Future<void> _handleShare(Node node) async {
     if (!mounted) return;
     showModalBottomSheet(
@@ -230,7 +230,7 @@ class _FileListScreenState extends State<FileListScreen> {
     );
   }
 
-  /// 다운로드 — 단일 파일/폴더
+  /// download — text file/folder
   Future<void> _handleDownload(Node node) async {
     try {
       final response = await _storageService.download(
@@ -258,7 +258,7 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  /// 이름 변경
+  /// name change
   Future<void> _handleRename(Node node) async {
     final newName = await FileOperationDialogs.showRenameDialog(
       context,
@@ -279,7 +279,7 @@ class _FileListScreenState extends State<FileListScreen> {
     } on DioException catch (e) {
       if (e.response?.statusCode == 409) {
         if (mounted) AppToast.error(context, 'A file with this name already exists');
-        // 다이얼로그 재호출
+        // translated text translated text
         if (mounted) _handleRename(node);
       } else {
         if (mounted) AppToast.error(context, 'Failed to rename');
@@ -287,7 +287,7 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  /// 삭제
+  /// delete
   Future<void> _handleDelete(Node node) async {
     final confirmed = await FileOperationDialogs.showDeleteConfirmDialog(
       context,
@@ -314,17 +314,17 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  /// note 파일 탭 → 미리보기 진입 (T045)
+  /// note file text → translated text text (T045)
   Future<void> _onFileTap(Node node) async {
     await _handlePreview(node);
   }
 
-  /// note 생성 다이얼로그 → 빈 .md 업로드 → FilePreviewScreen 자동 진입 (T046)
+  /// note create translated text → empty .md upload → FilePreviewScreen text text (T046)
   Future<void> _handleNoteCreate() async {
     final nameController = TextEditingController(text: 'New Note');
     bool isUploading = false;
 
-    /// 파일명으로 사용할 수 없는 문자 포함 여부 검사 (T046 §3)
+    /// filetranslated text translated text text text text text text text (T046 §3)
     bool hasInvalidChars(String value) {
       const invalid = r'/\:*?"<>|';
       return value.runes.any((c) => invalid.codeUnits.contains(c));
@@ -386,7 +386,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   if (mounted) {
                     AppToast.error(context, 'A note with this name already exists');
                   }
-                  // 409: 다이얼로그 유지 — pop하지 않음
+                  // 409: translated text keep — poptext text
                 } else {
                   if (mounted) {
                     AppToast.error(context, 'Failed to create note');
@@ -435,22 +435,22 @@ class _FileListScreenState extends State<FileListScreen> {
     nameController.dispose();
   }
 
-  /// note rename — 다이얼로그에서 확장자 숨김, 서버 전송 직전 원본 확장자 재결합 (T047)
+  /// note rename — translated text translated text text, server text text text translated text translated text (T047)
   Future<void> _handleNoteRename(Node node) async {
     if (node.isFolder) {
-      // 폴더는 기존 rename 경로 그대로 위임
+      // foldertext text rename path as-is text
       await _handleRename(node);
       return;
     }
 
-    // 원본 확장자 추출 — 확장자 없는 파일은 빈 문자열
+    // text translated text text — translated text text filetext empty string
     final dotIndex = node.name.lastIndexOf('.');
     final ext = dotIndex > 0 ? node.name.substring(dotIndex) : '';
     final titleDefault = dotIndex > 0 ? node.name.substring(0, dotIndex) : node.name;
 
     final nameController = TextEditingController(text: titleDefault);
 
-    /// 파일명으로 사용할 수 없는 문자 포함 여부 검사 (T047 §3)
+    /// filetranslated text translated text text text text text text text (T047 §3)
     bool hasInvalidChars(String value) {
       const invalid = r'/\:*?"<>|';
       return value.runes.any((c) => invalid.codeUnits.contains(c));
@@ -469,7 +469,7 @@ class _FileListScreenState extends State<FileListScreen> {
 
             Future<void> onConfirm() async {
               if (!canConfirm) return;
-              // 중복 확장자 방지: 입력값이 이미 원본 확장자로 끝나면 재결합 생략 (T047 §2)
+              // text translated text text: translated text text text translated text translated text translated text text (T047 §2)
               final newName = (ext.isNotEmpty && trimmed.endsWith(ext))
                   ? trimmed
                   : '$trimmed$ext';
@@ -494,7 +494,7 @@ class _FileListScreenState extends State<FileListScreen> {
                 if (!dialogContext.mounted) return;
                 if (e.response?.statusCode == 409) {
                   if (mounted) AppToast.error(context, 'A note with this name already exists');
-                  // 409: 다이얼로그 유지
+                  // 409: translated text keep
                 } else {
                   if (mounted) AppToast.error(context, 'Failed to rename');
                   Navigator.pop(dialogContext);
@@ -534,16 +534,16 @@ class _FileListScreenState extends State<FileListScreen> {
     nameController.dispose();
   }
 
-  // ── 웹 드래그앤드롭 (kIsWeb + file 타입 전용) ────────────────────────────
+  // ── text translated text (kIsWeb + file text text) ────────────────────────────
 
-  /// DropzoneView에서 파일 목록 드롭 시 처리 (T056)
-  /// flutter_dropzone onDropMultiple 콜백으로 파일 목록을 받아
-  /// bytes + relativePath(파일명)를 UploadProvider.addFiles()로 전달한다.
+  /// DropzoneViewtext file text text text text (T056)
+  /// flutter_dropzone onDropMultiple translated text file translated text text
+  /// bytes + relativePath(filetext)text UploadProvider.addFiles()text translated text.
   void _handleWebDrop(List<dynamic>? files) {
     debugPrint('[DnD] _handleWebDrop called, files=${files?.length}');
     if (!kIsWeb) return;
     if (_dropController == null || files == null || files.isEmpty) return;
-    // 비동기 처리를 별도 메서드로 분리하여 ValueChanged 시그니처 준수
+    // translated text translated text text translated text minutestranslated text ValueChanged translated text text
     _processWebDropFiles(files);
   }
 
@@ -554,7 +554,7 @@ class _FileListScreenState extends State<FileListScreen> {
     final Map<String, String> relativePathMap = {};
 
     for (final file in files) {
-      if (file == null) continue; // 디렉터리 드롭 시 flutter_dropzone이 전달하는 null 방어
+      if (file == null) continue; // directory text text flutter_dropzonetext translated text null text
       try {
         final name = await _dropController!.getFilename(file);
         final bytes = await _dropController!.getFileData(file);
@@ -590,8 +590,8 @@ class _FileListScreenState extends State<FileListScreen> {
         );
   }
 
-  /// 디렉터리 드롭 재귀 순회 완료 후 호출 (T057)
-  /// [registerDirectoryCaptureDrop]의 onFilesReady 콜백.
+  /// directory text text text complete text text (T057)
+  /// [registerDirectoryCaptureDrop]text onFilesReady text.
   void _handleDirectoryDrop(List<WebDropFileInfo> files) {
     if (!mounted) return;
     setState(() => _isDragging = false);
@@ -625,7 +625,7 @@ class _FileListScreenState extends State<FileListScreen> {
     );
   }
 
-  /// 조작 후 목록/트리 새로고침 (P004 §12)
+  /// text text text/text translated text (P004 §12)
   void _refreshAfterOperation(bool refreshTree) {
     final fileProvider = context.read<FileProvider>();
     fileProvider.loadChildren(
@@ -638,7 +638,7 @@ class _FileListScreenState extends State<FileListScreen> {
     }
   }
 
-  // ── 빌드 ──────────────────────────────────────────────────────────────────
+  // ── build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -668,7 +668,7 @@ class _FileListScreenState extends State<FileListScreen> {
         storageProvider.currentStorage?.storageType == 'file';
     final bool useDropzone = kIsWeb && isFileStorage;
 
-    // 파일 목록 콘텐츠 영역
+    // file text translated text text
     final Widget contentArea = Expanded(
       child: RefreshIndicator(
         onRefresh: _refresh,
@@ -758,7 +758,7 @@ class _FileListScreenState extends State<FileListScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final node = fileProvider.children[index];
-                      // 파일 탭 → ListTile.onTap 직접 연결 (T039, NR018 수정)
+                      // file text → ListTile.onTap text text (T039, NR018 update)
                       return FileListItem(
                         node: node,
                         isSelectionMode: selectionProvider.isSelectionMode,
@@ -791,7 +791,7 @@ class _FileListScreenState extends State<FileListScreen> {
       ),
     );
 
-    // kIsWeb + file 타입일 때: DropzoneView + 드래그 오버레이를 Stack으로 부착
+    // kIsWeb + file translated text text: DropzoneView + translated text translated text Stacktext text
     if (useDropzone) {
       return Column(
         children: [
@@ -803,9 +803,9 @@ class _FileListScreenState extends State<FileListScreen> {
                     contentArea,
                   ],
                 ),
-                // DropzoneView — Positioned.fill로 전체 영역 점유, 드롭 이벤트 수신 (T063)
-                // IgnorePointer: Flutter hit-test를 통과시켜 하단 contentArea 클릭/스크롤 유지.
-                // 브라우저 네이티브 drag 이벤트는 DOM 레이어에서 처리되므로 onDropFiles는 계속 작동.
+                // DropzoneView — Positioned.filltext text text text, text translated text text (T063)
+                // IgnorePointer: Flutter hit-testtext translated text text contentArea text/translated text keep.
+                // browser translated text drag translated text DOM translated text translated text onDropFilestext text text.
                 Positioned.fill(
                   child: IgnorePointer(
                     ignoring: !_isDragging,
@@ -833,7 +833,7 @@ class _FileListScreenState extends State<FileListScreen> {
                     ),
                   ),
                 ),
-                // 드래그 오버 시 반투명 오버레이
+                // translated text text text translated text translated text
                 if (_isDragging)
                   Positioned.fill(
                     child: IgnorePointer(
@@ -873,17 +873,17 @@ class _FileListScreenState extends State<FileListScreen> {
               ],
             ),
           ),
-          // 업로드 진행률 패널
+          // upload translated text text
           const UploadPanel(),
         ],
       );
     }
 
-    // 비웹 또는 note 타입: 기존 레이아웃 그대로
+    // text text note text: text translated text as-is
     return Column(
       children: [
         contentArea,
-        // 업로드 진행률 패널
+        // upload translated text text
         const UploadPanel(),
       ],
     );

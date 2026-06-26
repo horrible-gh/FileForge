@@ -5,12 +5,12 @@ import '../../providers/storage_provider.dart';
 import '../file/file_list_screen.dart';
 import '../mail/mail_list_screen.dart';
 
-/// 스토리지 타입 분기 진입점 — NR0003 §1.1.
+/// storage text branch translated text — NR0003 §1.1.
 ///
-/// CH0002 권고("mail을 file/note의 if-분기에 욱여넣지 말고 전용 모듈로,
-/// storage_type은 라우팅 진입점으로만")에 따라, `/:storageUuid` 라우트에서
-/// 스토리지 타입을 보고 mail이면 MailListScreen, 아니면 FileListScreen으로
-/// 분기한다. FileListScreen 내부를 오염시키지 않는다.
+/// CH0002 text("mailtext file/notetext if-branchtext translated text text text translated text,
+/// storage_typetext translated text translated text")text text, `/:storageUuid` translated text
+/// storage translated text text mailtext MailListScreen, translated text FileListScreentext
+/// branchtext. FileListScreen translated text translated text translated text.
 class StorageDispatcher extends StatefulWidget {
   final String storageUuid;
   final String? nodeUuid;
@@ -47,7 +47,7 @@ class _StorageDispatcherState extends State<StorageDispatcher> {
         .where((s) => s.storageUuid == widget.storageUuid);
     final target = matches.isEmpty ? null : matches.first;
 
-    // 타입을 아직 모르면(목록 로딩 중) 스피너. 알 수 없으면 파일 화면으로 폴백.
+    // translated text text translated text(text loading text) translated text. text text translated text file screentext text.
     if (target == null) {
       if (storageProvider.isLoading) {
         return const Center(child: CircularProgressIndicator());

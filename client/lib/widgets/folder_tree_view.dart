@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/node.dart';
 
-/// Drawer 내 계층형 폴더 트리 위젯
-/// L002 ST-02 Row10: 서버 get_directory_trees 응답은 폴더만 포함하므로 필터 없이 사용.
-/// parent_uuid 기준으로 트리를 구성한다.
+/// Drawer text translated text folder text text
+/// L002 ST-02 Row10: server get_directory_trees translated text foldertext translated text text text text.
+/// parent_uuid translated text translated text translated text.
 class FolderTreeView extends StatelessWidget {
   final List<Node> nodes;
   final String? currentNodeUuid;
 
-  /// 폴더 탭 시 호출. 해당 폴더의 nodeUuid를 전달.
+  /// folder text text text. text foldertext nodeUuidtext text.
   final void Function(Node node) onFolderTapped;
 
   const FolderTreeView({
@@ -22,7 +22,7 @@ class FolderTreeView extends StatelessWidget {
   Widget build(BuildContext context) {
     if (nodes.isEmpty) return const SizedBox.shrink();
 
-    // 루트 노드(parentUuid == null)부터 렌더링
+    // text text(parentUuid == null)text translated text
     final rootNodes = nodes.where((n) => n.parentUuid == null).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

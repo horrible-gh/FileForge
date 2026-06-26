@@ -1,5 +1,5 @@
-/// P003 § 2-3 — 빵부스러기 경로 항목
-/// nodeUuid == null 이면 루트.
+/// P003 § 2-3 — translated text path text
+/// nodeUuid == null text text.
 class Breadcrumb {
   final String? nodeUuid;
   final String name;

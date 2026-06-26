@@ -14,8 +14,8 @@ import 'providers/account_provider.dart';
 import 'services/account_cache.dart';
 import 'services/mail_api_client.dart';
 
-/// 앱 루트 위젯
-/// MaterialApp.router + MultiProvider 래핑
+/// text text text
+/// MaterialApp.router + MultiProvider text
 class App extends StatefulWidget {
   const App({super.key, required this.initialViewMode, this.initialServerUrl = ''});
 
@@ -45,7 +45,7 @@ class _AppState extends State<App> {
     if (widget.initialServerUrl.isNotEmpty) {
       _authProvider.setServerUrl(widget.initialServerUrl);
     }
-    // AuthProvider의 구성된 Dio(Bearer 인터셉터 포함)을 공유한다.
+    // AuthProvidertext translated text Dio(Bearer translated text text)text translated text.
     _storageProvider = StorageProvider(_authProvider.dio);
     _fileProvider = FileProvider(
       _authProvider.dio,
@@ -54,7 +54,7 @@ class _AppState extends State<App> {
     _uploadProvider = UploadProvider(_authProvider.dio);
     _selectionProvider = SelectionProvider();
     _shareLinkProvider = ShareLinkProvider(_authProvider.dio);
-    // MailAnchor(Go) 전용 Dio — FileForge 세션 토큰을 공유한다(NR0003 §1/§3.3).
+    // MailAnchor(Go) text Dio — FileForge session tokentext translated text(NR0003 §1/§3.3).
     _mailApiClient = MailApiClient()
       ..configure(
         getAccessToken: () => _authProvider.accessToken,
@@ -62,13 +62,13 @@ class _AppState extends State<App> {
         onSessionExpired: _authProvider.logout,
       );
     _mailProvider = MailProvider(_mailApiClient.dio);
-    // 계정 게이트 — MailProvider 와 같은 MailApiClient Dio(세션 토큰 공유)를 탄다.
-    // 계정 유무 캐시를 주입해 콜드 진입에서 화면을 즉시 그린다(TR0005 §증상1).
+    // account translated text — MailProvider text text MailApiClient Dio(session token text)text text.
+    // account text translated text translated text text translated text screentext text translated text(TR0005 §symptom1).
     _accountProvider = AccountProvider(
       _mailApiClient.dio,
       cache: SharedPrefsAccountCache(),
     );
-    // T074: 로그아웃/세션 만료 시 storage·file·mail·account 상태 초기화 연결
+    // T074: logout/session expired text storage·file·mail·account state initialize text
     _authProvider.setProviderResetCallback(() {
       _storageProvider.reset();
       _fileProvider.reset();
@@ -95,8 +95,8 @@ class _AppState extends State<App> {
         title: 'FileForge',
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
-        // i18n(mailanchor.ui.0002) — 기기 로케일을 따르며 ko/ja/en 을 지원한다.
-        // 지원하지 않는 로케일은 supportedLocales 의 첫 항목(en)으로 폴백한다.
+        // i18n(mailanchor.ui.0002) — text translated text translated text ko/ja/en text translated text.
+        // translated text text translated text supportedLocales text text text(en)text translated text.
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: _routerConfig,

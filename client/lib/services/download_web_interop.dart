@@ -29,9 +29,9 @@ external JSObject _jsCreateElement(String tag);
 @JS('document.body.appendChild')
 external void _jsBodyAppendChild(JSObject el);
 
-/// 브라우저 Blob 다운로드 트리거 (웹 전용).
+/// browser Blob download translated text (text text).
 void triggerBrowserDownload(List<int> bytes, String filename) {
-  // bytes.toList() 경유 fresh copy로 detached ArrayBuffer 영향 회피 (T036)
+  // bytes.toList() text fresh copytext detached ArrayBuffer text text (T036)
   final uint8 = Uint8List.fromList(bytes.toList());
   final blob = _JsBlob([uint8.toJS].toJS);
   final url = _jsCreateObjectUrl(blob);

@@ -1,4 +1,4 @@
-/// D004 Phase 5 — 공유 링크 모델
+/// D004 Phase 5 — text text text
 class ShareLink {
   final String token;
   final String nodeUuid;

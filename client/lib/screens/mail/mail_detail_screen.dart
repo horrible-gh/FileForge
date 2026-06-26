@@ -7,12 +7,12 @@ import '../../services/mail_compose.dart';
 import '../../widgets/error_retry.dart';
 import 'mail_compose_screen.dart';
 
-/// 메일 상세 화면 — NR0003 §7 초기 구현(읽기 슬라이스).
+/// text text screen — NR0003 §7 initial implementation(text translated text).
 ///
-/// 제목·발신/수신·수신시각·본문·첨부 메타를 표시한다. 진입 시 상세 로드 +
-/// 안읽음이면 읽음 처리(MailProvider.openMail).
-/// HTML 본문 리치 렌더링은 신규 의존성 도입(NR0003 §6)이 필요하므로
-/// 초기 구현은 텍스트 폴백으로 표시하고, 상세 구현(후속 T)에서 교체한다.
+/// text·text/text·translated text·Body·text translated text displaytext. text text text text +
+/// translated text text text(MailProvider.openMail).
+/// HTML Body text translated text text translated text text(NR0003 §6)text translated text
+/// initial implementationtext translated text translated text displaytext, text text(text T)text translated text.
 class MailDetailScreen extends StatefulWidget {
   final String mailId;
   final String subject;
@@ -121,7 +121,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
                 leading: const Icon(Icons.attach_file_rounded),
                 title: Text(a.filename),
                 subtitle: Text(_humanSize(a.sizeBytes)),
-                // 첨부 다운로드는 상세 구현(후속 T)에서 연결한다(P0007 §6.4).
+                // text downloadtext text text(text T)text translated text(P0007 §6.4).
               )),
         ],
       ],
@@ -151,8 +151,8 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     );
   }
 
-  /// 초기 구현 본문 렌더링: text는 그대로, html은 태그를 제거한 텍스트 폴백.
-  /// 리치 HTML 렌더링은 NR0003 §6(flutter_widget_from_html 도입) 후 교체.
+  /// initial implementation Body translated text: texttext as-is, htmltext translated text translated text translated text text.
+  /// text HTML translated text NR0003 §6(flutter_widget_from_html text) text text.
   static String _renderBody(MailBody body) {
     if (!body.isHtml) return body.content;
     return body.content

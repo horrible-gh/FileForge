@@ -1,17 +1,17 @@
 import 'package:dio/dio.dart';
 
-/// 업로드 항목 상태
+/// upload text state
 enum UploadStatus { pending, uploading, completed, error }
 
-/// L003 ST-L3-01 — 업로드 큐 항목 모델
-/// 파일별 업로드 컨텍스트(storageUuid 등)를 항목 자체에 보존해
-/// 배치 추가 시 기존 pending 항목의 컨텍스트가 덮어쓰이지 않도록 한다.
+/// L003 ST-L3-01 — upload text text text
+/// filetext upload translated text(storageUuid text)text text translated text preservedtext
+/// text add text text pending translated text translated text translated text translated text text.
 class UploadItem {
   final String id;
   final String filename;
   final List<int> fileBytes;
 
-  // 항목별 업로드 컨텍스트
+  // translated text upload translated text
   final String storageUuid;
   final String parentUuid;
   final String userUuid;

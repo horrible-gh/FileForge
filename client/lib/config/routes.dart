@@ -27,9 +27,9 @@ class AppRoutes {
         final isAuthenticated = authProvider.isAuthenticated;
         final location = state.matchedLocation;
 
-        // 인증되지 않은 상태에서 보호된 경로 접근 → splash 경유 후 자동 로그인 시도
-        // /share/:token은 공개 경로이므로 /share/ prefix 전체를 인증 우회 처리.
-        // /share-links는 /share/ 시작이 아니므로 별도 예외 불필요.
+        // authenticationtext text statetext translated text path text → splash text text text login text
+        // /share/:tokentext public pathtranslated text /share/ prefix translated text authentication text text.
+        // /share-linkstext /share/ translated text translated text text exampletext translated text.
         if (!isAuthenticated &&
             !location.startsWith('/splash') &&
             !location.startsWith('/login') &&
@@ -40,7 +40,7 @@ class AppRoutes {
           print('[T016] redirect → /splash?redirect=$encodedRedirect');
           return '/splash?redirect=$encodedRedirect';
         }
-        // 인증된 상태에서 로그인 페이지 접근 → 메인
+        // authenticationtext statetext login translated text text → text
         if (isAuthenticated && location.startsWith('/login')) {
           return home;
         }
@@ -60,22 +60,22 @@ class AppRoutes {
             GoRoute(
               path: 'totp',
               builder: (context, state) {
-                // tempToken은 extra(String)로 전달한다.
+                // tempTokentext extra(String)text translated text.
                 final tempToken = state.extra as String? ?? '';
                 return TotpVerifyScreen(tempToken: tempToken);
               },
             ),
           ],
         ),
-        // ── Phase 5 딥링크 공개 라우트 — ShellRoute 앞에 배치, /share/ 경로 우선 매칭 보장 ──
+        // ── Phase 5 translated text public translated text — ShellRoute firsttext text, /share/ path text text text ──
         GoRoute(
           path: '/share/:token',
           builder: (context, state) => SharePage(
             token: state.pathParameters['token'] ?? '',
           ),
         ),
-        // ── Phase 3 파일 탐색기 ShellRoute ───────────────────────────────────
-        // MainScreen(Drawer + AppBar)이 shell 역할. 내부 라우트에 따라 body 변경.
+        // ── Phase 3 file translated text ShellRoute ───────────────────────────────────
+        // MainScreen(Drawer + AppBar)text shell text. text translated text text body change.
         ShellRoute(
           builder: (context, state, child) => MainScreen(child: child),
           routes: [
@@ -91,8 +91,8 @@ class AppRoutes {
               path: settings,
               builder: (context, state) => const SecuritySettingsScreen(),
             ),
-            // 스토리지 타입 분기: mail → MailListScreen, 그 외 → FileListScreen.
-            // (NR0003 §1.1 — 전용 모듈 라우팅, FileListScreen 내부 비오염)
+            // storage text branch: mail → MailListScreen, text text → FileListScreen.
+            // (NR0003 §1.1 — text text translated text, FileListScreen text translated text)
             GoRoute(
               path: '/:storageUuid',
               builder: (context, state) => StorageDispatcher(

@@ -3,26 +3,26 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../config/env.dart';
 
-/// 로그 레벨 — error > warn > info > debug 순으로 상위 레벨만 출력.
+/// text text — error > warn > info > debug translated text parent translated text text.
 enum LogLevel { debug, info, warn, error }
 
-/// 앱 전역 로거.
+/// text text text.
 ///
-/// 사용법:
+/// translated text:
 /// ```dart
 /// AppLogger.debug('FileProvider', 'loadChildren called');
-/// AppLogger.info('AuthProvider', '로그인 성공: user_id=admin');
-/// AppLogger.warn('ApiClient',  'HTTP 413 용량 초과');
-/// AppLogger.error('AuthService', '토큰 리프레시 실패: $e');
+/// AppLogger.info('AuthProvider', 'login success: user_id=admin');
+/// AppLogger.warn('ApiClient',  'HTTP 413 capacity exceeded');
+/// AppLogger.error('AuthService', 'token translated text failed: $e');
 /// ```
 ///
-/// 출력 대상은 Env 값으로 제어한다.
-/// - Env.logConsole = true  → 콘솔 출력 (release 빌드에서는 prod.json 으로 false 주입)
-/// - Env.logFile    = true  → 앱 내부 저장소에 파일 저장
+/// text translated text Env translated text translated text.
+/// - Env.logConsole = true  → text text (release buildtranslated text prod.json text false text)
+/// - Env.logFile    = true  → text text savetext file save
 ///
-/// 파일 형식: `[LEVEL] YYYY-MM-DD HH:mm:ss.SSS [tag] message`
-/// 파일 이름: fileforge_YYYY-MM-DD.log  (일별 로테이션)
-/// 보존 기간: 최근 7일
+/// file text: `[LEVEL] YYYY-MM-DD HH:mm:ss.SSS [tag] message`
+/// file name: fileforge_YYYY-MM-DD.log  (text translated text)
+/// preserved text: text 7text
 class AppLogger {
   AppLogger._();
   static final AppLogger _instance = AppLogger._();
@@ -30,7 +30,7 @@ class AppLogger {
   static const int _retentionDays = 7;
   bool _pruned = false;
 
-  // ── 퍼블릭 API ────────────────────────────────────────────────────────────
+  // ── translated text API ────────────────────────────────────────────────────────────
 
   static void debug(String tag, String message) =>
       _instance._log(LogLevel.debug, tag, message);
@@ -44,7 +44,7 @@ class AppLogger {
   static void error(String tag, String message) =>
       _instance._log(LogLevel.error, tag, message);
 
-  // ── 내부 구현 ─────────────────────────────────────────────────────────────
+  // ── text text ─────────────────────────────────────────────────────────────
 
   LogLevel get _minLevel {
     switch (Env.logLevel.toLowerCase()) {
@@ -118,7 +118,7 @@ class AppLogger {
         }
       }
     } catch (_) {
-      // 파일 시스템 오류는 무시한다.
+      // file translated text errortext translated text.
     }
   }
 }

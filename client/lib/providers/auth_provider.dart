@@ -8,36 +8,36 @@ import '../services/auth_service.dart';
 import '../utils/secure_storage.dart';
 import '../config/app_config.dart';
 
-/// L002 ST-01 로그인 결과 열거형
+/// L002 ST-01 login result translated text
 enum LoginResult { success, totpRequired, failed }
 
-/// 인증 상태 관리 Provider
-/// Phase 1+2 책임:
-///   - access/refresh token 메모리 보관
-///   - SecureStorage 저장/불러오기/삭제
-///   - tryAutoLogin() — 앱 시작 시 자동 로그인
-///   - refreshAccessToken() — 토큰 갱신
-///   - logout() — 로그아웃
-///   - login() — ID/PW 로그인 (Phase 2)
-///   - verifyTotp() — TOTP 2차 인증 (Phase 2)
+/// authentication state management Provider
+/// Phase 1+2 text:
+///   - access/refresh token notetext text
+///   - SecureStorage save/load/delete
+///   - tryAutoLogin() — text text text text login
+///   - refreshAccessToken() — token refresh
+///   - logout() — logout
+///   - login() — ID/PW login (Phase 2)
+///   - verifyTotp() — TOTP 2text authentication (Phase 2)
 class AuthProvider extends ChangeNotifier {
-  // 상태
+  // state
   User? _user;
   String? _accessToken;
   String? _refreshToken;
-  String? _tempToken;   // TOTP 화면으로 전달할 temp_token
+  String? _tempToken;   // TOTP screentext translated text temp_token
   bool _isLoading = false;
   String? _error;
 
-  // 서비스
+  // translated text
   late final ApiClient _apiClient;
   late final AuthService _authService;
   final SecureStorage _secureStorage = SecureStorage();
 
-  /// 로그아웃/세션 만료 시 StorageProvider·FileProvider 초기화 트리거 (T074)
+  /// logout/session expired text StorageProvider·FileProvider initialize translated text (T074)
   VoidCallback? _onProviderReset;
 
-  // 읽기 전용
+  // read-only
   bool get isAuthenticated => _accessToken != null && _user != null;
   User? get user => _user;
   String? get accessToken => _accessToken;
@@ -46,15 +46,15 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// StorageProvider / FileProvider 가 같은 인터셉터를 공유하기 위해 노출한다.
+  /// StorageProvider / FileProvider text text translated text translated text text translated text.
   Dio get dio => _apiClient.dio;
 
-  /// app.dart에서 StorageProvider·FileProvider reset()을 연결한다 (T074).
+  /// app.darttext StorageProvider·FileProvider reset()text translated text (T074).
   void setProviderResetCallback(VoidCallback callback) {
     _onProviderReset = callback;
   }
 
-  /// 서버 주소를 동적으로 변경한다. 설정 화면에서 호출한다.
+  /// server translated text translated text changetext. text screentext translated text.
   void setServerUrl(String hostPort) {
     _apiClient.setBaseUrl(hostPort);
     notifyListeners();
@@ -75,7 +75,7 @@ class AuthProvider extends ChangeNotifier {
     );
   }
 
-  // ── 세션 만료 처리 (401 refresh 실패) ──────────────────────────────────────
+  // ── session expired text (401 refresh failed) ──────────────────────────────────────
 
   Future<void> _handleSessionExpired() async {
     _onProviderReset?.call();
@@ -98,13 +98,13 @@ class AuthProvider extends ChangeNotifier {
     ]);
   }
 
-  // ── 자동 로그인 ─────────────────────────────────────────────────────────────
+  // ── text login ─────────────────────────────────────────────────────────────
 
-  /// L001 기준 3분기 자동 로그인:
-  ///   1. accessToken 유효 → true (서버 요청 없음)
-  ///   2. accessToken 만료 + refreshToken 존재 → refresh 시도 → true/false
-  ///   3. 둘 다 없음/만료 → false
-  /// JWT exp는 로컬 파싱으로 판단하되 최종 유효성은 서버가 결정한다 (BD-01).
+  /// L001 text 3branch text login:
+  ///   1. accessToken text → true (server text None)
+  ///   2. accessToken expired + refreshToken text → refresh text → true/false
+  ///   3. text text None/expired → false
+  /// JWT exptext local translated text translated text text validitytext servertext translated text (BD-01).
   Future<bool> tryAutoLogin() async {
     final storedRefresh = await _secureStorage.read(AppConfig.keyRefreshToken);
     final storedUserId = await _secureStorage.read(AppConfig.keyUserId);
@@ -115,13 +115,13 @@ class AuthProvider extends ChangeNotifier {
     final storedUsername = await _secureStorage.read(AppConfig.keyUsername);
     final storedUserUuid = await _secureStorage.read(AppConfig.keyUserUuid);
 
-    // 불완전 세션 감지: userUuid 없으면 토큰 삭제 후 재로그인 유도
+    // translated text session text: userUuid translated text token delete text textlogin text
     if (storedUserUuid == null || storedUserUuid.isEmpty) {
       await _clearTokens();
       return false;
     }
 
-    // 메모리 복원
+    // notetext text
     _accessToken = storedAccess;
     _refreshToken = storedRefresh;
     _user = User(
@@ -130,18 +130,18 @@ class AuthProvider extends ChangeNotifier {
       userUuid: storedUserUuid,
     );
 
-    // 분기 1: access token이 존재하고 만료되지 않았으면 그대로 세션 유지
+    // branch 1: access tokentext translated text expiredtext translated text as-is session keep
     if (storedAccess != null && !_isJwtExpired(storedAccess)) {
       notifyListeners();
       return true;
     }
 
-    // 분기 2: access 만료(또는 없음) — refresh로 갱신 시도
+    // branch 2: access expired(text None) — refreshtext refresh text
     return await refreshAccessToken();
   }
 
-  /// JWT payload의 exp 클레임을 로컬 파싱하여 만료 여부를 반환한다.
-  /// 파싱 실패 시 만료로 처리한다 (BD-01: 최종 유효성은 서버 판단).
+  /// JWT payloadtext exp claimstext local translated text expired translated text returntext.
+  /// parse failed text expiredtext translated text (BD-01: text validitytext server text).
   bool _isJwtExpired(String token) {
     try {
       final parts = token.split('.');
@@ -158,10 +158,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── 토큰 갱신 ────────────────────────────────────────────────────────────────
+  // ── token refresh ────────────────────────────────────────────────────────────────
 
-  /// POST /login/refresh 호출. 성공 시 새 access token 저장 후 true 반환.
-  /// 실패 시 저장된 토큰 전체를 삭제하고 false 반환.
+  /// POST /login/refresh text. success text text access token save text true return.
+  /// failed text savetext token translated text deletetext false return.
   Future<bool> refreshAccessToken() async {
     if (_refreshToken == null) return false;
     try {
@@ -177,12 +177,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── 로그인 (Phase 2) ─────────────────────────────────────────────────────────
+  // ── login (Phase 2) ─────────────────────────────────────────────────────────
 
-  /// POST /login 호출. L002 ST-01 기준.
-  /// - success      : access/refresh token + user 저장
-  /// - totpRequired : _tempToken 보관, 화면이 /login/totp 이동
-  /// - failed       : _error 설정 (L002 메시지 기준)
+  /// POST /login text. L002 ST-01 text.
+  /// - success      : access/refresh token + user save
+  /// - totpRequired : _tempToken text, screentext /login/totp navigate
+  /// - failed       : _error text (L002 translated text text)
   Future<LoginResult> login(String username, String password) async {
     _isLoading = true;
     _error = null;
@@ -223,13 +223,13 @@ class AuthProvider extends ChangeNotifier {
     return 'An error occurred during login';
   }
 
-  // ── TOTP 검증 (Phase 2) ──────────────────────────────────────────────────────
+  // ── TOTP verify (Phase 2) ──────────────────────────────────────────────────────
 
-  /// POST /login/totp/verify 호출.
-  /// 성공: access/refresh token 저장, _tempToken 소거.
-  /// 실패: AuthException rethrow — 화면이 detail 값으로 분기.
-  ///   - 'invalid_code'  → 화면 유지, 오류 메시지 표시
-  ///   - 'token_expired' → /login 이동
+  /// POST /login/totp/verify text.
+  /// success: access/refresh token save, _tempToken text.
+  /// failed: AuthException rethrow — screentext detail translated text branch.
+  ///   - 'invalid_code'  → screen keep, error translated text display
+  ///   - 'token_expired' → /login navigate
   Future<void> verifyTotp(String tempToken, String code) async {
     _isLoading = true;
     notifyListeners();
@@ -250,10 +250,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── 내부 헬퍼 ────────────────────────────────────────────────────────────────
+  // ── internal helper ────────────────────────────────────────────────────────────────
 
   Future<void> _saveSession(AuthLoginResponse resp) async {
-    // T074: 새 세션 저장 전 이전 계정 상태 초기화 (로그인 직후 경로 보장)
+    // T074: text session save text text account state initialize (login text path text)
     _onProviderReset?.call();
     _user = resp.user;
     _accessToken = resp.accessToken;
@@ -267,9 +267,9 @@ class AuthProvider extends ChangeNotifier {
     ]);
   }
 
-  // ── 로그아웃 ─────────────────────────────────────────────────────────────────
+  // ── logout ─────────────────────────────────────────────────────────────────
 
-  /// POST /logout → 로컬 토큰 전체 삭제.
+  /// POST /logout → local token text delete.
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
@@ -278,7 +278,7 @@ class AuthProvider extends ChangeNotifier {
         await _authService.logout(_refreshToken!);
       }
     } catch (_) {
-      // 서버 오류가 발생해도 로컬 세션은 정리한다.
+      // server errortext translated text local sessiontext translated text.
     }
     _onProviderReset?.call();
     await _clearTokens();

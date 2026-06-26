@@ -1,8 +1,8 @@
 {
-    "LOG_CONSOLE":  "false",
-    "LOG_FILE":  "true",
-    "MAIL_SERVER_URL":  "http://localhost:8090/api/v1",
-    "SHARE_BASE_URL":  "http://localhost:3000",
-    "LOG_LEVEL":  "warn",
-    "SERVER_URL":  "http://localhost:8000/fileforge"
+  "LOG_CONSOLE": "false",
+  "LOG_FILE": "true",
+  "MAIL_SERVER_URL": "http://localhost:8090/api/v1",
+  "SHARE_BASE_URL": "http://localhost:3031/",
+  "SERVER_URL": "http://localhost:8000/fileforge",
+  "LOG_LEVEL": "warn"
 }
