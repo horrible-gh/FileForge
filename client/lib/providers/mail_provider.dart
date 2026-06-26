@@ -39,6 +39,8 @@ class MailProvider extends ChangeNotifier {
   final List<MailSummary> _mails = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
+  bool _isSyncing = false;
+  bool _reauthRequired = false;
   String? _error;
   String? _nextCursor;
   bool _hasMore = false;
@@ -48,6 +50,11 @@ class MailProvider extends ChangeNotifier {
   List<MailSummary> get mails => List.unmodifiable(_mails);
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
+  bool get isSyncing => _isSyncing;
+
+  /// 직전 동기화에서 서버가 계정을 reauth_required로 표시했는지(재인증 필요). 화면은
+  /// AccountProvider의 배너로도 이를 표면화하지만, 동기화 직후 즉시 알 수 있도록 노출한다.
+  bool get reauthRequired => _reauthRequired;
   String? get error => _error;
   bool get hasMore => _hasMore;
   String get currentLabel => _currentLabel;
@@ -91,6 +98,35 @@ class MailProvider extends ChangeNotifier {
 
   /// translated text translated text — current text text text translated text translated text.
   Future<void> refresh() => loadInbox(label: _currentLabel);
+
+  /// 받은편지함 동기화 후 재로딩(R0001) — 서버 `POST /sync`로 IMAP 수신을 끌어온 뒤
+  /// 로컬 목록(`GET /mails`)을 다시 읽는다. 송신과 달리 **수신은 이 트리거가 있어야**
+  /// 채워진다(서버에 백그라운드 동기화 워커가 없고, 기존 클라이언트는 sync를 전혀
+  /// 호출하지 않아 받은편지함이 영영 비어 있었다).
+  ///
+  /// 동기화 대상은 받은편지함뿐이므로 `inbox` 라벨에서만 sync를 트리거하고, 그 외
+  /// 라벨(sent/drafts)은 로컬 재로딩만 한다. 동기화는 best-effort: 실패(네트워크/재인증)
+  /// 해도 로컬 메일은 그대로 보여주며, 재인증이 필요하면 [reauthRequired]로 표면화한다.
+  Future<void> syncInbox({String label = 'inbox'}) async {
+    if (label == 'inbox' && !_isSyncing) {
+      _isSyncing = true;
+      _isLoading = true; // 동기화~재로딩 전체 구간 동안 스피너 유지
+      _error = null;
+      notifyListeners();
+      try {
+        final r = await _service.triggerSync();
+        _reauthRequired = r.reauthRequired;
+      } catch (_) {
+        // best-effort: 동기화 실패는 조용히 무시하고 로컬 목록 로드로 진행.
+      } finally {
+        _isSyncing = false;
+      }
+    }
+    await loadInbox(label: label);
+  }
+
+  /// 당겨서 새로고침 / 받은편지함 진입 시 호출 — current 라벨로 [syncInbox].
+  Future<void> syncRefresh() => syncInbox(label: _currentLabel);
 
   /// text text(text) text — translated text translated text text loading translated text translated text.
   Future<void> loadMore() async {
@@ -244,6 +280,8 @@ class MailProvider extends ChangeNotifier {
     _mails.clear();
     _isLoading = false;
     _isLoadingMore = false;
+    _isSyncing = false;
+    _reauthRequired = false;
     _error = null;
     _nextCursor = null;
     _hasMore = false;

@@ -59,14 +59,17 @@ class _MailListScreenState extends State<MailListScreen> {
     final primed = await accounts.primeFromCache();
     if (!mounted) return;
     if (primed && accounts.hasAccounts) {
-      context.read<MailProvider>().loadInbox();
+      // R0001: 받은편지함 진입 시 서버 동기화(POST /sync)를 먼저 끌어온 뒤 재로딩한다.
+      // 이 트리거가 없으면 수신 메일이 영영 로컬에 들어오지 않는다(syncInbox 내부에서
+      // 동기화 실패는 best-effort로 무시하고 로컬 목록을 보여준다).
+      context.read<MailProvider>().syncInbox();
     }
     // translated text translated text(text ready text translated text translated text text).
     await accounts.load();
     if (!mounted) return;
     final mail = context.read<MailProvider>();
     if (accounts.hasAccounts && mail.mails.isEmpty) {
-      mail.loadInbox();
+      mail.syncInbox();
     }
   }
 
@@ -79,7 +82,8 @@ class _MailListScreenState extends State<MailListScreen> {
     if (!mounted) return;
     final mail = context.read<MailProvider>();
     if (context.read<AccountProvider>().hasAccounts && mail.mails.isEmpty) {
-      mail.loadInbox();
+      // 막 계정을 연결/재연결했으므로 동기화로 수신함을 끌어온다(R0001).
+      mail.syncInbox();
     }
   }
 
@@ -326,7 +330,9 @@ class _MailListScreenState extends State<MailListScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => context.read<MailProvider>().refresh(),
+      // R0001: 당겨서 새로고침은 받은편지함이면 서버 동기화 후 재로딩(syncRefresh),
+      // 그 외 라벨(sent/drafts)은 로컬 재로딩만 수행한다.
+      onRefresh: () => context.read<MailProvider>().syncRefresh(),
       child: ListView.separated(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),

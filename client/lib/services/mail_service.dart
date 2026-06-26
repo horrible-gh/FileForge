@@ -3,6 +3,21 @@ import '../models/mail.dart';
 import 'mail_compose.dart';
 import 'mail_envelope.dart';
 
+/// POST /sync 결과(F) — 기본 계정의 동기화 종료 상태.
+/// [applied]는 이번 동기화로 로컬에 병합된 변경 건수, [reauthRequired]는 서버가 계정을
+/// reauth_required로 떨어뜨렸는지 여부(재인증 필요).
+class SyncResult {
+  final String state;
+  final int applied;
+  final bool reauthRequired;
+
+  const SyncResult({
+    required this.state,
+    required this.applied,
+    required this.reauthRequired,
+  });
+}
+
 /// MailAnchor text(C) API text — P0007 §6.2 text endpoints.
 ///
 /// initial implementation text(NR0003 §7): text translated text — text/text/text text.
@@ -37,6 +52,21 @@ class MailService {
     return MailPage.fromEnvelopeParts(
       expectListData(data, httpStatus: resp.statusCode),
       meta,
+    );
+  }
+
+  /// POST /sync — 사용자의 연결된 계정에 대해 받은편지함 동기화를 트리거(F, P0007 §7.15).
+  /// 서버는 백그라운드 워커 없이 IMAP fetch를 인라인으로 수행하므로, 이 호출이 반환될
+  /// 때면 신규 수신 메일이 이미 로컬 store에 병합되어 있다. 수신(inbound)은 송신과 달리
+  /// 이 트리거가 있어야 채워진다(R0001: 수신이 되지 않던 근본원인 = 동기화 미트리거).
+  Future<SyncResult> triggerSync() async {
+    final resp = await _dio.post('/sync');
+    final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
+    final map = expectMapData(data, httpStatus: resp.statusCode);
+    return SyncResult(
+      state: map['state'] as String? ?? 'idle',
+      applied: (map['applied'] as num?)?.toInt() ?? 0,
+      reauthRequired: map['reauth_required'] == true,
     );
   }
 
