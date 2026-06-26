@@ -22,6 +22,11 @@ class _SpyMailProvider extends MailProvider {
     loaded.add(label);
     notifyListeners();
   }
+
+  // R0001(TR0005): 화면 진입은 이제 syncInbox를 호출한다. 네트워크 없이 로컬 로드만
+  // 기록하도록 위임해 "계정 있으면 inbox 로드" 회귀 의도를 그대로 유지한다.
+  @override
+  Future<void> syncInbox({String label = 'inbox'}) => loadInbox(label: label);
 }
 
 /// translated text statetext translated text fake(no network).
