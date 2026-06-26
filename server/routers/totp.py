@@ -15,7 +15,7 @@ class TotpCodeRequest(BaseModel):
 
 @router.post("/setup")
 async def setup_totp(user_id: str = Depends(verify_token)):
-    """TOTP 설정 초기화 — secret, QR 이미지, 복구 코드 반환."""
+    """TOTP text initialize — secret, QR translated text, text text return."""
     user = db_instance.fetch_one(
         adapt_query("SELECT user_id FROM users WHERE user_id = ?"),
         (user_id,)
@@ -33,7 +33,7 @@ async def setup_totp(user_id: str = Depends(verify_token)):
 
 @router.post("/activate")
 async def activate_totp(body: TotpCodeRequest, user_id: str = Depends(verify_token)):
-    """TOTP 활성화 — 앱에서 스캔 후 첫 번째 코드 검증."""
+    """TOTP translated text — translated text text text text text text verify."""
     success = tfa.activate(user_id, body.code)
     if not success:
         raise HTTPException(status_code=400, detail="invalid_code")
@@ -43,7 +43,7 @@ async def activate_totp(body: TotpCodeRequest, user_id: str = Depends(verify_tok
 
 @router.post("/disable")
 async def disable_totp(body: TotpCodeRequest, user_id: str = Depends(verify_token)):
-    """TOTP 비활성화 — 현재 코드 검증 후 해제."""
+    """TOTP translated text — current text verify text text."""
     if not tfa.verify(user_id, body.code):
         raise HTTPException(status_code=400, detail="invalid_code")
     tfa.disable(user_id)
@@ -53,7 +53,7 @@ async def disable_totp(body: TotpCodeRequest, user_id: str = Depends(verify_toke
 
 @router.post("/regenerate")
 async def regenerate_recovery_codes(body: TotpCodeRequest, user_id: str = Depends(verify_token)):
-    """복구 코드 재생성 — 현재 코드 검증 후 새 복구 코드 발급."""
+    """text text textcreate — current text verify text text text text issue."""
     if not tfa.verify(user_id, body.code):
         raise HTTPException(status_code=400, detail="invalid_code")
     new_codes = tfa.regenerate_recovery_codes(user_id)
@@ -63,6 +63,6 @@ async def regenerate_recovery_codes(body: TotpCodeRequest, user_id: str = Depend
 
 @router.get("/status")
 async def get_totp_status(user_id: str = Depends(verify_token)):
-    """현재 사용자의 TOTP 활성화 여부 반환."""
+    """current translated text TOTP translated text text return."""
     enabled = tfa.is_enabled(user_id)
     return {"enabled": enabled}

@@ -88,14 +88,14 @@ async def get_node_children(params: UserStoragesRequest = Depends()):
     tree_results = db_instance.fetch_all(sqloader.load_sql("file_forge.json", "storages.get_node_children"), data)
     logger.debug("tree_results", tree_results)
 
-    # 스토리지 경로 조회
+    # storage path lookup
     storage_info = db_instance.fetch_one(
         sqloader.load_sql("file_forge.json", "storages.get_storage_quota_limit"),
         (storage_uuid,)
     )
     storage_path = storage_info['storage_path'] if storage_info else None
 
-    # 텍스트 파일이면 preview 추가
+    # translated text filetext preview add
     text_extensions = ['txt', 'md', 'json', 'yaml', 'yml', 'xml', 'csv', 'log']
 
     for item in tree_results:
@@ -108,10 +108,10 @@ async def get_node_children(params: UserStoragesRequest = Depends()):
                     file_path = get_physical_path(storage_path, item['node_uuid'], name)
                     if file_path.exists():
                         with open(file_path, 'r', encoding='utf-8') as f:
-                            content = f.read(200)  # 앞 200자
+                            content = f.read(200)  # first 200text
                             item['preview'] = content.strip()
                 except Exception as e:
-                    logger.error(f"preview 읽기 실패: {e}")
+                    logger.error(f"preview text failed: {e}")
 
     current_result = {
         "node_uuid": node_uuid,
@@ -143,7 +143,7 @@ async def get_node_children(params: UserStoragesRequest = Depends()):
 
 
 @router.get("/download", dependencies=[Depends(verify_token)])
-@limiter.limit(settings.RATE_LIMIT_DOWNLOAD)  # 설정파일에서 가져옴
+@limiter.limit(settings.RATE_LIMIT_DOWNLOAD)  # textfiletext translated text
 async def download(request: Request, params: UserStoragesRequest = Depends()):
     dump_data = params.model_dump()
     logger.debug("dump_data", dump_data)
@@ -157,7 +157,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
 
     prm2 = (node_uuid,)
 
-    # 노드 정보 먼저 조회 (타입 확인)
+    # text text text lookup (text text)
     node_info = db_instance.fetch_one(
         sqloader.load_sql("file_forge.json", "storages.get_node_by_uuid"),
         prm2
@@ -166,7 +166,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
     if not node_info:
         raise HTTPException(status_code=404, detail="Node not found.")
 
-    # 스토리지 경로 가져오기
+    # storage path translated text
     storage_info = db_instance.fetch_one(
         sqloader.load_sql("file_forge.json", "storages.get_storage_path"),
         (node_info['storage_uuid'],)
@@ -174,7 +174,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
     storage_path = storage_info['storage_path']
 
     if node_info['type'] == 'file':
-        # 단일 파일 다운로드
+        # text file download
         file_path = get_physical_path(storage_path, node_info['node_uuid'], node_info['name'])
 
         logger.debug("file_path", file_path)
@@ -183,7 +183,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
             logger.error(f"File not found: {file_path}")
             raise HTTPException(status_code=404, detail="File not found.")
 
-        # 한글 파일명 처리
+        # Handle non-ASCII filenames
         encoded_filename = quote(node_info['name'])
         return FileResponse(
             path=str(file_path),
@@ -194,7 +194,7 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
         )
 
     else:  # type == 'folder'
-        # 폴더 다운로드 - ZIP으로 압축
+        # folder download - ZIPtext compress
         all_nodes = db_instance.fetch_all(
             sqloader.load_sql("file_forge.json", "storages.get_download"),
             prm2
@@ -206,25 +206,25 @@ async def download(request: Request, params: UserStoragesRequest = Depends()):
 
         folder_name = node_info['name']
 
-        # ZIP 파일 생성
+        # ZIP file create
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for node in all_nodes:
                 relative_path = node['full_path']
 
                 if node['type'] == 'folder':
-                    # 빈 폴더도 ZIP에 추가
+                    # empty foldertext ZIPtext add
                     folder_path_in_zip = relative_path + '/'
                     zip_file.writestr(folder_path_in_zip, '')
 
                 elif node['type'] == 'file':
-                    # 물리 파일 경로 (새로운 구조)
+                    # physical file path (translated text text)
                     file_path = get_physical_path(storage_path, node['node_uuid'], node['name'])
 
                     if file_path.exists():
                         zip_file.write(file_path, relative_path)
                     else:
-                        logger.warning(f"파일 없음: {file_path}")
+                        logger.warning(f"file None: {file_path}")
 
         zip_buffer.seek(0)
         encoded_filename = quote(f"{folder_name}.zip")
@@ -254,7 +254,7 @@ async def create_folder(params: UserStoragesRequest):
 
     permission_check(storage_uuid, user_uuid, group_uuid, "upload")
 
-    # 1. 물리 디렉터리 생성
+    # 1. physical directory create
     storage_path_result = db_instance.fetch_one(
         sqloader.load_sql("file_forge.json", "storages.get_storage_path"),
         (storage_uuid,)
@@ -270,7 +270,7 @@ async def create_folder(params: UserStoragesRequest):
     folder_path = Path(storage_path, node_uuid)
     # folder_path.mkdir(parents=True, exist_ok=True)
 
-    # 2. DB에 노드 삽입
+    # 2. DBtext text text
     data = (
         storage_uuid,
         node_uuid,
@@ -281,7 +281,7 @@ async def create_folder(params: UserStoragesRequest):
     )
     db_instance.execute_query(sqloader.load_sql("file_forge.json", "storages.insert_node"), data)
 
-    # 3. 적절한 응답 반환
+    # 3. translated text text return
     return {
         "success": True,
         "node_uuid": node_uuid,
@@ -299,22 +299,22 @@ async def upload_file(
     parent_uuid: str = Form(...),
     user_uuid: str = Form(...),
     group_uuid: str = Form(...),
-    relative_path: str = Form(None)  # 추가
+    relative_path: str = Form(None)  # add
 ):
     try:
         permission_check(storage_uuid, user_uuid, group_uuid, "upload")
 
-        # 빈 문자열을 None으로 변환
+        # empty stringtext Nonetext convert
         if not parent_uuid or parent_uuid == '':
             parent_uuid = None
 
-        # relative_path가 있으면 폴더 구조 생성
+        # relative_pathtext translated text folder text create
         if relative_path and '/' in relative_path:
             parent_uuid = await create_folders_from_path(
                 storage_uuid, parent_uuid, relative_path, user_uuid
             )
 
-        # 1. 스토리지 정보 및 현재 사용량 조회
+        # 1. storage text text current textcapacity lookup
         storage_info = db_instance.fetch_one(
             sqloader.load_sql("file_forge.json", "storages.get_storage_quota_limit"),
             (storage_uuid,)
@@ -327,11 +327,11 @@ async def upload_file(
         quota_limit = storage_info['quota_limit']
         used_size = storage_info['used_size']
 
-        # 2. 파일 크기 확인
+        # 2. file size text
         file_content = await file.read()
         file_size = len(file_content)
 
-        # 3. 같은 이름의 기존 파일 체크 (덮어쓰기의 경우 기존 용량 제외)
+        # 3. text nametext text file text (translated text text text capacity text)
         if parent_uuid is None:
             existing_node = db_instance.fetch_one(
                 sqloader.load_sql("file_forge.json", "storages.get_existing_file_at_root"),
@@ -343,43 +343,43 @@ async def upload_file(
                 (parent_uuid, file.filename)
             )
 
-        # 4. 용량 체크
+        # 4. capacity text
         if existing_node:
-            # 덮어쓰기: 기존 파일 용량 제외하고 계산
+            # translated text: text file capacity translated text text
             old_file_size = existing_node['file_size'] or 0
             new_used_size = used_size - old_file_size + file_size
             node_uuid = existing_node['node_uuid']
         else:
-            # 새 파일: 그대로 추가
+            # text file: as-is add
             new_used_size = used_size + file_size
             node_uuid = str(uuid.uuid4())
 
-        # 5. 용량 초과 체크
+        # 5. capacity exceeded text
         if new_used_size > quota_limit:
             raise HTTPException(
                 status_code=413,
                 detail=f"Storage quota exceeded. Available: {quota_limit - used_size} bytes, Required: {file_size} bytes"
             )
 
-        # 6. 파일 저장 경로 생성
+        # 6. file save path create
         file_path = get_physical_path(storage_path, node_uuid, file.filename)
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # 7. 파일 저장
+        # 7. file save
         with open(file_path, "wb") as f:
             f.write(file_content)
 
-        # 8. 파일 해시 계산
+        # 8. file text text
         file_hash = hashlib.sha256(file_content).hexdigest()
 
         if existing_node:
-            # 기존 파일 업데이트
+            # text file translated text
             db_instance.execute_query(
                 sqloader.load_sql("file_forge.json", "storages.update_file_on_upload"),
                 (file_hash, file_size, file.content_type or 'application/octet-stream', user_uuid, node_uuid)
             )
         else:
-            # 새 파일 INSERT
+            # text file INSERT
             prm1 = (
                 storage_uuid,
                 node_uuid,
@@ -403,7 +403,7 @@ async def upload_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"파일 업로드 실패: {e}")
+        logger.error(f"file upload failed: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="File upload failed")
 
@@ -436,11 +436,11 @@ async def delete_node(params: UserStoragesRequest = Depends()):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"삭제 실패: {e}")
+        logger.error(f"delete failed: {e}")
         raise HTTPException(status_code=500, detail="Delete failed")
 
 @router.put("/rename", dependencies=[Depends(verify_token)])
-async def rename_node(request: UserStoragesRequest):  # 이름만 변경
+async def rename_node(request: UserStoragesRequest):  # nametext change
     node_uuid = request.node_uuid
     new_name = request.new_name
     user_uuid = request.user_uuid
@@ -450,7 +450,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
     try:
         permission_check(storage_uuid, user_uuid, group_uuid, "upload")
 
-        # 1. 노드 정보 조회
+        # 1. text text lookup
         node_info = db_instance.fetch_one(
             sqloader.load_sql("file_forge.json", "storages.get_current_node"),
             (node_uuid,)
@@ -464,7 +464,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
         storage_path = node_info['storage_path']
         parent_uuid = node_info['parent_uuid']
 
-        # 2. 중복 이름 체크
+        # 2. text name text
         if parent_uuid:
             duplicate = db_instance.fetch_one(
                 sqloader.load_sql("file_forge.json", "storages.get_duplicate_in_folder"),
@@ -479,7 +479,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
         if duplicate:
             raise HTTPException(status_code=409, detail="Name already exists")
 
-        # 3. 파일인 경우만 물리 파일명 변경 (확장자만)
+        # 3. filetext translated text physical filetext change (translated text)
         if node_type == 'file':
             old_ext = Path(old_name).suffix
             new_ext = Path(new_name).suffix
@@ -491,7 +491,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
                 if old_path.exists():
                     old_path.rename(new_path)
 
-        # 4. DB 업데이트
+        # 4. DB translated text
         db_instance.execute_query(
             sqloader.load_sql("file_forge.json", "storages.update_node_name"),
             (new_name, user_uuid, node_uuid)
@@ -508,7 +508,7 @@ async def rename_node(request: UserStoragesRequest):  # 이름만 변경
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"이름 변경 실패: {e}")
+        logger.error(f"name change failed: {e}")
         raise HTTPException(status_code=500, detail="Rename failed")
 
 @router.put("/update_file_content", dependencies=[Depends(verify_token)])
@@ -519,7 +519,7 @@ async def update_file_content(request: UserStoragesRequest):
         content = request.content
         user_uuid = request.user_uuid
 
-        # 1. 노드 정보 조회
+        # 1. text text lookup
         node = db_instance.fetch_one(
             sqloader.load_sql("file_forge.json", "storages.get_current_node"),
             (node_uuid,)
@@ -531,18 +531,18 @@ async def update_file_content(request: UserStoragesRequest):
         storage_path = node['storage_path']
         file_name = node['name']
 
-        # 2. 물리 파일 경로
+        # 2. physical file path
         file_path = get_physical_path(storage_path, node_uuid, file_name)
-        logger.debug(f"저장 경로: {file_path}")
-        logger.debug(f"내용: {content[:100]}")  # 앞 100자만
+        logger.debug(f"save path: {file_path}")
+        logger.debug(f"content: {content[:100]}")  # first 100text
 
-        # 3. 파일 저장
+        # 3. file save
         content_bytes = content.encode('utf-8')
         with open(file_path, 'wb') as f:
             f.write(content_bytes)
-        logger.debug(f"파일 저장 완료!")
+        logger.debug(f"file save complete!")
 
-        # 4. DB 업데이트 (파일 크기, 해시, 수정 정보)
+        # 4. DB translated text (file size, text, update text)
         new_size = len(content_bytes)
         new_hash = hashlib.sha256(content_bytes).hexdigest()
 
@@ -558,11 +558,11 @@ async def update_file_content(request: UserStoragesRequest):
         return {
             "success": True,
             "message": "File updated successfully",
-            "new_size": new_size  # ← 새 크기 반환
+            "new_size": new_size  # ← text size return
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"파일 수정 실패: {e}")
+        logger.error(f"file update failed: {e}")
         raise HTTPException(status_code=500, detail="File update failed")

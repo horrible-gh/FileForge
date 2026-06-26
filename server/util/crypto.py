@@ -21,7 +21,7 @@ def get_iv(base64_flg=None):
 
 def aes_encrypt(data, key, iv, base64_flg=None):
     if isinstance(data, str):
-        data = data.encode('utf-8')  # 문자열 데이터를 바이트로 변환
+        data = data.encode('utf-8')  # string translated text bytestext convert
     cipher = AES.new(key, AES.MODE_CBC, iv)
     encrypted_data = cipher.encrypt(pad(data, AES.block_size))
     if base64_flg:
@@ -34,12 +34,12 @@ def aes_decrypt(encrypted_data, key, iv, base64_flg=None):
     if base64_flg:
         encrypted_data = base64_decode(encrypted_data)  # 16 bytes key
     decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
-    return decrypted_data.decode('utf-8')  # 바이트 데이터를 문자열로 변환
+    return decrypted_data.decode('utf-8')  # bytes translated text stringtext convert
 
 
 def aes_encrypt_in_chunks(data, key, iv, chunk_size=4096):
     if isinstance(data, str):
-        data = data.encode('utf-8')  # 문자열 데이터를 바이트로 변환
+        data = data.encode('utf-8')  # string translated text bytestext convert
     cipher = AES.new(key, AES.MODE_CBC, iv)
     encrypted_data = b''
 
@@ -90,5 +90,5 @@ def decrypt_file(input_path, output_path, key, iv, chunk_size=4096):
 
 
 def hash_password(password: str) -> str:
-    # 비밀번호 해싱 예제 (SHA-256 사용)
+    # password hashing example (SHA-256 text)
     return hashlib.sha256(password.encode()).hexdigest()

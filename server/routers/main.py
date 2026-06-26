@@ -14,7 +14,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-# Windows 콘솔 인코딩 강제 UTF-8
+# Force Windows console encoding to UTF-8
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
@@ -26,13 +26,13 @@ CONTEXT = settings.CONTEXT
 
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=[settings.RATE_LIMIT_DEFAULT]  # 전역 기본값
+    default_limits=[settings.RATE_LIMIT_DEFAULT]  # text default value
 )
 
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)  # 미들웨어로 자동 적용
+app.add_middleware(SlowAPIMiddleware)  # translated text text text
 
 
 app.include_router(login.router, prefix=f"{CONTEXT}/login", tags=["Login"])
@@ -45,11 +45,11 @@ app.include_router(totp.router, prefix=f"{CONTEXT}/auth/totp", tags=["TOTP"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGIN,  # 모든 도메인 허용 (보안 강화 필요)
+    allow_origins=ALLOWED_ORIGIN,  # all translated text allowed (security text text)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"]  # 🔥 이게 핵심!
+    expose_headers=["Content-Disposition"]  # 🔥 text core!
 )
 
 @app.get(CONTEXT + "/")
@@ -67,13 +67,13 @@ async def read_item(item_id: int, q: str = None):
 
 @app.get(CONTEXT + "/debug-headers")
 async def debug_headers(request: Request):
-    Logger.debug(f"🔍 Request Headers: {request.headers}")  # ✅ 모든 헤더 출력
+    Logger.debug(f"🔍 Request Headers: {request.headers}")  # ✅ all text text
     return {"headers": dict(request.headers)}
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    Logger.debug("💥 Validation error 발생")
-    Logger.debug("⛳ 경로:", request.url)
-    Logger.debug("📦 내용:\n", exc.errors())
-    Logger.debug("📨 원본 body:\n", await request.body())
+    Logger.debug("💥 Validation error text")
+    Logger.debug("⛳ path:", request.url)
+    Logger.debug("📦 content:\n", exc.errors())
+    Logger.debug("📨 text body:\n", await request.body())

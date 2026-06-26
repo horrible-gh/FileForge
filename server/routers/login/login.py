@@ -88,14 +88,14 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     user_id = user["user_id"]
 
     totp_enabled = tfa.is_enabled(user_id)
-    logger.debug(f"[Login] user_id: {user_id}, TOTP 활성화 여부: {totp_enabled}")
+    logger.debug(f"[Login] user_id: {user_id}, TOTP translated text text: {totp_enabled}")
 
     if totp_enabled:
         temp_token = create_access_token(
             data={"sub": user_id, "totp_pending": True},
             expires_delta=timedelta(minutes=TOTP_PENDING_EXPIRE_MINUTES),
         )
-        logger.debug(f"[Login] temp_token 발급 - user_id: {user_id}")
+        logger.debug(f"[Login] temp_token issue - user_id: {user_id}")
         return {"totp_required": True, "temp_token": temp_token}
 
     access_token = create_access_token(
@@ -110,7 +110,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
 
 @router.post("/totp/verify")
 async def verify_totp_login(request: Request, body: TotpVerifyRequest):
-    logger.debug(f"[TOTP Verify] 요청 받음 - temp_token: {body.temp_token[:50]}..., code: {body.code}")
+    logger.debug(f"[TOTP Verify] request received - temp_token: {body.temp_token[:50]}..., code: {body.code}")
 
     credentials_exception = HTTPException(
         status_code=401,
@@ -121,28 +121,28 @@ async def verify_totp_login(request: Request, body: TotpVerifyRequest):
     try:
         # temp_token is an RS256 access token carrying totp_pending=True.
         payload = jwt_keys.verify_access(body.temp_token, verify_exp=True)
-        logger.debug(f"[TOTP Verify] JWT 파싱 성공 - payload: {payload}")
+        logger.debug(f"[TOTP Verify] JWT parsed successfully - payload: {payload}")
     except jwt.ExpiredSignatureError:
-        logger.debug("[TOTP Verify] ❌ JWT 만료됨 (ExpiredSignatureError)")
+        logger.debug("[TOTP Verify] ❌ JWT expiredtext (ExpiredSignatureError)")
         raise HTTPException(status_code=401, detail="token_expired")
     except jwt.InvalidTokenError as e:
-        logger.debug(f"[TOTP Verify] ❌ JWT 파싱 실패 (InvalidTokenError): {e}")
+        logger.debug(f"[TOTP Verify] ❌ JWT parse failed (InvalidTokenError): {e}")
         raise credentials_exception
 
     user_id = payload.get("sub")
     totp_pending = payload.get("totp_pending", False)
-    logger.debug(f"[TOTP Verify] 추출된 user_id: {user_id}, totp_pending: {totp_pending}")
+    logger.debug(f"[TOTP Verify] extracted user_id: {user_id}, totp_pending: {totp_pending}")
 
     if not user_id or not totp_pending:
-        logger.debug(f"[TOTP Verify] ❌ user_id 또는 totp_pending 없음")
+        logger.debug(f"[TOTP Verify] ❌ user_id text totp_pending None")
         raise credentials_exception
 
-    logger.debug(f"[TOTP Verify] tfa.verify 호출 - user_id: {user_id}, code: {body.code}")
+    logger.debug(f"[TOTP Verify] tfa.verify text - user_id: {user_id}, code: {body.code}")
     verify_result = tfa.verify(user_id, body.code)
-    logger.debug(f"[TOTP Verify] tfa.verify 결과: {verify_result}")
+    logger.debug(f"[TOTP Verify] tfa.verify result: {verify_result}")
 
     if not verify_result:
-        logger.debug(f"[TOTP Verify] ❌ TOTP 검증 실패 - user_id: {user_id}, code: {body.code}")
+        logger.debug(f"[TOTP Verify] ❌ TOTP verify failed - user_id: {user_id}, code: {body.code}")
         raise HTTPException(status_code=401, detail="invalid_code")
 
     user = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), user_id)
@@ -152,7 +152,7 @@ async def verify_totp_login(request: Request, body: TotpVerifyRequest):
     )
     refresh_token = create_refresh_token(data={"sub": user_id})
     redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, refresh_token)
-    logger.debug(f"[TOTP Verify] ✅ 로그인 성공 - user_id: {user_id}")
+    logger.debug(f"[TOTP Verify] ✅ login success - user_id: {user_id}")
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user}
 
 
@@ -164,7 +164,7 @@ async def refresh(body: RefreshRequest):
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # Step 1: JWT 서명/만료 검증
+    # Step 1: JWT signature/expired verify
     try:
         payload = jwt.decode(body.refresh_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": True})
     except jwt.ExpiredSignatureError:
@@ -178,26 +178,26 @@ async def refresh(body: RefreshRequest):
     if not user_id or token_type != "refresh":
         raise credentials_exception
 
-    # Step 2: blacklist 확인
+    # Step 2: blacklist text
     if redis_client.exists(f"blacklist:{body.refresh_token}") > 0:
         raise HTTPException(status_code=401, detail="Token has been logged out")
 
-    # Step 3: Redis 저장값과 제출된 token 비교
+    # Step 3: Redis savetext translated text token text
     stored_token = redis_client.get(f"refresh:{user_id}")
     if stored_token is None or stored_token != body.refresh_token:
         raise credentials_exception
 
-    # Step 4: 기존 Redis 키 삭제
+    # Step 4: text Redis text delete
     redis_client.delete(f"refresh:{user_id}")
 
-    # Step 5: 새 refresh token 발급 및 Redis 저장
+    # Step 5: text refresh token issue text Redis save
     new_refresh_token = create_refresh_token(data={"sub": user_id})
     redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, new_refresh_token)
 
-    # Step 6: 새 access token 발급
+    # Step 6: text access token issue
     access_token = create_access_token(
         data={"sub": user_id},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    logger.debug(f"[Refresh] ✅ token 회전 완료 - user_id: {user_id}")
+    logger.debug(f"[Refresh] ✅ token text complete - user_id: {user_id}")
     return {"access_token": access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}

@@ -9,7 +9,7 @@ db_instance = db.db_instance
 sqloader = db.sqloader
 
 def delete_item(node_uuid):
-    # 1. 노드 정보 조회 (파일인지 폴더인지 확인)
+    # 1. text text lookup (filetext foldertext text)
     node_info = db_instance.fetch_one(
         sqloader.load_sql("file_forge.json", "storages.get_current_node"),
         (node_uuid,)
@@ -25,15 +25,15 @@ def delete_item(node_uuid):
     file_name = node_info['name']
 
     if node_type == 'file':
-        # 파일 삭제
-        # 물리 파일 경로
+        # file delete
+        # physical file path
         file_path = get_physical_path(storage_path, node_uuid, node_info['name'])
 
-        # 물리 파일 삭제
+        # physical file delete
         if file_path.exists():
             file_path.unlink()
 
-        # DB에서 삭제
+        # DBtext delete
         db_instance.execute_query(
             sqloader.load_sql("file_forge.json", "storages.delete_file"),
             (node_uuid,)
@@ -44,38 +44,38 @@ def delete_item(node_uuid):
         )
 
     else:  # folder
-        # 폴더 삭제 (재귀)
-        # 1. 하위 모든 파일/폴더 조회 (재귀 쿼리)
+        # folder delete (text)
+        # 1. child all file/folder lookup (text text)
         child_nodes = db_instance.fetch_all(
             sqloader.load_sql("file_forge.json", "storages.get_folder_nodes"),
             (node_uuid,)
         )
 
-        # 2. 모든 파일 DB 레코드 삭제
+        # 2. all file DB translated text delete
         for child in child_nodes:
             db_instance.execute_query(
                 sqloader.load_sql("file_forge.json", "storages.delete_file"),
                 (child['node_uuid'],)
             )
 
-        # 3. 모든 노드 삭제 (하위 폴더 + 파일 + 자기 자신)
+        # 3. all text delete (child folder + file + text text)
         db_instance.execute_query(
             sqloader.load_sql("file_forge.json", "storages.delete_folder_nodes"),
             (node_uuid,)
         )
 
-        # 4. 물리 디렉터리 삭제
+        # 4. physical directory delete
         for child in child_nodes:
             if child['type'] == 'file':
                 child_file_path = get_physical_path(storage_path, child['node_uuid'], child['name'])
                 if child_file_path.exists():
                     child_file_path.unlink()
 
-                # 빈 디렉터리도 정리
+                # empty directorytext text
                 parent_dir = child_file_path.parent
                 if parent_dir.exists() and not any(parent_dir.iterdir()):
                     parent_dir.rmdir()
-                    # 한 단계 더 위도 확인
+                    # text stage text text text
                     grandparent_dir = parent_dir.parent
                     if grandparent_dir.exists() and not any(grandparent_dir.iterdir()):
                         grandparent_dir.rmdir()
@@ -90,7 +90,7 @@ def get_physical_path(storage_path: str, file_uuid: str, file_name: str) -> Path
     suffix = file_uuid[-2:]
     physical_name = f"{file_uuid}{ext}"
 
-    # 슬래시를 OS 구분자로 변환
+    # translated text OS textminutestext convert
     clean_path = storage_path.replace('/', os.sep).lstrip(os.sep)
 
     return Path(clean_path, prefix, suffix, physical_name)
@@ -113,11 +113,11 @@ def permission_check(storage_uuid, user_uuid, group_uuid, permission_type):
 
 async def create_folders_from_path(storage_uuid: str, parent_uuid: str, relative_path: str, user_uuid: str) -> str:
     """
-    relative_path에서 폴더 경로 추출해서 순차 생성
-    예: "폴더A/폴더B/파일.txt" → 폴더A, 폴더B 생성 후 폴더B의 uuid 반환
+    relative_pathtext folder path translated text text create
+    example: "folderA/folderB/file.txt" → folderA, folderB create text folderBtext uuid return
     """
     parts = relative_path.split('/')
-    folder_parts = parts[:-1]  # 마지막은 파일명이니까 제외
+    folder_parts = parts[:-1]  # translated text filetranslated text text
 
     current_parent = parent_uuid
 
@@ -125,7 +125,7 @@ async def create_folders_from_path(storage_uuid: str, parent_uuid: str, relative
         if not folder_name:
             continue
 
-        # 이미 존재하는지 확인
+        # text translated text text
         if current_parent is None:
             existing = db_instance.fetch_one(
                 adapt_query("SELECT node_uuid FROM nodes WHERE storage_uuid = ? AND parent_uuid IS NULL AND name = ? AND type = 'folder'"),
@@ -140,7 +140,7 @@ async def create_folders_from_path(storage_uuid: str, parent_uuid: str, relative
         if existing:
             current_parent = existing['node_uuid']
         else:
-            # 폴더 생성
+            # folder create
             new_uuid = str(uuid.uuid4())
             db_instance.execute_query(
                 adapt_query("INSERT INTO nodes (storage_uuid, node_uuid, name, type, parent_uuid, creator_uuid, created_at) VALUES (?, ?, ?, 'folder', ?, ?, CURRENT_TIMESTAMP)"),

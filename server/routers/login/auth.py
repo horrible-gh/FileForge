@@ -9,19 +9,19 @@ from . import jwt_keys
 
 import LogAssist.log as Logger
 
-# JWT 설정값 (refresh/legacy HS256 잔존; access는 RS256으로 jwt_keys가 검증)
+# JWT translated text (refresh/legacy HS256 text; accesstext RS256text jwt_keystext verify)
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
-# routers/main.py 하위 호환 import용 (실제 블랙리스트 확인은 Redis 기준)
+# routers/main.py child text importtext (text blacklist translated text Redis text)
 token_blacklist = set()
 
 def is_token_blacklisted(token: str) -> bool:
     try:
         return redis_client.exists(f"blacklist:{token}") > 0
     except redis.RedisError:
-        return False  # Redis 장애 시 fail-open
+        return False  # Redis text text fail-open
 
 def verify_token(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -43,11 +43,11 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         if user_id is None or exp is None:
             raise credentials_exception
 
-        # totp_pending 토큰으로 일반 API 접근 불가
+        # totp_pending tokentext text API text text
         if totp_pending:
             raise HTTPException(status_code=401, detail="2FA verification required")
 
-        # refresh_token으로 일반 API 접근 불가
+        # refresh_tokentext text API text text
         if token_type == "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
 

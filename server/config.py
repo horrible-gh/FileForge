@@ -8,7 +8,7 @@ import os
 import re
 
 
-# 🔹 Enum을 사용하여 DB_TYPE을 명확하게 정의
+# 🔹 Define DB_TYPE explicitly with an enum
 class DBType(str, Enum):
     MYSQL = "mysql"
     SQLITE = "sqlite"
@@ -16,14 +16,14 @@ class DBType(str, Enum):
     LOCAL = "local"
     POSTGRESQL = "postgresql"
 
-# 🔹 설정 클래스 (Pydantic 활용)
+# 🔹 settings class (using Pydantic)
 class Settings(BaseSettings):
     ALLOWED_ORIGIN: str
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     CONTEXT: str
-    DB_TYPE: DBType  # Enum 적용
+    DB_TYPE: DBType  # enum applied
     DB_HOST: str = ""
     DB_PORT: int = 0
     DB_USER: str = ""
@@ -33,10 +33,10 @@ class Settings(BaseSettings):
     DB_LOG: bool = True
     DB_PATH: str = ""
 
-    # 🔹 Gmail OAuth credential (MailAnchor 메일 연동). MailAnchorServer/config.py와 동일 컨벤션.
-    #    이 세 값은 정식 설정 항목이며, 기본값 ""로 비워 두어도 기동에는 영향이 없다.
-    #    (이전엔 미선언 + pydantic extra="forbid" 기본값 탓에 .env에 넣으면
-    #     기동이 extra_forbidden ValidationError로 즉시 죽었다.)
+    # 🔹 Gmail OAuth credential (MailAnchor mail integration). MailAnchorServer/config.pytext same convention.
+    #    text text text official settingstext, default value ""text can be left empty without affecting startup.
+    #    (previously undeclared + pydantic extra="forbid" default value text .envtext translated text
+    #     startuptext extra_forbidden ValidationErrortext failed immediately.)
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
@@ -46,14 +46,14 @@ class Settings(BaseSettings):
     RATE_LIMIT_UPLOAD: str = "20/hour"
     RATE_LIMIT_DOWNLOAD: str = "50/hour"
 
-    # 🔹 Redis 설정 (DB_* 컨벤션과 동일). 기본값 localhost/6379로 기존 동작 무변경(하위호환).
+    # 🔹 Redis settings (DB_* translated text text). default value localhost/6379text preserve existing behavior(backward compatibility).
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_PASSWORD: str = ""   # 비어있으면 AUTH 미사용
-    REDIS_SSL: bool = False    # 원격/관리형 Redis TLS 대응
+    REDIS_PASSWORD: str = ""   # empty disables AUTH
+    REDIS_SSL: bool = False    # support remote/managed Redis TLS
 
-    # .env의 빈 값("")이 int/bool 파싱 오류를 일으키지 않도록 기본값으로 흡수(0101 인시던트 계열 대응)
+    # .envtext empty value("")text int/bool parse errortext translated text translated text absorbed as the default(0101 incident-family mitigation)
     @field_validator("REDIS_PORT", "REDIS_DB", mode="before")
     @classmethod
     def _blank_int_to_default(cls, v, info):
@@ -74,8 +74,8 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# 🔹 중앙 Redis 클라이언트(단일 인스턴스/풀). 4개 라우터의 중복 생성 코드를 통합한다.
-#    decode_responses=True 보존(호출부가 문자열 비교에 의존), password="" → None 정규화로 불필요한 AUTH 방지.
+# 🔹 central Redis client(single instance/pool). 4text translated text consolidates duplicate creation code.
+#    decode_responses=True preserved(callers depend on string comparison), password="" → None normalizationtext avoid unnecessary AUTH.
 redis_client = redis.Redis(
     host=settings.REDIS_HOST,
     port=settings.REDIS_PORT,
@@ -88,8 +88,8 @@ redis_client = redis.Redis(
 
 class Auth2FAAdapter:
     """
-    auth2fa의 SQLStorage가 기대하는 execute(path, **kwargs) 인터페이스를
-    sqloader의 SQLiteWrapper(db_instance)로 연결하는 어댑터.
+    auth2fatext SQLStoragetext expected execute(path, **kwargs) interfacetext
+    sqloadertext SQLiteWrapper(db_instance)text adapter that connects.
     """
 
     def __init__(self, db_instance):
@@ -107,16 +107,16 @@ class Auth2FAAdapter:
 
     def _prepare(self, sql, kwargs):
         """
-        SQL과 파라미터를 DB 타입에 맞게 변환.
-        - SQLite: :param_name 그대로, params=dict
-        - MySQL: :param_name → %s (positional), params=list (normalize_params 호환)
+        SQLtext parameterstext DB convert for the DB type.
+        - SQLite: :param_name as-is, params=dict
+        - MySQL: :param_name → %s (positional), params=list (normalize_params text)
                  ON CONFLICT → ON DUPLICATE KEY UPDATE
-        반환: (sql, params)
+        return: (sql, params)
         """
         if not kwargs:
             params = None
         elif self._is_mysql():
-            # :param_name 순서대로 추출 → %s 치환 + 순서대로 list
+            # :param_name extract in order → %s replace + translated text list
             param_names = re.findall(r":(\w+)", sql)
             sql = re.sub(r":\w+", "%s", sql)
             # ON CONFLICT (...) DO UPDATE SET col = EXCLUDED.col → ON DUPLICATE KEY UPDATE
@@ -146,7 +146,7 @@ class Auth2FAAdapter:
         with open(sql_file, "r", encoding="utf-8") as f:
             raw_sql = f.read()
 
-        # 주석 제거
+        # remove comments
         lines = [l for l in raw_sql.splitlines() if not l.strip().startswith("--")]
         sql_stripped = " ".join(lines).strip()
 
@@ -158,14 +158,14 @@ class Auth2FAAdapter:
                 return []
             return [dict(row) for row in rows]
         else:
-            # CREATE TABLE 등 다중 구문 처리
+            # CREATE TABLE text handle multiple statements
             statements = [s.strip() for s in sql_stripped.split(";") if s.strip()]
             for stmt in statements:
                 self.db.execute(stmt, params)
             return []
 
 
-# 🔹 DB 설정 클래스 (싱글톤 패턴 적용)
+# 🔹 DB settings class (singleton pattern applied)
 class DatabaseSetting:
     _instance = None
 
@@ -176,7 +176,7 @@ class DatabaseSetting:
         return cls._instance
 
     def _init_db(self):
-        """DB 초기화"""
+        """DB initialize"""
         self.db_instance = None
         self.sqloader = None
         self.migrator = None
@@ -246,7 +246,7 @@ class DatabaseSetting:
 
 
     def instance_init(self):
-        """DB 인스턴스 초기화"""
+        """DB instance initialize"""
         self.db_instance, self.sqloader, self.migrator = database_init(self.config)
         adapter = Auth2FAAdapter(self.db_instance)
         self.tfa = TwoFactorAuth(sq=adapter, issuer="FileForge")
@@ -257,24 +257,24 @@ class DatabaseSetting:
     def get_sqloader_instance(self):
         return self.sqloader
 
-# 🔹 싱글톤 객체 생성
+# 🔹 translated text object creation
 db = DatabaseSetting()
 
-# 기존 임포트 호환성 유지
+# keep compatibility with existing imports
 tfa = db.tfa
 
-# 🔹 sqloader를 우회하는 원시(inline) SQL용 플레이스홀더 변환기.
-#    sqlite3 드라이버는 '?'(qmark), pymysql/psycopg는 '%s'(pyformat)를 사용한다.
-#    원시 SQL에 '?'를 하드코딩한 코드(create_dev_user.py·_helper.py·totp.py 등)는
-#    이 함수를 거쳐야 DB_TYPE에 무관하게 동작한다. mysql/postgresql 경로에서는
-#    리터럴 '%'를 '%%'로 escape하여 pyformat 오해석을 막는다.
+# 🔹 sqloadertext raw bypass(inline) SQLtext placeholder converter.
+#    sqlite3 drivertext '?'(qmark), pymysql/psycopgtext '%s'(pyformat)text uses.
+#    text SQLtext '?'text hard-coded code(create_dev_user.py·_helper.py·totp.py text)text
+#    text translated text must go through DB_TYPEtext works regardless of. mysql/postgresql pathtranslated text
+#    literal '%'text '%%'text escapetext pyformat prevent misinterpretation.
 def adapt_query(sql: str) -> str:
     if settings.DB_TYPE in (DBType.MYSQL, DBType.POSTGRESQL):
         return sql.replace("%", "%%").replace("?", "%s")
     return sql
 
 
-# 🔹 FastAPI에서 의존성 주입으로 사용할 함수
+# 🔹 FastAPItext dependency injectiontext translated text text
 def get_db_instance():
     return db.get_db_instance()
 

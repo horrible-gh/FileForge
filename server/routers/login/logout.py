@@ -22,15 +22,15 @@ class LogoutRequest(BaseModel):
 
 @router.post("/")
 async def logout(token: str = Depends(oauth2_scheme), body: LogoutRequest = Body(default=LogoutRequest())):
-    """ 현재 사용 중인 JWT 토큰을 블랙리스트에 등록 (로그아웃) """
-    # access_token은 RS256(jwt_keys). 만료 직전 토큰도 블랙리스트에 넣을 수 있게 exp만 추출.
+    """ current text text JWT tokentext blacklisttext register (logout) """
+    # access_tokentext RS256(jwt_keys). expired text tokentext blacklisttext text text text exptext text.
     exp_time = jwt_keys.verify_access(token, verify_exp=False)["exp"]
     remaining_time = exp_time - datetime.now(timezone.utc).timestamp()
 
-    # access_token 블랙리스트 등록
+    # access_token blacklist register
     redis_client.setex(f"blacklist:{token}", int(remaining_time), "1")
 
-    # refresh_token 블랙리스트 등록 + Redis 회전 키 삭제 (전달된 경우)
+    # refresh_token blacklist register + Redis text text delete (translated text text)
     if body.refresh_token:
         try:
             refresh_payload = jwt.decode(body.refresh_token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})

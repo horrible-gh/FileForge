@@ -25,9 +25,9 @@ def _resolve_password(
 
 def _check_password(link: dict, password: str | None):
     """
-    비밀번호 검증.
-    - password_hash가 있는데 password 미제공 → 401
-    - password_hash가 있는데 password 틀림 → 403
+    Password verification.
+    - password_hashtext translated text password translated text → 401
+    - password_hashtext translated text password text → 403
     """
     service = _get_service()
     if link["password_hash"] is not None:
@@ -63,8 +63,8 @@ def _build_file_response(storage_path: str, node_uuid: str, name: str, mime_type
 
 def _resolve_folder_path(root_uuid: str, path: str) -> str:
     """
-    경로를 따라 탐색하여 최종 폴더 UUID 반환.
-    예: path="subfolder1/subfolder2" → root_uuid의 하위 subfolder1의 하위 subfolder2의 UUID
+    pathtext text translated text text folder UUID return.
+    example: path="subfolder1/subfolder2" → root_uuidtext child subfolder1text child subfolder2text UUID
     """
     current_uuid = root_uuid
     if not path or path == "/":
@@ -85,10 +85,10 @@ def _resolve_folder_path(root_uuid: str, path: str) -> str:
 
 def _is_descendant(node_uuid: str, ancestor_uuid: str) -> bool:
     """
-    node_uuid가 ancestor_uuid의 하위 노드인지 확인 (직속 또는 모든 하위).
+    node_uuidtext ancestor_uuidtext child translated text text (text text all child).
     """
     current = node_uuid
-    max_depth = 100  # 무한 루프 방지
+    max_depth = 100  # text text text
     depth = 0
 
     while current and depth < max_depth:
@@ -115,11 +115,11 @@ async def public_share_access(
     path: str = Query(default=""),
 ):
     """
-    공유 링크 접근.
-    - meta=true: 파일/폴더 모두 JSON 메타데이터 반환 (파일 스트리밍 없음)
-    - path: 폴더 공유 시 하위 경로 지정 (예: "subfolder1/subfolder2")
-    - 파일: 바이너리 다운로드 응답
-    - 폴더: 하위 파일/폴더 목록 JSON 응답
+    text text text.
+    - meta=true: file/folder text JSON translated text return (file translated text None)
+    - path: folder text text child path text (example: "subfolder1/subfolder2")
+    - file: translated text download text
+    - folder: child file/folder text JSON text
     """
     service = _get_service()
     link = service.get_by_token(token)
@@ -133,7 +133,7 @@ async def public_share_access(
 
     if node_type == "file":
         if meta:
-            # 파일 크기 조회
+            # file size lookup
             size_row = db_instance.fetch_one(
                 sqloader.load_sql("file_forge.json", "storages.get_file_size"),
                 (node_uuid,)
@@ -153,22 +153,22 @@ async def public_share_access(
             link["mime_type"],
         )
 
-    # 폴더: path를 따라 탐색하여 target 폴더 결정
+    # folder: pathtext text translated text target folder text
     target_uuid = _resolve_folder_path(node_uuid, path)
 
-    # target 폴더의 직속 하위 파일 조회
+    # target foldertext text child file lookup
     files = db_instance.fetch_all(
         sqloader.load_sql("file_forge.json", "storages.get_folder_files"),
         (target_uuid,)
     )
 
-    # target 폴더의 직속 하위 폴더 조회
+    # target foldertext text child folder lookup
     folders = db_instance.fetch_all(
         sqloader.load_sql("file_forge.json", "storages.get_folder_subfolders"),
         (target_uuid,)
     )
 
-    # target 폴더 이름 조회 (path가 있는 경우 root와 다름)
+    # target folder name lookup (pathtext text text roottext text)
     if path and path != "/":
         target_info = db_instance.fetch_one(
             sqloader.load_sql("file_forge.json", "storages.get_node_name"),
@@ -207,9 +207,9 @@ async def public_share_file_download(
     path: str = Query(default=""),
 ):
     """
-    폴더 공유 링크에서 개별 파일 다운로드.
-    file_uuid가 공유 폴더의 하위 파일인지 검증 (직속 또는 서브폴더 내).
-    path: 파일이 있는 하위 경로 (예: "subfolder1/subfolder2")
+    folder text translated text text file download.
+    file_uuidtext text foldertext child filetext verify (text text textfolder text).
+    path: filetext text child path (example: "subfolder1/subfolder2")
     """
     service = _get_service()
     link = service.get_by_token(token)
@@ -224,11 +224,11 @@ async def public_share_file_download(
     root_folder_uuid = link["node_uuid"]
     storage_uuid = link["storage_uuid"]
 
-    # 파일이 공유 폴더의 하위 노드인지 검증
+    # filetext text foldertext child translated text verify
     if not _is_descendant(file_uuid, root_folder_uuid):
         raise HTTPException(status_code=404, detail="File not found in this shared folder.")
 
-    # 파일 정보 조회
+    # file text lookup
     file_node = db_instance.fetch_one(
         sqloader.load_sql("file_forge.json", "storages.get_file_node_with_mime"),
         (file_uuid,)
