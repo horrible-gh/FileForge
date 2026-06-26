@@ -189,6 +189,39 @@ void main() {
       expect(p.hasAccounts, false);
     });
 
+    test('reauth_required account → hasAccounts true but hasReauthRequired true (R0001)', () async {
+      // 0018.0009-TR: credential 유실 시 status=reauth_required. 계정 row는 남아
+      // hasAccounts=true(온보딩 미표시)이므로, 재연결 동선은 hasReauthRequired로 연다.
+      final p = AccountProvider(_dioWith(_StubAdapter({
+        'GET /accounts': (200, {
+          'ok': true,
+          'data': [
+            {'account_id': 'r', 'email': 'reauth@x.io', 'provider': 'gmail', 'status': 'reauth_required'}
+          ]
+        })
+      })));
+      await p.load();
+      expect(p.hasAccounts, true);
+      expect(p.hasReauthRequired, true);
+      expect(p.reauthAccounts.single.email, 'reauth@x.io');
+      expect(p.accounts.single.needsReauth, true);
+      expect(p.accounts.single.isConnected, false);
+    });
+
+    test('all-connected accounts → hasReauthRequired false', () async {
+      final p = AccountProvider(_dioWith(_StubAdapter({
+        'GET /accounts': (200, {
+          'ok': true,
+          'data': [
+            {'account_id': 'a', 'email': 'a@b.c', 'provider': 'imap', 'status': 'connected'}
+          ]
+        })
+      })));
+      await p.load();
+      expect(p.hasReauthRequired, false);
+      expect(p.reauthAccounts, isEmpty);
+    });
+
     test('remove deletes the account on 204', () async {
       final adapter = _StubAdapter({
         'GET /accounts': (200, {

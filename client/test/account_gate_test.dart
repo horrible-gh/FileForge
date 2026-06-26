@@ -45,10 +45,24 @@ class _FakeAccounts extends AccountProvider {
   bool get hasAccounts => _accounts.isNotEmpty;
   @override
   List<MailAccount> get accounts => List.unmodifiable(_accounts);
+  @override
+  bool get hasReauthRequired => _accounts.any((a) => a.needsReauth);
+  @override
+  List<MailAccount> get reauthAccounts =>
+      _accounts.where((a) => a.needsReauth).toList(growable: false);
 }
 
 const _oneAccount = [
   MailAccount(accountId: 'a1', email: 'me@example.com', provider: 'gmail'),
+];
+
+const _reauthAccount = [
+  MailAccount(
+    accountId: 'a1',
+    email: 'reauth@example.com',
+    provider: 'gmail',
+    status: 'reauth_required',
+  ),
 ];
 
 Widget _harness(MailProvider mail, AccountProvider accounts) => MaterialApp(
@@ -90,6 +104,30 @@ void main() {
 
     expect(mail.loaded, contains('inbox'));
     expect(find.text('Inbox'), findsOneWidget); // text translated text text
+    expect(find.text('Connect account'), findsNothing);
+    // R0001: 계정이 있어도 계정 관리(추가/재연결) 진입점이 상시 보여야 한다.
+    expect(find.byTooltip('Manage mail accounts'), findsOneWidget);
+    // 정상 계정만 있으면 재인증 배너는 뜨지 않는다.
+    expect(find.text('Reconnection required'), findsNothing);
+  });
+
+  testWidgets(
+      'reauth_required account → reconnect banner + manage entry shown (R0001)',
+      (tester) async {
+    // 0018.0009-TR가 부여하는 status=reauth_required 계정. 온보딩은 뜨지 않지만
+    // (hasAccounts=true), 사용자는 배너의 "재연결"로 계정 화면에 도달할 수 있어야 한다.
+    final mail = _SpyMailProvider();
+    await tester.pumpWidget(
+        _harness(mail, _FakeAccounts(AccountGateState.ready, _reauthAccount)));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Reconnection required'), findsOneWidget);
+    expect(find.text('Reconnect'), findsOneWidget);
+    expect(find.textContaining('reauth@example.com'), findsOneWidget);
+    // 상시 진입점도 함께 존재.
+    expect(find.byTooltip('Manage mail accounts'), findsOneWidget);
+    // 온보딩은 표시되지 않는다(계정이 존재하므로).
     expect(find.text('Connect account'), findsNothing);
   });
 

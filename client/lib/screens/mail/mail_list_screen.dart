@@ -178,10 +178,32 @@ class _MailListScreenState extends State<MailListScreen> {
       ),
       body: Column(
         children: [
-          _LabelSwitcher(
-            current: context.watch<MailProvider>().currentLabel,
-            onSelected: _switchLabel,
+          // 라벨 스위처 우측에 상시 계정 관리 진입점(R0001) — 계정이 이미
+          // 있을 때는 온보딩 CTA가 뜨지 않으므로, 여기서 AccountConnectScreen으로
+          // 가는 유일한 동선을 보장한다(추가·재연결·해제).
+          Row(
+            children: [
+              Expanded(
+                child: _LabelSwitcher(
+                  current: context.watch<MailProvider>().currentLabel,
+                  onSelected: _switchLabel,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.manage_accounts_rounded),
+                tooltip: t.accountManageTooltip,
+                onPressed: _openAccounts,
+              ),
+              const SizedBox(width: 4),
+            ],
           ),
+          // 재인증 필요(status=reauth_required) 배너 — 0018.0009-TR가 OAuth
+          // credential 유실 시 부여하는 상태를 표면화하고 재연결 동선을 연다.
+          if (accounts.hasReauthRequired)
+            _ReauthBanner(
+              email: accounts.reauthAccounts.first.email,
+              onReconnect: _openAccounts,
+            ),
           Expanded(child: _buildBody(context, t)),
         ],
       ),
@@ -322,6 +344,63 @@ class _MailListScreenState extends State<MailListScreen> {
             onTap: () => _openMail(mail.mails[index]),
           );
         },
+      ),
+    );
+  }
+}
+
+/// 재인증 필요 배너(R0001) — 연결됐지만 OAuth credential이 유실된 계정
+/// (status=reauth_required)을 표면화하고, "재연결" 버튼으로 AccountConnectScreen을
+/// 연다. 서버 ReconnectAccount가 기존 계정 row를 갱신하므로 중복 계정은 생기지 않는다.
+class _ReauthBanner extends StatelessWidget {
+  final String email;
+  final VoidCallback onReconnect;
+
+  const _ReauthBanner({required this.email, required this.onReconnect});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.key_off_rounded, color: theme.colorScheme.onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.accountReauthBannerTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  t.accountReauthBannerBody(email),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: onReconnect,
+            child: Text(t.accountReauthAction),
+          ),
+        ],
       ),
     );
   }
