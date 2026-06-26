@@ -49,7 +49,7 @@ func (h *Handlers) MountPublic(r chi.Router) {
 
 // Mount wires the mail routes onto an already-authenticated chi router.
 func (h *Handlers) Mount(r chi.Router) {
-	// 관리(M) — 라벨·설정
+	// management(M) — text·text
 	r.Get("/labels", h.ListLabels)
 	r.Post("/labels", h.CreateLabel)
 	r.Patch("/labels/{id}", h.UpdateLabel)
@@ -60,13 +60,13 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Get("/settings/sync", h.GetSync)
 	r.Patch("/settings/sync", h.PatchSync)
 
-	// 메일(C) — 읽기경로 + 발송(D)
+	// text(C) — textpath + text(D)
 	r.Get("/mails", h.ListMails)
 	r.Get("/mails/{id}", h.GetMail)
 	r.Patch("/mails/{id}", h.PatchMail)
 	r.Post("/mails", h.SendMail)
 
-	// 작성(D) — 초안 + 첨부
+	// compose(D) — Draft + text
 	r.Get("/drafts/{id}", h.GetDraft)
 	r.Post("/drafts", h.CreateDraft)
 	r.Put("/drafts/{id}", h.UpdateDraft)
@@ -74,13 +74,13 @@ func (h *Handlers) Mount(r chi.Router) {
 	r.Post("/attachments", h.UploadAttachment)
 	r.Get("/attachments/{id}", h.DownloadAttachment)
 
-	// 관리(M) — 계정
+	// management(M) — account
 	r.Get("/accounts/oauth/authorize", h.AuthorizeURL)
 	r.Get("/accounts", h.ListAccounts)
 	r.Post("/accounts", h.CreateAccount)
 	r.Delete("/accounts/{id}", h.DeleteAccount)
 
-	// 동기화(F)
+	// sync(F)
 	r.Get("/sync/status", h.SyncStatus)
 	r.Post("/sync", h.TriggerSync)
 }

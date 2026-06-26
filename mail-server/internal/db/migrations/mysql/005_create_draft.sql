@@ -1,18 +1,18 @@
--- DB0008 §2.8 draft — 작성 중 임시보관 초안 [MySQL]
--- in_reply_to FK는 mail(006) 이후 007에서 덧붙인다(005↔006 순환 회피).
--- TEXT 컬럼 DEFAULT는 MySQL 8.0.13+ 식(expression) 기본값 `DEFAULT ('...')` 사용.
+-- DB0008 §2.8 draft — compose text translated text Draft [MySQL]
+-- in_reply_to FKtext mail(006) text 007text translated text(005↔006 text text).
+-- TEXT text DEFAULTtext MySQL 8.0.13+ text(expression) default value `DEFAULT ('...')` text.
 CREATE TABLE draft (
     draft_id     VARCHAR(64) NOT NULL,                  -- d_*
     user_id      VARCHAR(64) NOT NULL,
     account_id   VARCHAR(64),
-    in_reply_to  VARCHAR(64),                           -- FK→mail 은 007에서 추가
+    in_reply_to  VARCHAR(64),                           -- FK→mail text 007text add
     reply_type   VARCHAR(16),
     to_addrs     TEXT NOT NULL DEFAULT ('[]'),          -- JSON Address[]
     cc_addrs     TEXT NOT NULL DEFAULT ('[]'),
     subject      TEXT DEFAULT (''),
     body_format  VARCHAR(8)  NOT NULL DEFAULT 'text',
     body_content TEXT DEFAULT (''),
-    updated_at   VARCHAR(40) NOT NULL,                  -- 낙관적 경합 기준(base_updated_at)
+    updated_at   VARCHAR(40) NOT NULL,                  -- translated text text text(base_updated_at)
     PRIMARY KEY (draft_id),
     CONSTRAINT fk_draft_user FOREIGN KEY (user_id)
         REFERENCES app_user(user_id) ON DELETE CASCADE,

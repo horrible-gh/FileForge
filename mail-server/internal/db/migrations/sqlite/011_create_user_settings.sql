@@ -1,6 +1,6 @@
--- DB0008 §2.10 user_settings — 사용자당 1행 표시·동기화 설정
+-- DB0008 §2.10 user_settings — translated text 1text display·sync text
 CREATE TABLE user_settings (
-    user_id           TEXT NOT NULL PRIMARY KEY,        -- 불변식 7 (사용자당 0/1행)
+    user_id           TEXT NOT NULL PRIMARY KEY,        -- invariant 7 (translated text 0/1text)
     sort_order        TEXT NOT NULL DEFAULT 'date_desc' CHECK (sort_order IN ('date_desc','date_asc')),
     language          TEXT NOT NULL DEFAULT 'ko' CHECK (language IN ('ko','ja','en')),
     density           TEXT NOT NULL DEFAULT 'comfortable' CHECK (density IN ('comfortable','compact')),

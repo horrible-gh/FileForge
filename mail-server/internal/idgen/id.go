@@ -1,6 +1,6 @@
 // Package idgen mints opaque, server-issued identifiers.
 // DB0008: every PK is an opaque prefixed TEXT (u_/rt_/acc_/lbl_/m_/d_/a_/t_).
-// P0007 표기 규칙: clients treat identifiers as opaque.
+// P0007 notation rule: clients treat identifiers as opaque.
 package idgen
 
 import (

@@ -2,7 +2,7 @@
 // MIME message from the composed mail (resolving attachment bytes via the Blob store)
 // and delivers it through a configured relay using stdlib net/smtp (no cgo, no new
 // dependency). Per-account XOAUTH2 / provider-specific SMTP auth is the provider
-// adapter extension (NR0003 §5; L0012 외부 발송 wraps this behind the interface).
+// adapter extension (NR0003 §5; L0012 external sending wraps this behind the interface).
 package smtpx
 
 import (

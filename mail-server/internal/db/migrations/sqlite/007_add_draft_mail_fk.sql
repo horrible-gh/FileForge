@@ -1,6 +1,6 @@
--- DB0008 §3 (007) draft.in_reply_to FK→mail 추가.
--- SQLite는 ALTER ADD CONSTRAINT 미지원 → 테이블 재작성으로 FK를 덧붙인다.
--- 이 시점엔 draft 를 참조하는 인바운드 FK가 아직 없어(attachment는 009) 재작성이 안전하다.
+-- DB0008 §3 (007) draft.in_reply_to FK→mail add.
+-- SQLitetext ALTER ADD CONSTRAINT translated text → translated text textcomposetext FKtext translated text.
+-- text translated text draft text translated text translated text FKtext text text(attachmenttext 009) textcomposetext translated text.
 CREATE TABLE draft_new (
     draft_id     TEXT NOT NULL PRIMARY KEY,
     user_id      TEXT NOT NULL,

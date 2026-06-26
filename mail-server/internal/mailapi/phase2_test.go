@@ -100,7 +100,12 @@ func advancingClock() func() time.Time {
 	}
 }
 
-func setupP2(t *testing.T) *p2env {
+func setupP2(t *testing.T) *p2env { return setupP2With(t, nil) }
+
+// setupP2With builds the phase-2 harness and lets a caller mutate Deps before the
+// server is constructed (e.g. drop the Sender to reproduce the "sender not configured"
+// 502 root cause from NR0003 / TR0005).
+func setupP2With(t *testing.T, mutate func(*mailapi.Deps)) *p2env {
 	t.Helper()
 	conn, err := db.Open(filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {
@@ -133,6 +138,9 @@ func setupP2(t *testing.T) *p2env {
 		Blob:      blob,
 		Now:       advancingClock(),
 		SendRetry: retry.Policy{MaxAttempts: 2, Base: 0, Factor: 1, Max: 0, Jitter: 0}, // no real sleep
+	}
+	if mutate != nil {
+		mutate(&deps)
 	}
 	cfg := config.Config{
 		Context: "/api/v1", JWTSecret: []byte("test-secret"),
@@ -206,8 +214,8 @@ func TestSendMail(t *testing.T) {
 	}
 	e.do(t, http.MethodPost, "/api/v1/mails", tok, map[string]any{
 		"to":      []map[string]any{{"address": "boss@example.com"}},
-		"subject": "주간 보고",
-		"body":    map[string]any{"format": "text", "content": "보고 드립니다."},
+		"subject": "Weekly report",
+		"body":    map[string]any{"format": "text", "content": "Here is the report."},
 	}, http.StatusCreated, &sres)
 	if sres.Data.Status != "sent" || sres.Data.MailID == "" {
 		t.Fatalf("send result: %+v", sres.Data)
@@ -221,7 +229,7 @@ func TestSendMail(t *testing.T) {
 		Data []mailapi.MailSummary `json:"data"`
 	}
 	e.do(t, http.MethodGet, "/api/v1/mails", tok, nil, http.StatusOK, &lst)
-	if len(lst.Data) != 1 || lst.Data[0].Subject != "주간 보고" {
+	if len(lst.Data) != 1 || lst.Data[0].Subject != "Weekly report" {
 		t.Fatalf("outbound not persisted/listable: %+v", lst.Data)
 	}
 
@@ -246,7 +254,7 @@ func TestSendMail(t *testing.T) {
 	e.sender.fail = true
 	raw = e.do(t, http.MethodPost, "/api/v1/mails", tok, map[string]any{
 		"to":      []map[string]any{{"address": "boss@example.com"}},
-		"subject": "실패", "body": map[string]any{"format": "text", "content": "z"},
+		"subject": "failed", "body": map[string]any{"format": "text", "content": "z"},
 	}, http.StatusBadGateway, nil)
 	if errCode(raw) != "SEND_FAILED" {
 		t.Fatalf("want SEND_FAILED, got %s", raw)
@@ -254,6 +262,48 @@ func TestSendMail(t *testing.T) {
 	e.do(t, http.MethodGet, "/api/v1/mails", tok, nil, http.StatusOK, &lst)
 	if len(lst.Data) != 1 {
 		t.Fatalf("failed send must not persist: %d mails", len(lst.Data))
+	}
+}
+
+// B0001 / 502 root cause (NR0003 §1, TR0005): when no SMTP relay is configured
+// (MAILANCHOR_SMTP_HOST empty -> router leaves Deps.Sender nil), POST /api/v1/mails must
+// return 502 SEND_FAILED with details.reason "sender not configured" and persist nothing.
+// This is the live failure operators hit with only Google OAuth keys set; it was asserted
+// only for the transient send-failure path before, never for the nil-Sender path itself.
+func TestSendMailSenderNotConfigured(t *testing.T) {
+	e := setupP2With(t, func(d *mailapi.Deps) { d.Sender = nil })
+	tok := e.token
+
+	raw := e.do(t, http.MethodPost, "/api/v1/mails", tok, map[string]any{
+		"to":      []map[string]any{{"address": "boss@example.com"}},
+		"subject": "no relay",
+		"body":    map[string]any{"format": "text", "content": "should not send"},
+	}, http.StatusBadGateway, nil)
+
+	if errCode(raw) != "SEND_FAILED" {
+		t.Fatalf("want SEND_FAILED, got %s", raw)
+	}
+	var er struct {
+		Error struct {
+			Details struct {
+				Reason string `json:"reason"`
+			} `json:"details"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &er); err != nil {
+		t.Fatalf("unmarshal error body: %v (%s)", err, raw)
+	}
+	if er.Error.Details.Reason != "sender not configured" {
+		t.Fatalf("want reason 'sender not configured', got %q (%s)", er.Error.Details.Reason, raw)
+	}
+
+	// nothing persisted: a failed send must not leave an outbound mail
+	var lst struct {
+		Data []mailapi.MailSummary `json:"data"`
+	}
+	e.do(t, http.MethodGet, "/api/v1/mails", tok, nil, http.StatusOK, &lst)
+	if len(lst.Data) != 0 {
+		t.Fatalf("sender-not-configured send must not persist: %d mails", len(lst.Data))
 	}
 }
 
@@ -291,8 +341,8 @@ func TestSendFromDraftReattachesAttachment(t *testing.T) {
 		} `json:"data"`
 	}
 	e.do(t, http.MethodPost, "/api/v1/drafts", tok, map[string]any{
-		"to": []map[string]any{{"address": "boss@example.com"}}, "subject": "초안",
-		"body": map[string]any{"format": "text", "content": "본문"},
+		"to": []map[string]any{{"address": "boss@example.com"}}, "subject": "Draft",
+		"body": map[string]any{"format": "text", "content": "Body"},
 	}, http.StatusCreated, &dr)
 	draftID := dr.Data.DraftID
 
@@ -314,7 +364,7 @@ func TestSendFromDraftReattachesAttachment(t *testing.T) {
 	e.do(t, http.MethodPost, "/api/v1/mails", tok, map[string]any{
 		"from_draft_id": draftID,
 		"to":            []map[string]any{{"address": "boss@example.com"}},
-		"subject":       "초안", "body": map[string]any{"format": "text", "content": "본문"},
+		"subject":       "Draft", "body": map[string]any{"format": "text", "content": "Body"},
 	}, http.StatusCreated, &sres)
 
 	// the mail now carries the attachment (reattached) and has_attachment is true
@@ -552,7 +602,7 @@ func TestSyncMerge(t *testing.T) {
 				From: mailapi.Address{Address: "a@x.com"}, Subject: "one",
 				Body:       mailapi.Body{Format: "text", Content: "body one"},
 				ReceivedAt: "2026-06-21T08:00:00Z", IsRead: false,
-				Labels:      []string{"inbox", "프로모션"},
+				Labels:      []string{"inbox", "Promotions"},
 				Attachments: []mailapi.ExternalAttachment{{Filename: "a.pdf", ContentType: "application/pdf", SizeBytes: 10}}},
 			{Kind: mailapi.ChangeUpsert, ExternalID: "ext-2", ThreadKey: "th-2",
 				From: mailapi.Address{Address: "b@x.com"}, Subject: "two",

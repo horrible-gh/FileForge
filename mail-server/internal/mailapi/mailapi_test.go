@@ -48,7 +48,7 @@ func setup(t *testing.T) *env {
 	for i, subj := range []string{"first", "second", "third"} {
 		ts := []string{"2026-06-21T08:00:0" + string(rune('0'+i)) + "Z"}[0]
 		if _, err := st.SeedMail(u.ID, acct, mailapi.MailSummary{
-			ThreadID: "t_x", From: mailapi.Address{Name: "발신자", Address: "sender@shop.com"},
+			ThreadID: "t_x", From: mailapi.Address{Name: "Sender", Address: "sender@shop.com"},
 			Subject: subj, Snippet: subj + " body", ReceivedAt: ts,
 		}, "<p>"+subj+"</p>", []mailapi.Address{{Address: "u@example.com"}}); err != nil {
 			t.Fatalf("seed mail: %v", err)
@@ -146,14 +146,14 @@ func TestLabels(t *testing.T) {
 	var cr struct {
 		Data mailapi.Label `json:"data"`
 	}
-	e.do(t, http.MethodPost, "/api/v1/labels", tok, map[string]any{"name": "영수증", "color": "#3B82F6"}, http.StatusCreated, &cr)
+	e.do(t, http.MethodPost, "/api/v1/labels", tok, map[string]any{"name": "Receipt", "color": "#3B82F6"}, http.StatusCreated, &cr)
 	if cr.Data.LabelID == "" || cr.Data.Type != "user" {
 		t.Fatalf("bad created label: %+v", cr.Data)
 	}
 	userLabel := cr.Data.LabelID
 
 	// duplicate -> 409
-	raw := e.do(t, http.MethodPost, "/api/v1/labels", tok, map[string]any{"name": "영수증"}, http.StatusConflict, nil)
+	raw := e.do(t, http.MethodPost, "/api/v1/labels", tok, map[string]any{"name": "Receipt"}, http.StatusConflict, nil)
 	if errCode(raw) != "LABEL_DUPLICATE" {
 		t.Fatalf("want LABEL_DUPLICATE, got %s", raw)
 	}

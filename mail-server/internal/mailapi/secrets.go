@@ -3,7 +3,7 @@ package mailapi
 import "sync"
 
 // MemSecretStore is an in-memory SecretStore (dev/default). Production must use an
-// encrypted-at-rest store (DB0008 §2.3: 자격 원문은 비밀저장소). Credentials are kept
+// encrypted-at-rest store (DB0008 §2.3: raw credentials live in secret storage). Credentials are kept
 // out of SQL deliberately; this impl simply does not persist them.
 type MemSecretStore struct {
 	mu sync.RWMutex

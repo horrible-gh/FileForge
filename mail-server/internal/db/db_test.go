@@ -83,7 +83,7 @@ func TestSQLiteOpenAndMigrate(t *testing.T) {
 	assertAllMigrationsApplied(t, conn, DriverSQLite)
 }
 
-// TestMySQLOpenAndMigrate is the live "mysql 기동 확인" gate (R0001 stage 1 done
+// TestMySQLOpenAndMigrate is the live "mysql startup text" gate (R0001 stage 1 done
 // criterion). It is skipped unless MAILANCHOR_TEST_MYSQL_HOST is set, so the default
 // `go test ./...` needs no MySQL. When pointed at a MySQL/MariaDB server it runs the
 // real migration chain through OpenDB and verifies every migration applied.

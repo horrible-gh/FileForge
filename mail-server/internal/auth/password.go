@@ -26,7 +26,7 @@ var DummyHash = mustHash("__mailanchor_dummy__")
 
 // HashPassword returns a self-describing argon2id encoded hash
 // ($argon2id$v=19$m=...,t=...,p=...$salt$hash) so parameters travel with the hash
-// and can be upgraded later (L0011 §5 점진 업그레이드).
+// and can be upgraded later (L0011 §5 gradual upgrade).
 func HashPassword(plain string) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {

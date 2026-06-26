@@ -1,9 +1,9 @@
--- DB0008 §2.9 sync_state — 계정당 1행 동기화 상태·커서
+-- DB0008 §2.9 sync_state — accounttext 1text sync state·text
 CREATE TABLE sync_state (
-    account_id     TEXT NOT NULL PRIMARY KEY,           -- 불변식 6 (계정당 0/1행)
+    account_id     TEXT NOT NULL PRIMARY KEY,           -- invariant 6 (accounttext 0/1text)
     state          TEXT NOT NULL DEFAULT 'idle' CHECK (state IN ('idle','syncing','error')),
     last_synced_at TEXT,
-    sync_cursor    TEXT,                                -- 외부 증분 커서(불투명)
+    sync_cursor    TEXT,                                -- text textminutes text(translated text)
     last_error     TEXT,
     FOREIGN KEY (account_id) REFERENCES mail_account(account_id) ON DELETE CASCADE
 );

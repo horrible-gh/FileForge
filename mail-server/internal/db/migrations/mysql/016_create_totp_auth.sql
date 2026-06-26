@@ -1,7 +1,7 @@
--- R0001 stage 4 — 2FA TOTP. MailAnchor `totp_auth` 테이블의 Go 사이드카 정합본 [MySQL]
--- (res/sql/migration/mysql/_INIT_012_totp_auth_001.sql 대응). 사용자당 0/1행.
--- secret = base32 TOTP 시드, enabled = 활성화 여부,
--- recovery_codes = 1회용 복구코드 JSON 배열(TEXT). app_user 삭제 시 함께 정리.
+-- R0001 stage 4 — 2FA TOTP. MailAnchor `totp_auth` translated text Go translated text compatibilitytext [MySQL]
+-- (res/sql/migration/mysql/_INIT_012_totp_auth_001.sql text). translated text 0/1text.
+-- secret = base32 TOTP text, enabled = translated text text,
+-- recovery_codes = 1text translated text JSON text(TEXT). app_user delete text text text.
 CREATE TABLE totp_auth (
     user_id        VARCHAR(64) NOT NULL,
     secret         VARCHAR(64) NOT NULL,

@@ -34,7 +34,7 @@ func codeOf(err error) string {
 func TestAuthFlow(t *testing.T) {
 	svc, store := newSvc(t)
 
-	user, err := store.CreateUser("user@example.com", "s3cr3t-pass", "홍길동")
+	user, err := store.CreateUser("user@example.com", "s3cr3t-pass", "Hong Gil Dong")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}

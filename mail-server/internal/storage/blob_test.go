@@ -42,7 +42,7 @@ func TestDiskStoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDiskStore: %v", err)
 	}
-	payload := []byte("attachment bytes 첨부")
+	payload := []byte("attachment bytes text")
 	ref, n, err := s.Put(bytes.NewReader(payload))
 	if err != nil {
 		t.Fatalf("Put: %v", err)

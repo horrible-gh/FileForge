@@ -8,7 +8,7 @@ import (
 )
 
 // SharedStateStore backs the OAuth front-channel `state` with the cross-instance shared store
-// (R0001 stage 5: "OAuth state의 sharedstore 이관"). MemStateStore is single-process, so a
+// (R0001 stage 5: "OAuth statetext sharedstore text"). MemStateStore is single-process, so a
 // multi-instance deployment could issue the authorize state on one instance and receive the
 // callback on another, losing the binding; routing it through the shared store (Redis when
 // configured) lets the two half-steps land anywhere. Single-use + TTL are provided by the

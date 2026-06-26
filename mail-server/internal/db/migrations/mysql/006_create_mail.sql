@@ -1,19 +1,19 @@
--- DB0008 §2.5 mail — 메일 한 통 (MailSummary/MailDetail 공통 본체) [MySQL]
+-- DB0008 §2.5 mail — text text text (MailSummary/MailDetail text text) [MySQL]
 CREATE TABLE mail (
     mail_id        VARCHAR(64)  NOT NULL,               -- m_*
     user_id        VARCHAR(64)  NOT NULL,
     account_id     VARCHAR(64)  NOT NULL,
-    thread_id      VARCHAR(255) NOT NULL,               -- 스레드 묶음 키(테이블 미신설)
+    thread_id      VARCHAR(255) NOT NULL,               -- translated text text text(translated text translated text)
     from_addr      TEXT         NOT NULL,               -- JSON {name,address}
     to_addrs       TEXT         NOT NULL DEFAULT ('[]'),-- JSON Address[]
     cc_addrs       TEXT         NOT NULL DEFAULT ('[]'),
     subject        TEXT         DEFAULT (''),
     snippet        TEXT         DEFAULT (''),
     body_format    VARCHAR(8)   NOT NULL DEFAULT 'text',
-    body_content   TEXT         DEFAULT (''),           -- 상세에서만 적재
+    body_content   TEXT         DEFAULT (''),           -- translated text text
     received_at    VARCHAR(40)  NOT NULL,
     is_read        TINYINT(1)   NOT NULL DEFAULT 0,     -- BOOLEAN 0/1
-    has_attachment TINYINT(1)   NOT NULL DEFAULT 0,     -- 비정규화 캐시(불변식 8)
+    has_attachment TINYINT(1)   NOT NULL DEFAULT 0,     -- textnormalization text(invariant 8)
     direction      VARCHAR(8)   NOT NULL DEFAULT 'inbound',
     sent_at        VARCHAR(40),
     PRIMARY KEY (mail_id),

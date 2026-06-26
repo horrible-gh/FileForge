@@ -12,7 +12,7 @@ import (
 )
 
 // EncryptedSecretStore is a SecretStore that keeps OAuth credentials encrypted at rest with
-// AES-256-GCM (R0001 stage 5; DB0008 §2.3: "자격 원문은 비밀저장소"·암호화 저장). Unlike
+// AES-256-GCM (R0001 stage 5; DB0008 §2.3: "raw credentials live in secret storage"·translated text save). Unlike
 // MemSecretStore it never holds a plaintext Credential in its backing map — values are sealed
 // on Put and only opened transiently inside Get — so a heap dump, accidental log, or a future
 // persistent backing store sees ciphertext (nonce‖ct‖tag), not live tokens. GCM also

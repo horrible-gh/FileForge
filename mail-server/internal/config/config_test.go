@@ -148,6 +148,36 @@ func TestLoadFileForgeBridge(t *testing.T) {
 	if !c.FileForge.Enabled() || string(c.FileForge.PubKeyPEM) != pemInline {
 		t.Fatalf("file PEM not loaded: %q", c.FileForge.PubKeyPEM)
 	}
+	// The resolved KeyFile is absolute so the bridge no longer depends on cwd at use time
+	// (0017 NR0003).
+	if !filepath.IsAbs(c.FileForge.KeyFile) {
+		t.Fatalf("KeyFile not absolutized: %q", c.FileForge.KeyFile)
+	}
+}
+
+// 0017 NR0003: when the key file path is set but the file is not readable at boot
+// (boot-order race — Go starts before FileForge writes jwt_public.pem), the bridge is not
+// Enabled() yet but IS Configured() with the (absolute) KeyFile retained, so the router
+// can arm it lazily and self-heal once the key appears.
+func TestLoadFileForgeLazyArmsOnMissingKeyFile(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("MAILANCHOR_ENV", "development")
+
+	missing := filepath.Join(t.TempDir(), "not-yet", "jwt_public.pem")
+	t.Setenv("MAILANCHOR_FILEFORGE_JWT_PUBKEY_FILE", missing)
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.FileForge.Enabled() {
+		t.Fatal("bridge must not be Enabled() while the key file is absent")
+	}
+	if !c.FileForge.Configured() {
+		t.Fatal("bridge must report Configured() so the router arms it lazily")
+	}
+	if !filepath.IsAbs(c.FileForge.KeyFile) {
+		t.Fatalf("KeyFile must be retained and absolute, got %q", c.FileForge.KeyFile)
+	}
 }
 
 func TestLoadEnvLowercased(t *testing.T) {

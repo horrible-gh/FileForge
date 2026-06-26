@@ -68,7 +68,7 @@ func TestOAuthCallbackHappyPath(t *testing.T) {
 	raw := e.do(t, http.MethodGet,
 		"/api/v1/accounts/oauth/callback?code=good&state="+state, "", nil, http.StatusOK, nil)
 	body := string(raw)
-	if !strings.Contains(body, "연결 완료") || !strings.Contains(body, "owner@gmail.com") {
+	if !strings.Contains(body, "Connection complete") || !strings.Contains(body, "owner@gmail.com") {
 		t.Fatalf("callback page missing success markers: %s", body)
 	}
 
@@ -91,7 +91,7 @@ func TestOAuthCallbackRejectsUnknownState(t *testing.T) {
 
 	raw := e.do(t, http.MethodGet,
 		"/api/v1/accounts/oauth/callback?code=good&state=st_forged", "", nil, http.StatusBadRequest, nil)
-	if !strings.Contains(string(raw), "연결 실패") {
+	if !strings.Contains(string(raw), "Connection failed") {
 		t.Fatalf("expected failure page, got: %s", raw)
 	}
 	if emails := listAccountEmails(t, e); len(emails) != 0 {

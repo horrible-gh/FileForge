@@ -1,7 +1,7 @@
--- DB0008 §2.11 인덱스 (핫패스 §4) [MySQL]
--- 방언 메모: MySQL은 부분(filtered) 인덱스를 지원하지 않으므로 SQLite의
--- `WHERE ...` 절을 제거하고 전체 인덱스로 만든다(동작 동등, 크기만 약간 큼).
--- DESC 인덱스는 MySQL 8.0+ 에서 유효하다.
+-- DB0008 §2.11 translated text (translated text §4) [MySQL]
+-- dialect note: MySQLtext textminutes(filtered) translated text translated text translated text SQLitetext
+-- `WHERE ...` text translated text text translated text translated text(text text, sizetext text text).
+-- DESC translated text MySQL 8.0+ text translated text.
 CREATE INDEX ix_mail_list        ON mail(user_id, account_id, received_at DESC);
 CREATE INDEX ix_mail_thread      ON mail(thread_id);
 CREATE INDEX ix_mail_unread      ON mail(user_id, is_read);

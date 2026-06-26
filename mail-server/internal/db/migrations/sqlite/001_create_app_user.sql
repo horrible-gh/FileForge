@@ -1,8 +1,8 @@
--- DB0008 §2.1 app_user — 인증 주체 (P0007 user DTO 영속체)
+-- DB0008 §2.1 app_user — authentication text (P0007 user DTO translated text)
 CREATE TABLE app_user (
-    user_id       TEXT NOT NULL PRIMARY KEY,           -- u_* 불투명 식별자
+    user_id       TEXT NOT NULL PRIMARY KEY,           -- u_* translated text translated text
     email         TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,                        -- 평문 저장 금지 (불변식 9)
+    password_hash TEXT NOT NULL,                        -- text save prohibited (invariant 9)
     display_name  TEXT,
     created_at    TEXT NOT NULL,                        -- ISO-8601 UTC
     updated_at    TEXT NOT NULL

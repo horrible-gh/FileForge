@@ -18,7 +18,7 @@ var ErrOAuthInvalidGrant = errors.New("oauth invalid_grant")
 // transaction logic (send L0012 §2.4, sync merge L0013 §2.3) is written against
 // these interfaces so it is fully testable with fakes; the concrete SMTP/IMAP/OAuth
 // wire adapters plug in behind them. Provider-specific change-fetch differences are
-// L0013 DEFERRED ("외부 제공자별 변경 페치 API 차이").
+// L0013 DEFERRED ("provider-specific change-fetch API differences").
 
 // OutgoingMail is the payload handed to the external Sender (SMTP).
 type OutgoingMail struct {

@@ -6,7 +6,7 @@
 // DB_*, MAIL_STORAGE_BASE_PATH, GOOGLE_*, ENVIRONMENT, ALLOWED_ORIGIN, REDIS_*) are
 // read first, with the legacy MAILANCHOR_* keys kept as fallbacks so existing
 // deployments/tests keep working. The FileForge token-bridge keys (MAILANCHOR_FILEFORGE_*)
-// are intentionally NOT renamed (R0001: "[유지] JWT 브릿지 … 깨지 말 것").
+// are intentionally NOT renamed (R0001: "[keep] JWT translated text … text text text").
 package config
 
 import (
@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -97,16 +98,24 @@ type RedisConfig struct {
 func (r RedisConfig) Enabled() bool { return r.Host != "" }
 
 // FileForgeFederation holds the verification parameters for FileForge-issued tokens.
-// PubKeyPEM is the PEM-encoded RSA public key (PKIX or PKCS1). Issuer/Audience, when
-// non-empty, are enforced against the token's iss/aud claims.
+// PubKeyPEM is the PEM-encoded RSA public key (PKIX or PKCS1). KeyFile is the absolute
+// path the key was (or will be) read from; it is retained even when the eager read fails
+// so the bridge can load the key lazily once it appears (0017 NR0003 boot-order race).
+// Issuer/Audience, when non-empty, are enforced against the token's iss/aud claims.
 type FileForgeFederation struct {
 	PubKeyPEM []byte
+	KeyFile   string
 	Issuer    string
 	Audience  string
 }
 
-// Enabled reports whether the FileForge token bridge is configured.
+// Enabled reports whether the FileForge bridge has key material loaded at boot.
 func (f FileForgeFederation) Enabled() bool { return len(f.PubKeyPEM) > 0 }
+
+// Configured reports whether the operator intends the bridge to be on — either key
+// material is already loaded, or a key file path is set and the key may materialize later
+// (lazy load). Distinguishes "bridge intended but key not yet readable" from "bridge off".
+func (f FileForgeFederation) Configured() bool { return len(f.PubKeyPEM) > 0 || f.KeyFile != "" }
 
 // OAuthProvider is one provider's injected client credentials (endpoints are built-in
 // defaults in the oauthx adapter).
@@ -163,7 +172,7 @@ func Load() (Config, error) {
 }
 
 // resolveAccessTTL prefers the canonical ACCESS_TOKEN_EXPIRE_MINUTES (R0001 explicitly
-// "(분)"), falling back to the legacy MAILANCHOR_ACCESS_TTL_SEC (seconds), default 15m.
+// "(minutes)"), falling back to the legacy MAILANCHOR_ACCESS_TTL_SEC (seconds), default 15m.
 func resolveAccessTTL() time.Duration {
 	if m := getenvInt("ACCESS_TOKEN_EXPIRE_MINUTES", 0); m > 0 {
 		return time.Duration(m) * time.Minute
@@ -289,6 +298,18 @@ func loadFileForge() FileForgeFederation {
 		return f
 	}
 	if path := getenv("MAILANCHOR_FILEFORGE_JWT_PUBKEY_FILE", ""); path != "" {
+		// Resolve to an absolute path once, against the boot cwd, so the bridge no longer
+		// depends on the launcher's working directory at *use* time (0017 NR0003: the
+		// ../server/keys/jwt_public.pem relative path was cwd-fragile).
+		if abs, err := filepath.Abs(path); err == nil {
+			path = abs
+		}
+		f.KeyFile = path
+		// Eager read: when the key already exists at boot, verify against it immediately.
+		// A read failure is non-fatal — KeyFile is retained (above) so the bridge loads the
+		// key lazily once it appears. This neutralizes the 0017 NR0003 boot-order race where
+		// the Go server started ~1h43m before FileForge (re)generated jwt_public.pem and then
+		// stayed disabled until a manual restart.
 		if body, err := os.ReadFile(path); err == nil {
 			f.PubKeyPEM = body
 		}
@@ -299,7 +320,7 @@ func loadFileForge() FileForgeFederation {
 // loadDotEnv loads KEY=VALUE pairs from ENV_FILE (default ./.env) into the process
 // environment, but never overwrites a variable that is already set — the real
 // environment always wins. A missing file is a silent no-op. This is a minimal,
-// dependency-free parser (R0001 stage 2 "+.env 로딩"): it understands comments (#),
+// dependency-free parser (R0001 stage 2 "+.env loading"): it understands comments (#),
 // blank lines, optional `export ` prefixes, and single/double-quoted values.
 func loadDotEnv() {
 	path := os.Getenv("ENV_FILE")

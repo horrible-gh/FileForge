@@ -44,7 +44,7 @@ type sendResult struct {
 
 // persistSent writes the outbound mail in one transaction (L0012 §2.4 step c):
 // resolve thread, insert mail, reattach draft attachments / bind listed attachments,
-// delete the source draft, and recompute has_attachment (DB0008 불변식 8).
+// delete the source draft, and recompute has_attachment (DB0008 invariant 8).
 func (s *Store) persistSent(userID string, in sendInput) (sendResult, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *Store) persistSent(userID string, in sendInput) (sendResult, error) {
 		return sendResult{}, err
 	}
 
-	// Re-attribute attachments from their draft to this mail (DB0008 불변식 5: exclusive
+	// Re-attribute attachments from their draft to this mail (DB0008 invariant 5: exclusive
 	// ownership — flip draft_id->mail_id so the row still satisfies the XOR CHECK).
 	// Collect the set: all of the source draft's attachments + any explicitly listed ids.
 	reattach := map[string]bool{}

@@ -246,12 +246,12 @@ func (h *Handlers) writeCallbackResult(w http.ResponseWriter, email, errReason s
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	title, msg, status := "연결 완료", "이 창을 닫고 앱으로 돌아가세요.", http.StatusOK
+	title, msg, status := "Connection complete", "Close this window and return to the app.", http.StatusOK
 	if errReason == "" && email != "" {
-		msg = "계정 " + html.EscapeString(email) + " 연결이 완료되었습니다. 이 창을 닫아도 됩니다."
+		msg = "account " + html.EscapeString(email) + " connection is complete. You can close this window."
 	}
 	if errReason != "" {
-		title, msg, status = "연결 실패", "오류: "+html.EscapeString(errReason), http.StatusBadRequest
+		title, msg, status = "Connection failed", "Error: "+html.EscapeString(errReason), http.StatusBadRequest
 	}
 	w.WriteHeader(status)
 	fmt.Fprintf(w, callbackHTML, title, title, msg)

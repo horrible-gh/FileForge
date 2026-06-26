@@ -154,10 +154,10 @@ func TestPartialLabelMergePreservesUserLabels(t *testing.T) {
 		}
 	}
 	// initial: inbox + a user label
-	if err := st.applyChange(acc, mk([]string{"inbox", "프로모션"}, true)); err != nil {
+	if err := st.applyChange(acc, mk([]string{"inbox", "Promotions"}, true)); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	if got := labelNamesFor(t, st, "mid:m1"); !contains(got, "프로모션") {
+	if got := labelNamesFor(t, st, "mid:m1"); !contains(got, "Promotions") {
 		t.Fatalf("initial labels missing user label: %v", got)
 	}
 	// re-sync advertises only inbox (partial) -> user label must survive
@@ -165,7 +165,7 @@ func TestPartialLabelMergePreservesUserLabels(t *testing.T) {
 		t.Fatalf("merge: %v", err)
 	}
 	got := labelNamesFor(t, st, "mid:m1")
-	if !contains(got, "프로모션") || !contains(got, "inbox") {
+	if !contains(got, "Promotions") || !contains(got, "inbox") {
 		t.Fatalf("partial re-sync wiped labels (B3): %v", got)
 	}
 }
@@ -180,13 +180,13 @@ func TestAuthoritativeLabelMergeReplaces(t *testing.T) {
 			Labels: labels, LabelsPartial: false,
 		}
 	}
-	if err := st.applyChange(acc, mk([]string{"inbox", "프로모션"})); err != nil {
+	if err := st.applyChange(acc, mk([]string{"inbox", "Promotions"})); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
 	if err := st.applyChange(acc, mk([]string{"inbox"})); err != nil {
 		t.Fatalf("merge: %v", err)
 	}
-	if got := labelNamesFor(t, st, "mid:m2"); contains(got, "프로모션") {
+	if got := labelNamesFor(t, st, "mid:m2"); contains(got, "Promotions") {
 		t.Fatalf("authoritative merge should have replaced labels: %v", got)
 	}
 }

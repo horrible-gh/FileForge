@@ -18,11 +18,11 @@ import (
 // attachmentsMaxPerMail — L0012 §1.
 const attachmentsMaxPerMail = 20
 
-// uploadMaxBytes caps a single attachment upload (operational;容量 정책 DEFERRED — L0012).
+// uploadMaxBytes caps a single attachment upload (operational;容量 policy DEFERRED — L0012).
 const uploadMaxBytes = 25 << 20 // 25 MiB
 
 // InsertAttachment records attachment metadata bound to a draft (DB0008 §2.7,
-// 불변식 5: exactly one of mail_id/draft_id). Bytes already live in Blob at ref.
+// invariant 5: exactly one of mail_id/draft_id). Bytes already live in Blob at ref.
 // Enforces attachments_max_per_mail per draft.
 func (s *Store) InsertAttachment(userID, draftID, filename, contentType, ref string, size int64) (Attachment, error) {
 	var owned int
@@ -65,7 +65,7 @@ func (s *Store) attachmentBytes(userID, attachmentID string) (filename, contentT
 // --- handlers ---
 
 // UploadAttachment implements POST /attachments (P0007 §7.11, multipart/form-data).
-// The attachment binds to a draft (field draft_id) so the DB0008 불변식 5 exclusive
+// The attachment binds to a draft (field draft_id) so the DB0008 invariant 5 exclusive
 // ownership CHECK holds at upload time; send re-attributes it to the mail (L0012 §2.4).
 func (h *Handlers) UploadAttachment(w http.ResponseWriter, r *http.Request) {
 	if h.deps.Blob == nil {

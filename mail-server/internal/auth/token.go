@@ -83,7 +83,7 @@ func VerifyAccess(secret []byte, token string) (string, error) {
 }
 
 // newRefreshSecret returns an opaque rt_* refresh token and its sha256 hash.
-// Only the hash is persisted (DB0008 불변식 9).
+// Only the hash is persisted (DB0008 invariant 9).
 func newRefreshSecret() (raw, hash string) {
 	var b [32]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -99,7 +99,7 @@ func hashRefresh(raw string) string {
 }
 
 // tokenKey returns the sha256 hex of an access token, used as the blacklist key so the
-// raw JWT is never stored in the shared store (DB0008 불변식 9 spirit; stage 3).
+// raw JWT is never stored in the shared store (DB0008 invariant 9 spirit; stage 3).
 func tokenKey(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])

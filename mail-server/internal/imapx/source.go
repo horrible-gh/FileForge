@@ -8,7 +8,7 @@
 // incremental cursor is "UIDVALIDITY.lastUID"; each run SELECTs INBOX, UID SEARCHes
 // for UIDs above the cursor, fetches a bounded page, and maps each message to an
 // upsert ExternalChange. Upstream deletions (require CONDSTORE/QRESYNC) and attachment
-// byte download remain L0013 DEFERRED ("외부 제공자별 변경 페치 API 차이"); password-IMAP
+// byte download remain L0013 DEFERRED ("provider-specific change-fetch API differences"); password-IMAP
 // host plumbing (no XOAUTH2) is the remaining provider-specific extension.
 package imapx
 

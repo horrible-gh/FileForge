@@ -1,9 +1,9 @@
--- DB0008 §2.1 app_user — 인증 주체 (P0007 user DTO 영속체) [MySQL dialect]
--- 방언 메모: SQLite TEXT PK/UNIQUE → MySQL VARCHAR(인덱스/FK는 길이 필요).
+-- DB0008 §2.1 app_user — authentication text (P0007 user DTO translated text) [MySQL dialect]
+-- dialect note: SQLite TEXT PK/UNIQUE → MySQL VARCHAR(translated text/FKtext text text).
 CREATE TABLE app_user (
-    user_id       VARCHAR(64)  NOT NULL,                -- u_* 불투명 식별자
+    user_id       VARCHAR(64)  NOT NULL,                -- u_* translated text translated text
     email         VARCHAR(320) NOT NULL,
-    password_hash TEXT         NOT NULL,                -- 평문 저장 금지 (불변식 9)
+    password_hash TEXT         NOT NULL,                -- text save prohibited (invariant 9)
     display_name  TEXT,
     created_at    VARCHAR(40)  NOT NULL,                -- ISO-8601 UTC
     updated_at    VARCHAR(40)  NOT NULL,

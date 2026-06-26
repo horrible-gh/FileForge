@@ -163,16 +163,29 @@ func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler 
 	// boot/probe time instead of only when a user's GET /accounts 401s (server.0004 NR0003,
 	// cause A): in the FileForge-absorb topology the client presents RS256 FileForge tokens,
 	// so an unset/invalid key makes EVERY protected request 401 with no operator-facing signal.
-	bridgeStatus := "disabled"
-	if cfg.FileForge.Enabled() {
+	// bridgeStatus is a closure so /healthz reflects the *current* state: a lazily-armed
+	// bridge reports "pending" until its key file appears, then "enabled" (0017 NR0003).
+	bridgeStatus := func() string { return "disabled" }
+	switch {
+	case cfg.FileForge.Enabled():
+		// Key material already loaded at boot (inline PEM, or file readable at boot).
 		if fv, err := auth.NewFederatedVerifier(cfg.FileForge.PubKeyPEM, cfg.FileForge.Issuer, cfg.FileForge.Audience); err != nil {
 			log.Printf("fileforge token bridge disabled (bad public key): %v", err)
 		} else {
 			svc.WithFederation(fv)
-			bridgeStatus = "enabled"
+			bridgeStatus = fv.Status
 			log.Printf("fileforge token bridge enabled (issuer=%q audience=%q)", cfg.FileForge.Issuer, cfg.FileForge.Audience)
 		}
-	} else {
+	case cfg.FileForge.KeyFile != "":
+		// A key file is configured but was not readable at boot — arm the bridge lazily so
+		// it self-heals once the key appears, instead of staying disabled until a manual
+		// restart (0017 NR0003 boot-order race: Go started before FileForge wrote the key).
+		fv := auth.NewLazyFederatedVerifier(cfg.FileForge.KeyFile, cfg.FileForge.Issuer, cfg.FileForge.Audience)
+		svc.WithFederation(fv)
+		bridgeStatus = fv.Status
+		log.Printf("fileforge token bridge armed (lazy): pubkey not readable at boot, "+
+			"will load on first federated request from %s", cfg.FileForge.KeyFile)
+	default:
 		// No pubkey configured -> the bridge is OFF and only self-issued HS256 tokens are
 		// accepted. Log it loudly: a FileForge-absorb deployment that forgets the key will
 		// 401 every federated request, and the previous silence hid that until a user hit it.
@@ -203,31 +216,31 @@ func NewWithDeps(cfg config.Config, db *sql.DB, deps mailapi.Deps) http.Handler 
 		api.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 			httpx.OK(w, http.StatusOK, map[string]any{
 				"status":           "ok",
-				"fileforge_bridge": bridgeStatus,
+				"fileforge_bridge": bridgeStatus(),
 				"oauth_configured": len(oauthProviders) > 0,
 				"oauth_providers":  oauthProviders,
 			})
 		})
 
-		// 인증(A) — P0007 §6.1
+		// authentication(A) — P0007 §6.1
 		api.Post("/auth/login", authH.Login)
 		api.Post("/auth/refresh", authH.Refresh)
 		api.Post("/auth/logout", authH.Logout)
 		api.Get("/auth/session", authH.Session)
 
-		// 공개(unauthenticated) — OAuth front-channel callback. The provider redirects the
+		// public(unauthenticated) — OAuth front-channel callback. The provider redirects the
 		// browser here after consent (no JWT); it authenticates via the one-time state
 		// (server.0005 NR0009 gap A).
 		apiH.MountPublic(api)
 
-		// 보호 라우트 그룹 — 메일(C)·작성(D)·관리(M)·동기화(F) 엔드포인트.
+		// protected route group — text(C)·compose(D)·management(M)·sync(F) endpoints.
 		api.Group(func(pr chi.Router) {
 			pr.Use(authH.RequireAuth)
 			pr.Get("/me", func(w http.ResponseWriter, r *http.Request) {
 				uid, _ := auth.UserID(r.Context())
 				httpx.OK(w, http.StatusOK, map[string]any{"user_id": uid})
 			})
-			// 2FA(TOTP) 관리 — R0001 stage 4 (MailAnchor /2fa/* 대응). 모두 인증 필요.
+			// 2FA(TOTP) management — R0001 stage 4 (MailAnchor /2fa/* text). all require authentication.
 			pr.Get("/auth/2fa/status", authH.TOTPStatus)
 			pr.Post("/auth/2fa/setup", authH.TOTPSetup)
 			pr.Post("/auth/2fa/activate", authH.TOTPActivate)
