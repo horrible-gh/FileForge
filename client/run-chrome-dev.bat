@@ -1,1 +1,0 @@
-flutter run -d chrome --web-port=4152 --dart-define-from-file=config/dev.json
