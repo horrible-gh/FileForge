@@ -53,7 +53,7 @@ if (-not ($env:GOOGLE_CLIENT_ID -or $env:MAILANCHOR_OAUTH_GMAIL_CLIENT_ID)) {
   Write-Host '[run-mail-server] Gmail OAuth not configured - /accounts/oauth/authorize returns 503 (server still starts).' -ForegroundColor Yellow
 }
 if (-not $env:MAILANCHOR_SMTP_HOST) {
-  Write-Host '[run-mail-server] SMTP relay not configured - POST /api/v1/mails returns SEND_FAILED 502 until MAILANCHOR_SMTP_HOST is set.' -ForegroundColor Yellow
+  Write-Host '[run-mail-server] SMTP relay not configured - Gmail OAuth send can still use XOAUTH2; non-OAuth/password send needs MAILANCHOR_SMTP_HOST.' -ForegroundColor Yellow
 }
 
 Write-Host '[run-mail-server] building mailanchord.exe...' -ForegroundColor Cyan

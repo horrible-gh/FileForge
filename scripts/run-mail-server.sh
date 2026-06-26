@@ -40,7 +40,7 @@ if [ -z "${GOOGLE_CLIENT_ID:-}${MAILANCHOR_OAUTH_GMAIL_CLIENT_ID:-}" ]; then
   echo "[run-mail-server] Gmail OAuth not configured — /accounts/oauth/authorize will return 503 (server still starts)."
 fi
 if [ -z "${MAILANCHOR_SMTP_HOST:-}" ]; then
-  echo "[run-mail-server] SMTP relay not configured - POST /api/v1/mails returns SEND_FAILED 502 until MAILANCHOR_SMTP_HOST is set."
+  echo "[run-mail-server] SMTP relay not configured - Gmail OAuth send can still use XOAUTH2; non-OAuth/password send needs MAILANCHOR_SMTP_HOST."
 fi
 
 echo "[run-mail-server] building mailanchord ..."

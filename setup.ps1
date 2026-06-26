@@ -10,7 +10,7 @@
     client\       Flutter client   (packages + config\prod.json)
 
   COLLECTS the values needed to write each .env (SECRET_KEY, DB, Redis, Gmail
-  OAuth, SMTP relay) by prompting for them, instead of copying a placeholder template.
+  OAuth, MailAnchor SecretStore, SMTP relay) by prompting for them, instead of copying a placeholder template.
 
   Finally GENERATES the root run launchers - run-server.ps1 (FastAPI + MailAnchor)
   and run-client.ps1 (Flutter web) - so the project can be started straight from
@@ -154,7 +154,7 @@ function Get-Gmail {
 function Get-Smtp {
   if ($script:Interactive) {
     Write-Host ''
-    Write-Info 'Outbound SMTP relay (required for POST /api/v1/mails; blank host leaves send returning SEND_FAILED 502).'
+    Write-Info 'Outbound SMTP relay (optional for Gmail OAuth; required for non-OAuth/password account sending).'
   }
   return [ordered]@{
     Host     = Read-Value  'MAILANCHOR_SMTP_HOST'     'SMTP relay host'     ''
@@ -162,6 +162,13 @@ function Get-Smtp {
     User     = Read-Value  'MAILANCHOR_SMTP_USER'     'SMTP relay username' ''
     Password = Read-Secret 'MAILANCHOR_SMTP_PASSWORD' 'SMTP relay password'
   }
+}
+
+function Get-MailSecretKey {
+  $key = [Environment]::GetEnvironmentVariable('MAILANCHOR_SECRET_ENCRYPTION_KEY')
+  if (-not $key) { $key = New-Secret }
+  if ($script:Interactive) { $key = Read-Value 'MAILANCHOR_SECRET_ENCRYPTION_KEY' 'MailAnchor OAuth SecretStore encryption key' $key }
+  return $key
 }
 
 function Initialize-Server {
@@ -245,6 +252,7 @@ function Initialize-MailServer {
     if (Confirm-Configure '.env' 'mail-server\.env') {
       Write-Info 'collecting values for mail-server\.env'
       $addr = Read-Value 'MAILANCHOR_ADDR' 'MailAnchor listen address' ':8090'
+      $mailSecret = Get-MailSecretKey
       $smtp = Get-Smtp
       $g = Get-Gmail
       Write-Info 'writing mail-server\.env'
@@ -252,6 +260,7 @@ function Initialize-MailServer {
         'MAILANCHOR_ENV=development'
         "MAILANCHOR_ADDR=$addr"
         'MAILANCHOR_DB_PATH=./mailanchor.db'
+        "MAILANCHOR_SECRET_ENCRYPTION_KEY=$mailSecret"
         'ALLOWED_ORIGIN=http://localhost:3031,http://127.0.0.1:3031,http://localhost:4152,http://127.0.0.1:4152'
         "MAILANCHOR_SMTP_HOST=$($smtp.Host)"
         "MAILANCHOR_SMTP_PORT=$($smtp.Port)"

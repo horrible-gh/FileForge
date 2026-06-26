@@ -16,7 +16,7 @@
 #   GOOGLE_CLIENT_ID=... ./setup.sh -y    # pre-seed any value via environment, skip its prompt
 #
 # This script COLLECTS the values needed to write each .env (SECRET_KEY, DB,
-# Redis, Gmail OAuth, SMTP relay) by prompting for them, instead of copying a
+# Redis, Gmail OAuth, MailAnchor SecretStore, SMTP relay) by prompting for them, instead of copying a
 # placeholder template.
 #
 # It also GENERATES the root run launchers — run-server.sh (FastAPI + MailAnchor)
@@ -147,12 +147,18 @@ collect_gmail() {
 collect_smtp() {
   if [ "$INTERACTIVE" -eq 1 ]; then
     echo
-    info "Outbound SMTP relay (required for POST /api/v1/mails; blank host leaves send returning SEND_FAILED 502)."
+    info "Outbound SMTP relay (optional for Gmail OAuth; required for non-OAuth/password account sending)."
   fi
   ask        MAILANCHOR_SMTP_HOST     "SMTP relay host"     ""
   ask        MAILANCHOR_SMTP_PORT     "SMTP relay port"     "587"
   ask        MAILANCHOR_SMTP_USER     "SMTP relay username" ""
   ask_secret MAILANCHOR_SMTP_PASSWORD "SMTP relay password"
+}
+
+collect_mail_secret_key() {
+  : "${MAILANCHOR_SECRET_ENCRYPTION_KEY:=}"
+  if [ -z "$MAILANCHOR_SECRET_ENCRYPTION_KEY" ]; then MAILANCHOR_SECRET_ENCRYPTION_KEY="$(gen_secret)"; fi
+  [ "$INTERACTIVE" -eq 1 ] && ask MAILANCHOR_SECRET_ENCRYPTION_KEY "MailAnchor OAuth SecretStore encryption key" "$MAILANCHOR_SECRET_ENCRYPTION_KEY"
 }
 
 setup_server() {
@@ -240,6 +246,7 @@ setup_mail_server() {
   if maybe_configure ".env" "mail-server/.env"; then
     info "collecting values for mail-server/.env"
     ask MAILANCHOR_ADDR "MailAnchor listen address" ":8090"
+    collect_mail_secret_key
     collect_smtp
     collect_gmail
     info "writing mail-server/.env"
@@ -247,6 +254,7 @@ setup_mail_server() {
       echo "MAILANCHOR_ENV=development"
       echo "MAILANCHOR_ADDR=${MAILANCHOR_ADDR:-:8090}"
       echo "MAILANCHOR_DB_PATH=./mailanchor.db"
+      echo "MAILANCHOR_SECRET_ENCRYPTION_KEY=${MAILANCHOR_SECRET_ENCRYPTION_KEY:-}"
       echo "ALLOWED_ORIGIN=http://localhost:3031,http://127.0.0.1:3031,http://localhost:4152,http://127.0.0.1:4152"
       echo "MAILANCHOR_SMTP_HOST=${MAILANCHOR_SMTP_HOST:-}"
       echo "MAILANCHOR_SMTP_PORT=${MAILANCHOR_SMTP_PORT:-587}"

@@ -40,10 +40,11 @@ This sets up all three components. Pass a single target to set up just one:
 
 Setup **prompts you for the values each `.env` needs** — the app `SECRET_KEY`
 (auto-generated default), database type/connection, Redis host/port/password, the
-outbound SMTP relay, and the Gmail OAuth client ID / secret / redirect URI — and
-writes a real `.env` from your answers. Pressing Enter accepts the shown default;
-SMTP and Gmail fields are optional (blank Gmail → `/accounts/oauth/authorize` 503;
-blank SMTP host → `POST /mails` returns `SEND_FAILED` 502; server still starts).
+MailAnchor OAuth SecretStore encryption key, the outbound SMTP relay, and the Gmail
+OAuth client ID / secret / redirect URI — and writes a real `.env` from your
+answers. Pressing Enter accepts the shown default; SMTP and Gmail fields are optional
+(blank Gmail → `/accounts/oauth/authorize` 503; no Gmail OAuth token and no SMTP
+relay → `POST /mails` returns `SEND_FAILED` 502; server still starts).
 
 **Re-running with existing files.** If a `.env`/config already exists, an
 interactive run **asks whether to reconfigure it** (default: keep). Answer `y`
@@ -92,10 +93,12 @@ component when invoking these lower-level scripts directly.
 - **server** — copy `server/.env.sample` → `server/.env` (done by setup). Needs a
   reachable Redis (`REDIS_HOST` in `.env`).
 - **mail-server** — setup creates or keeps `mail-server/.env`. Set
-  `MAILANCHOR_SMTP_HOST`/`MAILANCHOR_SMTP_PORT` before testing mail send;
-  without `MAILANCHOR_SMTP_HOST`, `POST /api/v1/mails` returns
-  `SEND_FAILED` with HTTP 502. Edit Gmail OAuth and the FileForge bridge public
-  key as needed.
+  `MAILANCHOR_SMTP_HOST`/`MAILANCHOR_SMTP_PORT` before testing non-OAuth/password
+  account sending. Gmail OAuth accounts use the connected account's OAuth token
+  over Gmail SMTP XOAUTH2 and do not require `MAILANCHOR_SMTP_HOST`. OAuth
+  credentials are persisted in the MailAnchor DB-backed SecretStore; set
+  `MAILANCHOR_SECRET_ENCRYPTION_KEY` to encrypt those blobs at rest. Edit Gmail OAuth
+  and the FileForge bridge public key as needed.
 - **client** — copy `client/config/dev.json` → `client/config/prod.json` (done by
   setup) for production builds.
 
