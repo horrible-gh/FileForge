@@ -48,10 +48,11 @@ MAILANCHOR_JWT_SECRET=... ./mailanchord                                         
 
 > **`GOOGLE_*`를 넣었는데 서버가 안 뜨는 경우**: 이 값들은 서버 기동을 막지 않는다(미설정은
 > `/accounts/oauth/authorize`만 503으로 만들 뿐이다). 기동 실패의 실제 원인은 거의 항상
-> `MAILANCHOR_ADDR`(기본 `:8090`) **포트 중복**이다 — 이전 `mailanchord` 인스턴스가 아직 그
+> `MAILANCHOR_ADDR`(기본 `:8090`) **포트 중복**이다 - 이전 `mailanchord` 인스턴스가 아직 그
 > 포트를 잡고 있으면 새 프로세스가 `bind: address already in use`로 즉시 종료된다. 기존
 > 인스턴스를 먼저 종료(`taskkill /F /IM mailanchord.exe`)하고 해당 포트가 비었는지 확인한 뒤
-> 다시 기동한다. `run.bat`는 재기동 시 포트가 실제로 해제될 때까지 대기한 후 빌드/기동한다.
+> 다시 기동한다. 루트 `run-server.ps1` 또는 `scripts/run-mail-server.ps1`는 재기동 시 포트가
+> 실제로 해제될 때까지 대기한 후 빌드/기동한다.
 
 ## FileForge 토큰 공유 다리 (구현됨, mailanchor.ui.0003 T1)
 폴리글랏(Python FileForge ↔ Go) 경계를 **시크릿 없이** 잇는 연합 인증. FileForge 공개키만 경계를
