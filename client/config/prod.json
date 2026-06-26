@@ -1,8 +1,8 @@
 {
-  "SERVER_URL": "https://fileforge.duckdns.org/fileforge",
-  "MAIL_SERVER_URL": "https://fileforge.duckdns.org/api/v1",
-  "SHARE_BASE_URL": "https://fileforge.duckdns.org",
-  "LOG_LEVEL": "warn",
-  "LOG_CONSOLE": "false",
-  "LOG_FILE": "true"
+    "LOG_CONSOLE":  "false",
+    "LOG_FILE":  "true",
+    "MAIL_SERVER_URL":  "http://localhost:8090/api/v1",
+    "SHARE_BASE_URL":  "http://localhost:3000",
+    "LOG_LEVEL":  "warn",
+    "SERVER_URL":  "http://localhost:8000/fileforge"
 }

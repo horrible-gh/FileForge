@@ -1,1 +1,7 @@
+# Windows-only scripts must use CRLF.
 *.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts and env templates must stay LF so they run on Linux/macOS.
+*.sh        text eol=lf
+.env.sample text eol=lf
