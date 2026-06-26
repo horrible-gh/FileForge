@@ -112,6 +112,25 @@ func TestOAuthCallbackStateIsSingleUse(t *testing.T) {
 		"/api/v1/accounts/oauth/callback?code=good&state="+state, "", nil, http.StatusBadRequest, nil)
 }
 
+func TestOAuthCallbackDuplicateReconnectsExistingAccount(t *testing.T) {
+	e := authEnv(t, fakeAuthorizerOAuth{email: "owner@gmail.com"})
+
+	state1 := issueState(t, e, "gmail")
+	e.do(t, http.MethodGet,
+		"/api/v1/accounts/oauth/callback?code=first&state="+state1, "", nil, http.StatusOK, nil)
+
+	state2 := issueState(t, e, "gmail")
+	raw := e.do(t, http.MethodGet,
+		"/api/v1/accounts/oauth/callback?code=second&state="+state2, "", nil, http.StatusOK, nil)
+	if !strings.Contains(string(raw), "Connection complete") {
+		t.Fatalf("duplicate reconnect should still succeed, got: %s", raw)
+	}
+	emails := listAccountEmails(t, e)
+	if len(emails) != 1 || emails[0] != "owner@gmail.com" {
+		t.Fatalf("duplicate reconnect should keep one account, got %v", emails)
+	}
+}
+
 // TestOAuthCallbackProviderError surfaces a consent denial (?error=) as the failure page
 // without attempting an exchange.
 func TestOAuthCallbackProviderError(t *testing.T) {

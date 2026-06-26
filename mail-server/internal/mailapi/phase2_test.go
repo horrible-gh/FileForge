@@ -24,9 +24,10 @@ import (
 // --- fakes ---
 
 type fakeSender struct {
-	mu   sync.Mutex
-	sent []mailapi.OutgoingMail
-	fail bool
+	mu      sync.Mutex
+	sent    []mailapi.OutgoingMail
+	fail    bool
+	failErr error
 }
 
 func (f *fakeSender) Send(_ mailapi.ExternalAccount, m mailapi.OutgoingMail) error {
@@ -34,6 +35,9 @@ func (f *fakeSender) Send(_ mailapi.ExternalAccount, m mailapi.OutgoingMail) err
 	defer f.mu.Unlock()
 	if f.fail {
 		return io.ErrClosedPipe // transient
+	}
+	if f.failErr != nil {
+		return f.failErr
 	}
 	f.sent = append(f.sent, m)
 	return nil
@@ -103,8 +107,8 @@ func advancingClock() func() time.Time {
 func setupP2(t *testing.T) *p2env { return setupP2With(t, nil) }
 
 // setupP2With builds the phase-2 harness and lets a caller mutate Deps before the
-// server is constructed (e.g. drop the Sender to reproduce the "sender not configured"
-// 502 root cause from NR0003 / TR0005).
+// server is constructed (e.g. drop the Sender to exercise the "sender not configured"
+// 502 guard).
 func setupP2With(t *testing.T, mutate func(*mailapi.Deps)) *p2env {
 	t.Helper()
 	conn, err := db.Open(filepath.Join(t.TempDir(), "t.db"))
@@ -265,11 +269,8 @@ func TestSendMail(t *testing.T) {
 	}
 }
 
-// B0001 / 502 root cause (NR0003 §1, TR0005): when no SMTP relay is configured
-// (MAILANCHOR_SMTP_HOST empty -> router leaves Deps.Sender nil), POST /api/v1/mails must
-// return 502 SEND_FAILED with details.reason "sender not configured" and persist nothing.
-// This is the live failure operators hit with only Google OAuth keys set; it was asserted
-// only for the transient send-failure path before, never for the nil-Sender path itself.
+// If no sender adapter is wired, POST /api/v1/mails must return 502 SEND_FAILED with
+// details.reason "sender not configured" and persist nothing.
 func TestSendMailSenderNotConfigured(t *testing.T) {
 	e := setupP2With(t, func(d *mailapi.Deps) { d.Sender = nil })
 	tok := e.token
@@ -304,6 +305,29 @@ func TestSendMailSenderNotConfigured(t *testing.T) {
 	e.do(t, http.MethodGet, "/api/v1/mails", tok, nil, http.StatusOK, &lst)
 	if len(lst.Data) != 0 {
 		t.Fatalf("sender-not-configured send must not persist: %d mails", len(lst.Data))
+	}
+}
+
+func TestSendMailMissingOAuthCredentialMarksReauth(t *testing.T) {
+	e := setupP2(t)
+	tok := e.token
+	e.sender.failErr = retry.Permanent(mailapi.ErrOAuthCredentialMissing)
+
+	raw := e.do(t, http.MethodPost, "/api/v1/mails", tok, map[string]any{
+		"to":      []map[string]any{{"address": "boss@example.com"}},
+		"subject": "missing oauth",
+		"body":    map[string]any{"format": "text", "content": "should not send"},
+	}, http.StatusBadGateway, nil)
+	if errCode(raw) != "SEND_FAILED" {
+		t.Fatalf("want SEND_FAILED, got %s", raw)
+	}
+
+	var ls struct {
+		Data []mailapi.Account `json:"data"`
+	}
+	e.do(t, http.MethodGet, "/api/v1/accounts", tok, nil, http.StatusOK, &ls)
+	if len(ls.Data) != 1 || ls.Data[0].Status != "reauth_required" {
+		t.Fatalf("missing credential should mark account reauth_required: %+v", ls.Data)
 	}
 }
 
@@ -555,17 +579,17 @@ func TestAccounts(t *testing.T) {
 		t.Fatalf("account: %+v", cr.Data)
 	}
 
-	// duplicate email -> 409 ACCOUNT_DUPLICATE
+	// duplicate email -> reconnect existing account and refresh its credential
 	e.oauth.email = "second@example.com"
-	raw := e.do(t, http.MethodPost, "/api/v1/accounts", tok, map[string]any{
+	e.do(t, http.MethodPost, "/api/v1/accounts", tok, map[string]any{
 		"provider": "gmail", "auth_code": "code_again",
-	}, http.StatusConflict, nil)
-	if errCode(raw) != "ACCOUNT_DUPLICATE" {
-		t.Fatalf("want ACCOUNT_DUPLICATE, got %s", raw)
+	}, http.StatusOK, &cr)
+	if cr.Data.AccountID == "" || cr.Data.Email != "second@example.com" || cr.Data.Status != "connected" {
+		t.Fatalf("reconnected account: %+v", cr.Data)
 	}
 
 	// bad provider -> 400
-	raw = e.do(t, http.MethodPost, "/api/v1/accounts", tok, map[string]any{
+	raw := e.do(t, http.MethodPost, "/api/v1/accounts", tok, map[string]any{
 		"provider": "icloud", "auth_code": "c",
 	}, http.StatusBadRequest, nil)
 	if errCode(raw) != "VALIDATION_FAILED" {

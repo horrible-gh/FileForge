@@ -14,6 +14,10 @@ import (
 // retry instead of nuking the connection (NR0011 B7). The oauthx adapter returns this.
 var ErrOAuthInvalidGrant = errors.New("oauth invalid_grant")
 
+// ErrOAuthCredentialMissing means SQL still has an oauth_ref for the account, but the
+// backing SecretStore cannot resolve it. The account must be reconnected before send/sync.
+var ErrOAuthCredentialMissing = errors.New("oauth credentials not found")
+
 // This file defines the external-service port boundary (Phase 2). The mail
 // transaction logic (send L0012 §2.4, sync merge L0013 §2.3) is written against
 // these interfaces so it is fully testable with fakes; the concrete SMTP/IMAP/OAuth

@@ -82,6 +82,42 @@ func (s *Store) InsertAccount(userID, email, provider, oauthRef, now string) (Ac
 	return a, nil
 }
 
+// ReconnectAccount refreshes the OAuth ref for an already-connected email. It is used by
+// the browser OAuth callback and legacy POST /accounts path so reauth repairs a stale
+// oauth_ref after a process restart instead of reporting success while keeping dead creds.
+func (s *Store) ReconnectAccount(userID, email, provider, oauthRef, now string) (Account, string, bool, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return Account{}, "", false, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var a Account
+	var oldRef sql.NullString
+	err = tx.QueryRow(
+		`SELECT account_id,email,provider,status,connected_at,oauth_ref
+		 FROM mail_account WHERE user_id=? AND email=? AND provider=?`,
+		userID, email, provider).
+		Scan(&a.AccountID, &a.Email, &a.Provider, &a.Status, &a.ConnectedAt, &oldRef)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Account{}, "", false, nil
+	}
+	if err != nil {
+		return Account{}, "", false, err
+	}
+	if _, err := tx.Exec(
+		`UPDATE mail_account SET oauth_ref=?, status='connected', connected_at=? WHERE account_id=?`,
+		nullStr(oauthRef), now, a.AccountID); err != nil {
+		return Account{}, "", false, err
+	}
+	a.Status = "connected"
+	a.ConnectedAt = now
+	if err := tx.Commit(); err != nil {
+		return Account{}, "", false, err
+	}
+	return a, oldRef.String, true, nil
+}
+
 // DeleteAccount removes the account (CASCADE clears mail/sync_state) and returns the
 // freed oauth_ref so the caller can purge the secret. ok=false if not owned.
 func (s *Store) DeleteAccount(userID, accountID string) (oauthRef string, ok bool, err error) {
@@ -210,11 +246,24 @@ func (h *Handlers) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err = h.store.InsertAccount(userID, email, provider, oauthRef, h.now())
 	if errors.Is(err, ErrDuplicate) {
-		// Already connected for this user -> idempotent reconnect, success from the user's POV.
+		// Already connected for this user -> update the existing row to the new credential.
+		if _, oldRef, ok, rerr := h.store.ReconnectAccount(userID, email, provider, oauthRef, h.now()); rerr != nil {
+			if h.deps.Secrets != nil {
+				h.deps.Secrets.Delete(oauthRef)
+			}
+			h.writeCallbackResult(w, "", "internal")
+			return
+		} else if ok {
+			if h.deps.Secrets != nil && oldRef != "" && oldRef != oauthRef {
+				h.deps.Secrets.Delete(oldRef)
+			}
+			h.writeCallbackResult(w, email, "")
+			return
+		}
 		if h.deps.Secrets != nil {
 			h.deps.Secrets.Delete(oauthRef)
 		}
-		h.writeCallbackResult(w, email, "")
+		h.writeCallbackResult(w, "", "internal")
 		return
 	}
 	if err != nil {
@@ -302,10 +351,23 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	a, err := h.store.InsertAccount(uid(r), email, req.Provider, oauthRef, h.now())
 	if errors.Is(err, ErrDuplicate) {
+		if a, oldRef, ok, rerr := h.store.ReconnectAccount(uid(r), email, req.Provider, oauthRef, h.now()); rerr != nil {
+			if h.deps.Secrets != nil {
+				h.deps.Secrets.Delete(oauthRef)
+			}
+			httpx.Error(w, apperr.Internal)
+			return
+		} else if ok {
+			if h.deps.Secrets != nil && oldRef != "" && oldRef != oauthRef {
+				h.deps.Secrets.Delete(oldRef)
+			}
+			httpx.OK(w, http.StatusOK, a)
+			return
+		}
 		if h.deps.Secrets != nil {
 			h.deps.Secrets.Delete(oauthRef)
 		}
-		httpx.Error(w, apperr.AccountConflict.WithDetails(map[string]any{"email": email}))
+		httpx.Error(w, apperr.Internal)
 		return
 	}
 	if err != nil {

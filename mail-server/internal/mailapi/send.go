@@ -327,6 +327,10 @@ func (h *Handlers) SendMail(w http.ResponseWriter, r *http.Request) {
 		Provider: acct.Provider, OAuthRef: acct.OAuthRef}
 	sendErr := h.deps.sendRetry().Do(func() error { return h.deps.Sender.Send(ext, out) }, h.sleep)
 	if sendErr != nil {
+		if errors.Is(sendErr, ErrOAuthCredentialMissing) {
+			_ = h.store.setAccountStatus(acct.AccountID, "reauth_required")
+			_ = h.store.failSync(acct.AccountID, "reauth_required", h.now())
+		}
 		httpx.Error(w, apperr.SendFailed.WithDetails(map[string]any{"reason": sendErr.Error()}))
 		return
 	}
