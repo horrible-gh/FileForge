@@ -255,3 +255,75 @@ func TestEnsureOAuthFreshRefreshesCredential(t *testing.T) {
 		t.Fatalf("credential not refreshed: %+v", cred)
 	}
 }
+
+// R0001 (P3): a near-expiry credential with NO refresh token must NOT be handed to
+// Refresh — an empty refresh_token yields invalid_grant and would force a bogus
+// reauth_required (breaking sync while send, which guards on RefreshToken!="", keeps
+// working). ensureOAuthFresh must skip the refresh and return nil.
+func TestEnsureOAuthFreshNoRefreshTokenSkipsRefresh(t *testing.T) {
+	base := time.Date(2026, 6, 22, 10, 0, 0, 0, time.UTC)
+	secrets := NewMemSecretStore()
+	secrets.Put("ref1", Credential{
+		AccessToken: "old",
+		// no RefreshToken
+		Expiry: base.Add(10 * time.Second), // within margin -> would refresh if a token existed
+	})
+	deps := Deps{
+		// Refresh returns invalid_grant if it is ever called, so a missing guard fails loudly.
+		OAuth:   stubOAuth{err: fmt.Errorf("token endpoint 400: %w", ErrOAuthInvalidGrant)},
+		Secrets: secrets,
+		Now:     func() time.Time { return base },
+	}
+	h := NewHandlers(NewStore(nil), deps)
+	acc := primaryAccountSync{AccountID: "a", Provider: "gmail", OAuthRef: "ref1"}
+	if err := h.ensureOAuthFresh(acc); err != nil {
+		t.Fatalf("missing refresh token must skip refresh and return nil, got %v", err)
+	}
+}
+
+// R0001 (P2): reconnecting an account whose sync_state is stuck in 'error'/'reauth_required'
+// (left by a prior, now-replaced credential) must reset sync_state to 'idle' and clear
+// last_error, so the re-authed account can sync again instead of reporting error forever.
+func TestReconnectAccountResetsStaleSyncError(t *testing.T) {
+	conn, err := db.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	u, err := auth.NewStore(conn).CreateUser("u@example.com", "pw", "U")
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	st := NewStore(conn)
+	// connected account carrying a stale failed sync_state (mirrors the live R0001 DB).
+	if _, err := conn.Exec(
+		`INSERT INTO mail_account(account_id,user_id,email,provider,status,oauth_ref,connected_at)
+		 VALUES('acc_r', ?, 'u@example.com', 'gmail', 'connected', 'sec_old', '2026-06-22T00:00:00Z')`,
+		u.ID); err != nil {
+		t.Fatalf("seed account: %v", err)
+	}
+	if _, err := conn.Exec(
+		`INSERT INTO sync_state(account_id,state,last_error,updated_at)
+		 VALUES('acc_r','error','reauth_required','2026-06-22T00:00:00Z')`); err != nil {
+		t.Fatalf("seed sync_state: %v", err)
+	}
+
+	_, oldRef, ok, err := st.ReconnectAccount(u.ID, "u@example.com", "gmail", "sec_new", "2026-06-22T10:00:00Z")
+	if err != nil || !ok {
+		t.Fatalf("reconnect: ok=%v err=%v", ok, err)
+	}
+	if oldRef != "sec_old" {
+		t.Fatalf("expected old ref 'sec_old' returned, got %q", oldRef)
+	}
+
+	r, err := st.syncStateOf("acc_r")
+	if err != nil {
+		t.Fatalf("syncStateOf: %v", err)
+	}
+	if r.State != "idle" {
+		t.Fatalf("sync_state should reset to idle after reconnect, got %q", r.State)
+	}
+	if r.LastError.Valid && r.LastError.String != "" {
+		t.Fatalf("last_error should be cleared after reconnect, got %q", r.LastError.String)
+	}
+}
