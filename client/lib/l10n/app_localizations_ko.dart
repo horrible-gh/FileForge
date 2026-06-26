@@ -294,5 +294,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get accountRemoveFailed => '계정 해제에 실패했습니다';
 
   @override
+  String get accountManageTooltip => '메일 계정 관리';
+
+  @override
+  String get accountReauthBannerTitle => '재연결이 필요합니다';
+
+  @override
+  String accountReauthBannerBody(String email) {
+    return '$email 계정의 인증이 만료되었습니다. 메일을 계속 주고받으려면 계정을 다시 연결해 주세요.';
+  }
+
+  @override
+  String get accountReauthAction => '재연결';
+
+  @override
   String get cancel => '취소';
 }

@@ -118,5 +118,13 @@
   },
   "accountRemoved": "Account removed",
   "accountRemoveFailed": "Failed to remove the account",
+  "accountManageTooltip": "Manage mail accounts",
+  "accountReauthBannerTitle": "Reconnection required",
+  "accountReauthBannerBody": "Authentication for {email} has expired. Reconnect the account to keep sending and receiving mail.",
+  "@accountReauthBannerBody": {
+    "description": "Banner body shown when a connected account needs to re-authenticate (status=reauth_required).",
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "accountReauthAction": "Reconnect",
   "cancel": "Cancel"
 }

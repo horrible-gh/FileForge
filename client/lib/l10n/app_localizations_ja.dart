@@ -294,5 +294,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get accountRemoveFailed => 'アカウントの解除に失敗しました';
 
   @override
+  String get accountManageTooltip => 'メールアカウントの管理';
+
+  @override
+  String get accountReauthBannerTitle => '再接続が必要です';
+
+  @override
+  String accountReauthBannerBody(String email) {
+    return '$email の認証の有効期限が切れました。メールの送受信を続けるにはアカウントを再接続してください。';
+  }
+
+  @override
+  String get accountReauthAction => '再接続';
+
+  @override
   String get cancel => 'キャンセル';
 }

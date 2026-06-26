@@ -628,6 +628,30 @@ abstract class AppLocalizations {
   /// **'Failed to remove the account'**
   String get accountRemoveFailed;
 
+  /// No description provided for @accountManageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage mail accounts'**
+  String get accountManageTooltip;
+
+  /// No description provided for @accountReauthBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnection required'**
+  String get accountReauthBannerTitle;
+
+  /// Banner body shown when a connected account needs to re-authenticate (status=reauth_required).
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication for {email} has expired. Reconnect the account to keep sending and receiving mail.'**
+  String accountReauthBannerBody(String email);
+
+  /// No description provided for @accountReauthAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get accountReauthAction;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:

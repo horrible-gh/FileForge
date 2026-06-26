@@ -101,5 +101,9 @@
   "accountRemoveConfirmBody": "{email} を解除しますか？同期されたメールも削除されます。",
   "accountRemoved": "アカウントを解除しました",
   "accountRemoveFailed": "アカウントの解除に失敗しました",
+  "accountManageTooltip": "メールアカウントの管理",
+  "accountReauthBannerTitle": "再接続が必要です",
+  "accountReauthBannerBody": "{email} の認証の有効期限が切れました。メールの送受信を続けるにはアカウントを再接続してください。",
+  "accountReauthAction": "再接続",
   "cancel": "キャンセル"
 }

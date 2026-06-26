@@ -296,5 +296,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountRemoveFailed => 'Failed to remove the account';
 
   @override
+  String get accountManageTooltip => 'Manage mail accounts';
+
+  @override
+  String get accountReauthBannerTitle => 'Reconnection required';
+
+  @override
+  String accountReauthBannerBody(String email) {
+    return 'Authentication for $email has expired. Reconnect the account to keep sending and receiving mail.';
+  }
+
+  @override
+  String get accountReauthAction => 'Reconnect';
+
+  @override
   String get cancel => 'Cancel';
 }

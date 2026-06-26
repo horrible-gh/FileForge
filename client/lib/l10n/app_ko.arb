@@ -101,5 +101,9 @@
   "accountRemoveConfirmBody": "{email} 계정을 해제할까요? 동기화된 메일도 함께 삭제됩니다.",
   "accountRemoved": "계정을 해제했습니다",
   "accountRemoveFailed": "계정 해제에 실패했습니다",
+  "accountManageTooltip": "메일 계정 관리",
+  "accountReauthBannerTitle": "재연결이 필요합니다",
+  "accountReauthBannerBody": "{email} 계정의 인증이 만료되었습니다. 메일을 계속 주고받으려면 계정을 다시 연결해 주세요.",
+  "accountReauthAction": "재연결",
   "cancel": "취소"
 }
