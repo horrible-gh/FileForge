@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"mailanchor/serverd/internal/mailapi"
 )
@@ -95,5 +96,52 @@ func TestBuildBCCNotInHeaders(t *testing.T) {
 	}
 	if !strings.Contains(hdr, "Cc: cc@x.com") {
 		t.Fatalf("Cc header missing:\n%s", hdr)
+	}
+}
+
+func TestXOAUTH2AuthInitialResponse(t *testing.T) {
+	auth := xoauth2Auth{username: "me@gmail.com", accessToken: "access-token"}
+	mech, resp, err := auth.Start(nil)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	if mech != "XOAUTH2" {
+		t.Fatalf("mechanism = %q, want XOAUTH2", mech)
+	}
+	want := "user=me@gmail.com\x01auth=Bearer access-token\x01\x01"
+	if string(resp) != want {
+		t.Fatalf("response = %q, want %q", string(resp), want)
+	}
+	if _, err := auth.Next([]byte("challenge"), true); err == nil {
+		t.Fatal("Next(more=true) should reject server challenge")
+	}
+}
+
+func TestNeedsRefreshUsesFiveMinuteMargin(t *testing.T) {
+	now := time.Date(2026, 6, 26, 9, 0, 0, 0, time.UTC)
+	if needsRefresh(now, mailapi.Credential{}) {
+		t.Fatal("zero expiry should not refresh")
+	}
+	if needsRefresh(now, mailapi.Credential{Expiry: now.Add(6 * time.Minute)}) {
+		t.Fatal("token with more than five minutes remaining should not refresh")
+	}
+	if !needsRefresh(now, mailapi.Credential{Expiry: now.Add(5 * time.Minute)}) {
+		t.Fatal("token at the refresh margin should refresh")
+	}
+	if !needsRefresh(now, mailapi.Credential{Expiry: now.Add(-time.Second)}) {
+		t.Fatal("expired token should refresh")
+	}
+}
+
+func TestSendWithoutProviderOrRelayReturnsConfiguredError(t *testing.T) {
+	s := NewWithOAuth("", 587, "", "", nil, nil, nil)
+	err := s.Send(mailapi.ExternalAccount{Provider: "imap"}, mailapi.OutgoingMail{
+		From:    mailapi.Address{Address: "me@x.com"},
+		To:      []mailapi.Address{{Address: "you@x.com"}},
+		Subject: "x",
+		Body:    mailapi.Body{Format: "text", Content: "body"},
+	})
+	if err == nil || err.Error() != "sender not configured" {
+		t.Fatalf("Send error = %v, want sender not configured", err)
 	}
 }

@@ -1,13 +1,14 @@
 // Package smtpx is the SMTP adapter behind mailapi.Sender. It builds an RFC 5322 /
 // MIME message from the composed mail (resolving attachment bytes via the Blob store)
-// and delivers it through a configured relay using stdlib net/smtp (no cgo, no new
-// dependency). Per-account XOAUTH2 / provider-specific SMTP auth is the provider
-// adapter extension (NR0003 §5; L0012 external sending wraps this behind the interface).
+// and delivers it through either a configured relay or Gmail's SMTP XOAUTH2 endpoint
+// using the OAuth token already held for the connected account.
 package smtpx
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -16,16 +17,28 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"strings"
+	"time"
 
 	"mailanchor/serverd/internal/mailapi"
+	"mailanchor/serverd/internal/retry"
 	"mailanchor/serverd/internal/storage"
 )
 
-// Sender delivers through a single SMTP relay (host:port + optional auth).
+const (
+	gmailSMTPAddr      = "smtp.gmail.com:587"
+	oauthRefreshMargin = 5 * time.Minute
+)
+
+// Sender delivers through Gmail OAuth SMTP when the account has a Gmail OAuth ref,
+// otherwise through the configured relay (host:port + optional auth).
 type Sender struct {
-	Addr string    // host:port
-	Auth smtp.Auth // nil for unauthenticated relays
-	Blob storage.Blob
+	Addr      string    // relay host:port; empty means relay fallback is disabled
+	Auth      smtp.Auth // nil for unauthenticated relays
+	Blob      storage.Blob
+	Secrets   mailapi.SecretStore
+	OAuth     mailapi.OAuthExchanger
+	GmailAddr string // test override; empty -> smtp.gmail.com:587
+	Now       func() time.Time
 }
 
 // New builds a relay Sender. If username is empty, no auth is used.
@@ -35,6 +48,19 @@ func New(host string, port int, username, password string, blob storage.Blob) *S
 		auth = smtp.PlainAuth("", username, password, host)
 	}
 	return &Sender{Addr: fmt.Sprintf("%s:%d", host, port), Auth: auth, Blob: blob}
+}
+
+// NewWithOAuth builds a Sender that can use Gmail OAuth SMTP and optionally fall back to
+// a configured relay for non-Gmail/password accounts.
+func NewWithOAuth(host string, port int, username, password string, secrets mailapi.SecretStore, oauth mailapi.OAuthExchanger, blob storage.Blob) *Sender {
+	s := New(host, port, username, password, blob)
+	if host == "" {
+		s.Addr = ""
+		s.Auth = nil
+	}
+	s.Secrets = secrets
+	s.OAuth = oauth
+	return s
 }
 
 // Send composes the MIME message and hands it to the relay (mailapi.Sender).
@@ -49,7 +75,102 @@ func (s *Sender) Send(acc mailapi.ExternalAccount, m mailapi.OutgoingMail) error
 			rcpts = append(rcpts, a.Address)
 		}
 	}
+	if acc.Provider == "gmail" && acc.OAuthRef != "" && s.Secrets != nil {
+		return s.sendGmailXOAUTH2(acc, m.From.Address, rcpts, msg)
+	}
+	if s.Addr == "" {
+		return errors.New("sender not configured")
+	}
 	return smtp.SendMail(s.Addr, s.Auth, m.From.Address, rcpts, msg)
+}
+
+func (s *Sender) sendGmailXOAUTH2(acc mailapi.ExternalAccount, from string, rcpts []string, msg []byte) error {
+	cred, ok := s.Secrets.Get(acc.OAuthRef)
+	if !ok || cred.AccessToken == "" {
+		return retry.Permanent(mailapi.ErrOAuthCredentialMissing)
+	}
+	if needsRefresh(s.now(), cred) && s.OAuth != nil && cred.RefreshToken != "" {
+		refreshed, err := s.OAuth.Refresh(acc.Provider, cred.RefreshToken)
+		if err != nil {
+			return err
+		}
+		cred = refreshed
+		s.Secrets.Put(acc.OAuthRef, cred)
+	}
+	addr := s.GmailAddr
+	if addr == "" {
+		addr = gmailSMTPAddr
+	}
+	return sendSMTPStartTLS(addr, xoauth2Auth{username: acc.Email, accessToken: cred.AccessToken}, from, rcpts, msg)
+}
+
+func (s *Sender) now() time.Time {
+	if s.Now != nil {
+		return s.Now()
+	}
+	return time.Now()
+}
+
+func needsRefresh(now time.Time, cred mailapi.Credential) bool {
+	return !cred.Expiry.IsZero() && cred.Expiry.Sub(now) <= oauthRefreshMargin
+}
+
+type xoauth2Auth struct {
+	username    string
+	accessToken string
+}
+
+func (a xoauth2Auth) Start(*smtp.ServerInfo) (string, []byte, error) {
+	if a.username == "" || a.accessToken == "" {
+		return "", nil, errors.New("missing xoauth2 credential")
+	}
+	resp := "user=" + a.username + "\x01auth=Bearer " + a.accessToken + "\x01\x01"
+	return "XOAUTH2", []byte(resp), nil
+}
+
+func (a xoauth2Auth) Next(_ []byte, more bool) ([]byte, error) {
+	if more {
+		return nil, errors.New("xoauth2 authentication failed")
+	}
+	return nil, nil
+}
+
+func sendSMTPStartTLS(addr string, auth smtp.Auth, from string, rcpts []string, msg []byte) error {
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		return err
+	}
+	defer c.Close() //nolint:errcheck
+	host := addr
+	if i := strings.LastIndexByte(addr, ':'); i >= 0 {
+		host = addr[:i]
+	}
+	if err := c.StartTLS(&tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}); err != nil {
+		return err
+	}
+	if err := c.Auth(auth); err != nil {
+		return err
+	}
+	if err := c.Mail(from); err != nil {
+		return err
+	}
+	for _, rcpt := range rcpts {
+		if err := c.Rcpt(rcpt); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write(msg); err != nil {
+		_ = w.Close()
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return c.Quit()
 }
 
 func (s *Sender) build(m mailapi.OutgoingMail) ([]byte, error) {
