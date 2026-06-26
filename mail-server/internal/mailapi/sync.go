@@ -403,6 +403,16 @@ func (h *Handlers) ensureOAuthFresh(acc primaryAccountSync) error {
 	if remaining > oauthRefreshMargin {
 		return nil
 	}
+	// Mirror the send path (smtpx.sendGmailXOAUTH2, which guards on RefreshToken != ""):
+	// only attempt a refresh when a refresh token actually exists. Calling Refresh with an
+	// empty refresh_token makes the provider answer invalid_grant, which would wrongly
+	// force the account to reauth_required even though the current access token may still
+	// be usable — that is exactly the "send works but sync breaks" asymmetry (R0001).
+	// With no refresh token there is nothing to pre-refresh; proceed and let the
+	// downstream IMAP auth surface a (retriable) failure if the token has truly expired.
+	if cred.RefreshToken == "" {
+		return nil
+	}
 	refreshed, err := h.deps.OAuth.Refresh(acc.Provider, cred.RefreshToken)
 	if err != nil {
 		// Only a permanent invalid_grant forces reauth; transient failures (network/5xx)

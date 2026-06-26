@@ -110,6 +110,17 @@ func (s *Store) ReconnectAccount(userID, email, provider, oauthRef, now string) 
 		nullStr(oauthRef), now, a.AccountID); err != nil {
 		return Account{}, "", false, err
 	}
+	// Reconnect supplies a fresh, valid credential, so clear any stale sync failure that
+	// would otherwise survive the reauth and keep GET /sync/status reporting 'error'
+	// (and last_error='reauth_required') forever — the credential that error referred to
+	// is gone. InsertAccount seeds sync_state='idle' for new accounts; this is the
+	// reconnect-path equivalent so a re-authed account can sync again (R0001: receiving
+	// stuck in error after reauth). No-op when the sync_state row is absent.
+	if _, err := tx.Exec(
+		`UPDATE sync_state SET state='idle', last_error=NULL, updated_at=? WHERE account_id=?`,
+		now, a.AccountID); err != nil {
+		return Account{}, "", false, err
+	}
 	a.Status = "connected"
 	a.ConnectedAt = now
 	if err := tx.Commit(); err != nil {

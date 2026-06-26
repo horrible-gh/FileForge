@@ -188,6 +188,35 @@ type listFilter struct {
 	Cursor cursor
 }
 
+// resolveLabelFilter maps a label query *param* to the per-user label_id stored in
+// mail_label. Callers (the Flutter client, P0007 §6.2/§7.1) address labels by NAME —
+// 'inbox'/'sent'/'draft' (the UI tab also sends the plural 'drafts') or a user-label
+// name — but mail_label rows hold the per-user label_id. System labels are seeded as
+// "<name>_<userID>" and the sync write-path resolves names→ids via upsertLabelTx; the
+// read path must mirror that or every system-label view (inbox/sent/drafts) returns 0
+// rows even when the mailbox is full (R0001/0020: inbound synced but the inbox shows
+// empty). A param that is already a concrete label_id, or an unknown label, is returned
+// unchanged so id-addressed callers and unknown labels keep their prior behavior.
+func (s *Store) resolveLabelFilter(userID, label string) string {
+	name := label
+	if name == "drafts" { // client tab alias; the system label name is 'draft'
+		name = "draft"
+	}
+	if systemLabelNames[name] {
+		return name + "_" + userID // mirrors upsertLabelTx system-label id scheme
+	}
+	var lid string
+	switch err := s.db.QueryRow(
+		`SELECT label_id FROM label WHERE user_id=? AND name=?`, userID, name).Scan(&lid); err {
+	case nil:
+		return lid
+	default:
+		// Not a known label name: assume the caller already passed a concrete label_id
+		// (matches by id) or an unknown label (matches nothing) — unchanged behavior.
+		return label
+	}
+}
+
 func (s *Store) ListMails(userID string, f listFilter) ([]MailSummary, bool, error) {
 	var (
 		args  []any
@@ -198,7 +227,7 @@ func (s *Store) ListMails(userID string, f listFilter) ([]MailSummary, bool, err
 
 	if f.Label != "" {
 		where.WriteString(` AND EXISTS (SELECT 1 FROM mail_label ml WHERE ml.mail_id=m.mail_id AND ml.label_id=?)`)
-		args = append(args, f.Label)
+		args = append(args, s.resolveLabelFilter(userID, f.Label))
 	}
 	if f.Unread {
 		where.WriteString(` AND m.is_read=0`)
