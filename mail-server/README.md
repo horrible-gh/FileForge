@@ -31,6 +31,7 @@ MAILANCHOR_JWT_SECRET=... ./mailanchord                                         
 | `MAILANCHOR_ADDR` | `:8090` | text text |
 | `MAILANCHOR_CONTEXT` | `/api/v1` | API base path(P0007) |
 | `MAILANCHOR_DB_PATH` | `./mailanchor.db` | SQLite file |
+| `MAILANCHOR_SECRET_ENCRYPTION_KEY` | (None) | encrypt DB-backed OAuth credential blobs; blank stores plaintext dev blobs |
 | `MAILANCHOR_JWT_SECRET` | (translated text text) | HS256 signaturetext — text required |
 | `MAILANCHOR_ACCESS_TTL_SEC` | `900` | access TTL |
 | `MAILANCHOR_REFRESH_TTL_SEC` | `2592000` | refresh TTL(30text) |
@@ -86,4 +87,4 @@ protected route grouptext translated text(text access text):
   verification is complete. Accept-Language negotiation and multi-dialect
   MySQL/PostgreSQL migrations remain.
 - **T3 SMTP — text translated text addtext**: `smtpx`text **translated text text translated text text translated text**(`sender_send_test.go`: text TCP translated text net/smtp EHLO→MAIL→RCPT→DATA→QUIT text, translated text To+Cc+**Bcc** text·translated text Bcc translated text verify)text addtext. text translated text `build()`text translated text. text text **text text** translated text *text account/translated text* translated text text.
-- **T2 IMAP / T3 real account / T4 Gmail OAuth / T5 E2E — real account live smoke test remaining work**: translated text(`imapx`/`smtpx`/`oauthx`)text text·unit tests text(`go test ./...` all ok)text, R0001text completetranslated text *text translated text live smoke test*text text translated text text textaccount/Gmail OAuth translated text text not run. text text `MAILANCHOR_SMTP_*`(text)·account text(IMAP)·`MAILANCHOR_OAUTH_GMAIL_*`(OAuth)text text.
+- **T2 IMAP / T3 real account / T4 Gmail OAuth / T5 E2E — real account live smoke test remaining work**: Gmail OAuth accounts send through SMTP XOAUTH2 without `MAILANCHOR_SMTP_HOST`; non-OAuth/password accounts still require `MAILANCHOR_SMTP_*`. OAuth credentials are stored in the DB-backed SecretStore and should be encrypted with `MAILANCHOR_SECRET_ENCRYPTION_KEY`. Real Gmail live smoke still requires a connected test account.

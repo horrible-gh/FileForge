@@ -49,7 +49,7 @@ type Config struct {
 
 	// Phase 2 — external services / object store.
 	AttachmentDir string // MAIL_STORAGE_BASE_PATH: disk object-store root for attachment bytes
-	SMTPHost      string // outbound relay host (empty -> Sender disabled -> SEND_FAILED)
+	SMTPHost      string // optional outbound relay host for non-OAuth/password accounts
 	SMTPPort      int    // outbound relay port
 	SMTPUser      string // relay auth username (empty -> unauthenticated relay)
 	SMTPPassword  string // relay auth password

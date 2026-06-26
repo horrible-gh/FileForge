@@ -25,23 +25,20 @@ import (
 // New builds the application router with the production external-service ports
 // derived from cfg (disk attachment store, SMTP relay if configured, in-memory
 // secret store). When OAuth client credentials are configured, the OAuth exchanger
-// (oauthx) and the XOAUTH2 IMAP ChangeSource (imapx) are wired so the account/sync
-// endpoints work for gmail/outlook; otherwise they stay nil and those endpoints
-// answer UPSTREAM_UNAVAILABLE (unchanged behaviour).
+// (oauthx), XOAUTH2 IMAP ChangeSource (imapx), and Gmail XOAUTH2 SMTP Sender are wired
+// so account/sync/send work for Gmail without a separate SMTP relay. Otherwise they
+// stay nil and those endpoints answer UPSTREAM_UNAVAILABLE/SEND_FAILED as applicable.
 func New(cfg config.Config, db *sql.DB) http.Handler {
 	blob, err := storage.NewDiskStore(cfg.AttachmentDir)
 	if err != nil {
 		log.Printf("attachment store init failed (%s): attachments disabled: %v", cfg.AttachmentDir, err)
 	}
 	deps := mailapi.Deps{
-		Secrets:        newSecretStore(cfg),
+		Secrets:        newSecretStore(cfg, db),
 		OAuthReturnURL: cfg.OAuthReturnURL,
 	}
 	if blob != nil {
 		deps.Blob = blob
-	}
-	if cfg.SMTPHost != "" {
-		deps.Sender = smtpx.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, deps.Blob)
 	}
 	if creds := oauthCreds(cfg); len(creds) > 0 {
 		if ex := oauthx.New(creds); ex != nil {
@@ -52,6 +49,9 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 			log.Printf("oauth/imap adapters enabled for %d provider(s)", len(creds))
 		}
 	}
+	if cfg.SMTPHost != "" || deps.OAuth != nil {
+		deps.Sender = smtpx.NewWithOAuth(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, deps.Secrets, deps.OAuth, deps.Blob)
+	}
 	return NewWithDeps(cfg, db, deps)
 }
 
@@ -59,15 +59,17 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 // is configured, credentials are encrypted at rest with AES-256-GCM (R0001 stage 5);
 // otherwise the in-memory dev store is kept (unchanged default). A configured-but-unusable
 // key logs and falls back rather than blocking boot (Redis/FileForge degradation style).
-func newSecretStore(cfg config.Config) mailapi.SecretStore {
-	if len(cfg.SecretEncryptionKey) > 0 {
-		if enc, err := mailapi.NewEncryptedSecretStore(cfg.SecretEncryptionKey); err == nil {
-			log.Printf("oauth secret store: AES-256-GCM at-rest encryption enabled")
-			return enc
+func newSecretStore(cfg config.Config, db *sql.DB) mailapi.SecretStore {
+	if db != nil {
+		key := cfg.SecretEncryptionKey
+		if len(key) == 0 {
+			log.Printf("oauth secret store: SQL-backed plaintext dev mode; set MAILANCHOR_SECRET_ENCRYPTION_KEY to encrypt stored OAuth credentials")
 		} else {
-			log.Printf("oauth secret store: encryption key set but unusable, using in-memory store: %v", err)
+			log.Printf("oauth secret store: SQL-backed AES-256-GCM encryption enabled")
 		}
+		return mailapi.NewSQLSecretStore(db, key)
 	}
+	log.Printf("oauth secret store: in-memory fallback (no DB handle)")
 	return mailapi.NewMemSecretStore()
 }
 
