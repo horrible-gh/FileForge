@@ -7,6 +7,7 @@ from .login import login, logout
 from .storages import storages, bulk
 from . import shared_link, public_share, totp
 from .mail import accounts as mail_accounts, mail as mail_core, sync as mail_sync, inbox as mail_inbox, files as mail_files, actions as mail_actions, drafts as mail_drafts, labels as mail_labels
+from .mail import compat as mail_compat
 from .mail.oauth import gmail_auth
 from routers.login.auth import verify_token, token_blacklist
 from config import settings, redis_client
@@ -58,6 +59,15 @@ app.include_router(totp.router, prefix=f"{CONTEXT}/auth/totp", tags=["TOTP"])
 #    Same path prefixes as legacy (/fileforge/mail/*, /fileforge/oauth/gmail) so the
 #    client keeps a single :8000/fileforge origin. Every mail route gates on the
 #    server's RS256 verify_token (Auth Bridge — NR0003 Gap A, L0006 §2.1).
+#
+# 🔸 P0007 flat-contract compat layer (0003 group / B0001). The absorbed routers
+#    below expose a verbose, account_uuid-keyed surface (get_accounts, /sync/all,
+#    /list/{uuid}, ...) that NO client endpoint matches → every mail call 404'd.
+#    The client speaks the P0007 flat REST contract (/mails, /sync, /accounts,
+#    /drafts/{id}, ...). This router presents that contract and maps it onto the
+#    same store/services. Registered FIRST so its flat exact paths win on any
+#    overlap with the verbose routers (paths are disjoint today; this is defensive).
+app.include_router(mail_compat.router, prefix=f"{CONTEXT}/mail", tags=["Mail (P0007)"])
 app.include_router(mail_accounts.router, prefix=f"{CONTEXT}/mail/accounts", tags=["Mail Accounts"])
 app.include_router(mail_core.router, prefix=f"{CONTEXT}/mail", tags=["Mail"])
 app.include_router(mail_sync.router, prefix=f"{CONTEXT}/mail/sync", tags=["Mail Sync"])

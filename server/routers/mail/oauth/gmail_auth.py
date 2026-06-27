@@ -6,10 +6,10 @@ Gmail OAuth2 인증 라우터
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from config import settings, db, redis_client
-from routers.login.auth import verify_token
+from routers.login.auth import verify_token, current_user_uuid
 from util.crypto import encrypt_password, decrypt_password
 from services.gmail_service import GmailOAuthService
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 import secrets
 
 SECRET_KEY = settings.SECRET_KEY
@@ -31,10 +31,41 @@ def _first_allowed_origin() -> str:
     return ""
 
 
+def _origin_of(url: str) -> str:
+    """절대 URL에서 scheme://host[:port] origin만 추출. 파싱 불가 시 ""."""
+    try:
+        parts = urlsplit((url or "").strip())
+        if parts.scheme and parts.netloc:
+            return f"{parts.scheme}://{parts.netloc}"
+    except ValueError:
+        pass
+    return ""
+
+
+def _frontend_base() -> str:
+    """OAuth 콜백 완료 후 사용자를 되돌릴 프론트엔드 베이스 origin을 해석한다.
+
+    우선순위: FRONTEND_BASE_URL > ALLOWED_ORIGIN의 첫 구체 origin >
+    GOOGLE_REDIRECT_URI의 origin(최후 폴백).
+
+    ALLOWED_ORIGIN=* 처럼 _first_allowed_origin()이 폴백 불가한 환경(B0001)에서도,
+    GOOGLE_REDIRECT_URI는 콜백 동작의 전제라 항상 존재하므로 이를 최후 폴백으로 써서
+    "계정은 생성됐는데 redirect 단계에서 500" 상태를 제거한다. 정확한 목적지는
+    운영이 OAUTH_SUCCESS_REDIRECT_URL/FRONTEND_BASE_URL로 명시(.env.sample 참조).
+    """
+    base = settings.FRONTEND_BASE_URL.strip().rstrip("/")
+    if base:
+        return base
+    base = _first_allowed_origin()
+    if base:
+        return base
+    return _origin_of(settings.GOOGLE_REDIRECT_URI)
+
+
 def _oauth_result_url(**params) -> str:
     callback_url = settings.OAUTH_SUCCESS_REDIRECT_URL.strip()
     if not callback_url:
-        frontend_base = settings.FRONTEND_BASE_URL.strip().rstrip("/") or _first_allowed_origin()
+        frontend_base = _frontend_base()
         if not frontend_base:
             raise HTTPException(
                 status_code=500,
@@ -46,11 +77,16 @@ def _oauth_result_url(**params) -> str:
     return f"{callback_url}?{query}" if query else callback_url
 
 
-@router.get("/auth_url", dependencies=[Depends(verify_token)])
-async def get_gmail_auth_url(user_uuid: str = Query(...)):
+@router.get("/auth_url")
+async def get_gmail_auth_url(user_uuid: str = Depends(current_user_uuid)):
     """
     Gmail OAuth2 인증 URL 생성
     프론트엔드에서 이 URL로 사용자를 리다이렉트
+
+    user_uuid는 인증 토큰에서 해석한 users.user_uuid(PK)이다. 이 값이 그대로
+    Redis state에 저장되고 콜백에서 mail_accounts.user_uuid(FK)로 INSERT되므로,
+    토큰의 문자열 user_id를 그대로 쓰면 FK 위반(1452)이 난다
+    (fileforge.mailanchorpython.0004.0003-NR). current_user_uuid 의존성으로 해석.
     """
     state = f"{user_uuid}:{secrets.token_urlsafe(16)}"
 
@@ -140,6 +176,11 @@ async def gmail_oauth_callback(
             url=_oauth_result_url(gmail_connected="true", email=user_info["email"])
         )
 
+    except HTTPException:
+        # redirect-URL 빌더 등 내부에서 의도적으로 올린 4xx/5xx는 의미·메시지를
+        # 보존하여 그대로 전파한다(아래 광범위 except가 "OAuth 처리 실패: 500: ..."
+        # 처럼 이중 prefix로 재포장하던 B0001 증상 제거).
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth 처리 실패: {str(e)}")
 
