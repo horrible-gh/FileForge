@@ -14,3 +14,4 @@ sqloader==0.2.11
 slowapi==0.1.9
 auth2fa==0.1.3
 psycopg2-binary==2.9.12
+httpx==0.28.1

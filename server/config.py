@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
 
+    # 🔹 Mail subsystem settings (absorbed from legacy mail-server, NR0003 Gap B/D).
+    #    All carry defaults so a shared .env without these keys cannot cause a
+    #    boot-death (extra="ignore" + defaults). MailAnchorServer/config.py equivalents.
+    MAIL_STORAGE_BASE_PATH: str = "./data/mails"
+    ENVIRONMENT: str = ""
+    FRONTEND_BASE_URL: str = ""
+    OAUTH_SUCCESS_REDIRECT_URL: str = ""
+
     RATE_LIMIT_DEFAULT: str = "100/hour"
     RATE_LIMIT_LOGIN: str = "5/minute"
     RATE_LIMIT_UPLOAD: str = "20/hour"

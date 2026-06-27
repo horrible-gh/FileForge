@@ -1,0 +1,51 @@
+{
+  "get_user_accounts": "SELECT * FROM mail_accounts WHERE user_uuid = ? AND status = 'active' ORDER BY display_order",
+  "get_account": "SELECT * FROM mail_accounts WHERE account_uuid = ?",
+  "get_account_folders": "SELECT * FROM mail_folders WHERE account_uuid = ? ORDER BY display_order, folder_name",
+  "insert_folder": "INSERT INTO mail_folders (folder_uuid, account_uuid, folder_name, folder_path, folder_type) VALUES (:folder_uuid, :account_uuid, :folder_name, :folder_path, :folder_type)",
+  "get_messages": "SELECT * FROM mail_messages WHERE account_uuid = ? AND folder_uuid = ? AND is_deleted = 0 ORDER BY sent_date DESC LIMIT ? OFFSET ?",
+  "get_message": "SELECT * FROM mail_messages WHERE message_uuid = ?",
+  "update_message_read": "UPDATE mail_messages SET is_read = ?, modified_at = CURRENT_TIMESTAMP WHERE message_uuid = ?",
+  "get_message_attachments": "SELECT * FROM mail_attachments WHERE message_uuid = ?",
+  "accounts": {
+    "get_accounts": "SELECT account_uuid, account_name, email, imap_host, imap_port, smtp_host, smtp_port, display_color, display_order, sync_enabled, last_sync_at, status, created_at FROM mail_accounts WHERE user_uuid = :user_uuid AND status = 'active' ORDER BY display_order, created_at",
+    "insert_account": "INSERT INTO mail_accounts (account_uuid, user_uuid, account_name, email, imap_host, imap_port, imap_use_ssl, imap_username, imap_password_encrypted, smtp_host, smtp_port, smtp_use_tls, smtp_username, smtp_password_encrypted, display_color) VALUES (:account_uuid, :user_uuid, :account_name, :email, :imap_host, :imap_port, :imap_use_ssl, :imap_username, :imap_password_encrypted, :smtp_host, :smtp_port, :smtp_use_tls, :smtp_username, :smtp_password_encrypted, :display_color)",
+    "update_account": "UPDATE mail_accounts SET account_name = COALESCE(:account_name, account_name), imap_password_encrypted = COALESCE(:imap_password_encrypted, imap_password_encrypted), smtp_password_encrypted = COALESCE(:smtp_password_encrypted, smtp_password_encrypted), display_color = COALESCE(:display_color, display_color), sync_enabled = COALESCE(:sync_enabled, sync_enabled) WHERE account_uuid = :account_uuid AND user_uuid = :user_uuid",
+    "remove_account": "UPDATE mail_accounts SET status = 'inactive' WHERE account_uuid = :account_uuid"
+  },
+  "sync": {
+    "insert_message": "INSERT INTO mail_messages (message_uuid, account_uuid, folder_uuid, message_id, uid, from_email, from_name, to_emails, subject, preview, sent_date, has_attachments, body_file_path, size_bytes) VALUES (:message_uuid, :account_uuid, :folder_uuid, :message_id, :uid, :from_email, :from_name, :to_emails, :subject, :preview, :sent_date, :has_attachments, :body_file_path, :size_bytes)",
+    "insert_sync_log": "INSERT INTO sync_logs (log_uuid, account_uuid, sync_type, status, messages_fetched, messages_updated) VALUES (:log_uuid, :account_uuid, :sync_type, :status, :messages_fetched, :messages_updated)"
+  },
+  "inbox": {
+    "get_integrated_mail1": "inbox/get_integrated_mail1.sql",
+    "get_integrated_mail2": "inbox/get_integrated_mail2.sql",
+    "get_integrated_count": "inbox/get_integrated_count.sql",
+    "get_mail": "inbox/get_mail.sql",
+    "get_attachment": "SELECT attachment_uuid, filename, content_type, size_bytes, file_path FROM mail_attachments WHERE message_uuid = ? ORDER BY created_at"
+  },
+  "labels": {
+    "assign_label": "labels/assign_label.sql",
+    "check_duplicate": "labels/check_duplicate.sql",
+    "create_label": "labels/create_label.sql",
+    "delete_label": "labels/delete_label.sql",
+    "delete_message_labels": "labels/delete_message_labels.sql",
+    "filter_messages_count": "labels/filter_messages_count.sql",
+    "filter_messages": "labels/filter_messages.sql",
+    "get_label_stats": "labels/get_label_stats.sql",
+    "get_labels": "labels/get_labels.sql",
+    "get_message_labels": "labels/get_message_labels.sql",
+    "update_label": "labels/update_label.sql"
+  },
+  "gmail": {
+    "get_accounts": "SELECT account_uuid, account_name, email, picture, display_color, display_order, sync_enabled, last_sync_at, token_expires_at, status, created_at FROM mail_accounts WHERE user_uuid = :user_uuid AND account_type = 'gmail' AND status = 'active' ORDER BY display_order, created_at",
+    "get_account": "SELECT account_uuid, email, access_token_encrypted, refresh_token_encrypted, token_expires_at FROM mail_accounts WHERE account_uuid = :account_uuid AND user_uuid = :user_uuid AND account_type = 'gmail'",
+    "get_account_by_email": "SELECT account_uuid, email, account_type FROM mail_accounts WHERE user_uuid = :user_uuid AND email = :email AND status = 'active'",
+    "update_account_by_email": "UPDATE mail_accounts SET account_type = 'gmail' WHERE account_uuid = :account_uuid",
+    "insert_account": "INSERT INTO mail_accounts (account_uuid, user_uuid, account_type, account_name, email, access_token_encrypted, refresh_token_encrypted, token_expires_at, picture, display_color) VALUES (:account_uuid, :user_uuid, 'gmail', :account_name, :email, :access_token_encrypted, :refresh_token_encrypted, datetime('now', '+' || :token_expires_in || ' seconds'), :picture, '#EA4335')",
+    "update_tokens": "UPDATE mail_accounts SET access_token_encrypted = :access_token_encrypted, refresh_token_encrypted = COALESCE(:refresh_token_encrypted, refresh_token_encrypted), token_expires_at = datetime('now', '+' || :token_expires_in || ' seconds'), modified_at = CURRENT_TIMESTAMP WHERE account_uuid = :account_uuid",
+    "update_access_token": "UPDATE mail_accounts SET access_token_encrypted = :access_token_encrypted, token_expires_at = datetime('now', '+' || :token_expires_in || ' seconds'), modified_at = CURRENT_TIMESTAMP WHERE account_uuid = :account_uuid",
+    "deactivate_account": "UPDATE mail_accounts SET status = 'inactive', access_token_encrypted = NULL, refresh_token_encrypted = NULL, modified_at = CURRENT_TIMESTAMP WHERE account_uuid = :account_uuid",
+    "check_token_expiry": "SELECT account_uuid, email, access_token_encrypted, refresh_token_encrypted, token_expires_at, (token_expires_at <= datetime('now')) AS is_expired, (token_expires_at <= datetime('now','+5 minutes')) AS needs_refresh FROM mail_accounts WHERE account_uuid = :account_uuid AND status = 'active'"
+  }
+}

@@ -1,4 +1,5 @@
 from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util.Padding import pad, unpad
 import base64
 import os
@@ -21,7 +22,7 @@ def get_iv(base64_flg=None):
 
 def aes_encrypt(data, key, iv, base64_flg=None):
     if isinstance(data, str):
-        data = data.encode('utf-8')  # string translated text bytestext convert
+        data = data.encode('utf-8')  # 문자열 데이터를 바이트로 변환
     cipher = AES.new(key, AES.MODE_CBC, iv)
     encrypted_data = cipher.encrypt(pad(data, AES.block_size))
     if base64_flg:
@@ -34,12 +35,12 @@ def aes_decrypt(encrypted_data, key, iv, base64_flg=None):
     if base64_flg:
         encrypted_data = base64_decode(encrypted_data)  # 16 bytes key
     decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
-    return decrypted_data.decode('utf-8')  # bytes translated text stringtext convert
+    return decrypted_data.decode('utf-8')  # 바이트 데이터를 문자열로 변환
 
 
 def aes_encrypt_in_chunks(data, key, iv, chunk_size=4096):
     if isinstance(data, str):
-        data = data.encode('utf-8')  # string translated text bytestext convert
+        data = data.encode('utf-8')  # 문자열 데이터를 바이트로 변환
     cipher = AES.new(key, AES.MODE_CBC, iv)
     encrypted_data = b''
 
@@ -90,5 +91,22 @@ def decrypt_file(input_path, output_path, key, iv, chunk_size=4096):
 
 
 def hash_password(password: str) -> str:
-    # password hashing example (SHA-256 text)
+    # 비밀번호 해싱 예제 (SHA-256 사용)
     return hashlib.sha256(password.encode()).hexdigest()
+
+
+def get_encryption_key(secret_key, salt: str):
+    return PBKDF2(secret_key, salt.encode(), dkLen=32)
+
+def get_encryption_iv(secret_key, salt: str):
+    return PBKDF2(secret_key, salt.encode() + b'iv', dkLen=16)
+
+def encrypt_password(secret_key, salt: str, password: str):
+    key = get_encryption_key(secret_key, salt)
+    iv = get_encryption_iv(secret_key, salt)
+    return aes_encrypt(password, key, iv, base64_flg=True)
+
+def decrypt_password(secret_key, salt: str, encrypted: str):
+    key = get_encryption_key(secret_key, salt)
+    iv = get_encryption_iv(secret_key, salt)
+    return aes_decrypt(encrypted, key, iv, base64_flg=True)
