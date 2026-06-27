@@ -55,5 +55,43 @@ void main() {
       expect(out.contains('\n'), true);
       expect(out.contains('<'), false);
     });
+
+    // 0008 R0001: CSS inside <style> must not surface as body text.
+    test('drops <style> block content (no CSS leak)', () {
+      const html = '<style>.sup{vertical-align:1px !important;}'
+          '\n@media all and (max-width:480px){.pad0{padding:0;}}</style>'
+          '<p>本文テキスト</p>';
+      final out = stripHtmlToText(html);
+      expect(out.contains('本文テキスト'), true);
+      expect(out.contains('vertical-align'), false);
+      expect(out.contains('@media'), false);
+      expect(out.contains('.sup'), false);
+    });
+
+    test('drops <script>, <head> metadata and HTML comments', () {
+      const html = '<head><title>hidden</title>'
+          '<style>body{font-size:12px;}</style></head>'
+          '<!-- tracking pixel comment -->'
+          '<script>var x = 1; alert(x);</script>'
+          '<div>visible</div>';
+      final out = stripHtmlToText(html);
+      expect(out, 'visible');
+      expect(out.contains('font-size'), false);
+      expect(out.contains('alert'), false);
+      expect(out.contains('hidden'), false);
+      expect(out.contains('tracking pixel'), false);
+    });
+  });
+
+  group('parseMailHtmlBody — style hygiene (R0001)', () {
+    test('text segments never carry leaked <style> CSS', () {
+      const html = '<style>.x{color:red;}</style>'
+          '<div>before <img src="https://x.test/a.png"> after</div>';
+      final segs = parseMailHtmlBody(html);
+      final text = segs.where((s) => !s.isImage).map((s) => s.text).join(' ');
+      expect(text.contains('color:red'), false);
+      expect(text.contains('.x{'), false);
+      expect(segs.any((s) => s.isNetworkImage), true);
+    });
   });
 }

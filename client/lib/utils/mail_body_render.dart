@@ -50,10 +50,32 @@ final RegExp _srcAttrRe = RegExp(
   caseSensitive: false,
 );
 
-/// Strip tags + decode the common entities — the readable plain-text fallback
-/// (same rules the detail screen used before, kept identical for text runs).
+/// Non-displayed elements whose **inner content must be dropped**, not just the
+/// tags (0008 R0001). Stripping only `<...>` tags leaves the CSS inside
+/// `<style>` (and JS inside `<script>`, `<head>`/`<title>` metadata, comments)
+/// visible as raw body text — the `.sup{...}`/`@media{...}` leak R0001 reports.
+final RegExp _nonDisplayedBlockRe = RegExp(
+  r'<!--.*?-->'
+  r'|<style\b[^>]*>.*?</style\s*>'
+  r'|<script\b[^>]*>.*?</script\s*>'
+  r'|<head\b[^>]*>.*?</head\s*>'
+  r'|<title\b[^>]*>.*?</title\s*>',
+  caseSensitive: false,
+  dotAll: true,
+);
+
+/// Remove the content of elements a reader never sees (style/script/head/title)
+/// plus HTML comments. Applied before tag-stripping so their inner text can't
+/// leak into the rendered body.
+String _removeNonDisplayedBlocks(String html) =>
+    html.replaceAll(_nonDisplayedBlockRe, '');
+
+/// Strip tags + decode the common entities — the readable plain-text fallback.
+/// First drops non-displayed element content (style/script/head/title/comments)
+/// so CSS/JS/metadata can't surface as text (R0001), then removes the remaining
+/// tags and decodes the common entities.
 String stripHtmlToText(String html) {
-  return html
+  return _removeNonDisplayedBlocks(html)
       .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
       .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n\n')
       .replaceAll(RegExp(r'<[^>]+>'), '')

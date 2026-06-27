@@ -6,6 +6,7 @@ import '../../models/mail.dart';
 import '../../services/mail_compose.dart';
 import '../../utils/mail_body_render.dart';
 import '../../widgets/error_retry.dart';
+import '../../widgets/mail_html_body.dart';
 import 'mail_compose_screen.dart';
 
 /// text text screen — NR0003 §7 initial implementation(text translated text).
@@ -152,45 +153,28 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     );
   }
 
-  /// Render the body: plain text as-is; HTML split into text + inline image
-  /// segments so pictures actually show (R0001). Inline `cid:` images arrive as
-  /// `data:` URIs (inlined server-side); remote `<img>` load over the network.
+  /// Render the body. Plain text shows as-is; HTML is rendered with a real HTML
+  /// widget so styled layout (tables, fonts, inline CSS, images) appears the way
+  /// the legacy web client showed it (0008 R0001 — the previous tag-stripping
+  /// path mangled layout and leaked `<style>` CSS as visible text).
+  ///
+  /// `flutter_widget_from_html_core` drops non-displayed elements
+  /// (`<style>`/`<script>`/`<head>`), renders inline styles, tables and `<img>`
+  /// (server already inlines `cid:` pictures as `data:` URIs; remote `<img>`
+  /// load over the network). If the HTML is empty/unrenderable we fall back to
+  /// the hardened plain-text strip.
+  ///
+  /// [MailHtmlBody] wraps each image in a layout-stable box so loading an image
+  /// cannot relayout the hovered subtree (0009 R0001 / NR0003 — the
+  /// `mouse_tracker.dart:199` re-entrancy assertion flood).
   List<Widget> _buildBodyContent(MailBody body) {
     if (!body.isHtml) {
       return [SelectableText(body.content)];
     }
-    final segments = parseMailHtmlBody(body.content);
-    if (segments.isEmpty) {
-      // Defensive: HTML with no renderable runs → fall back to stripped text.
+    if (body.content.trim().isEmpty) {
       return [SelectableText(stripHtmlToText(body.content))];
     }
-    final widgets = <Widget>[];
-    for (final seg in segments) {
-      if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 8));
-      if (seg.isImage) {
-        widgets.add(_buildImage(seg));
-      } else {
-        widgets.add(SelectableText(seg.text));
-      }
-    }
-    return widgets;
-  }
-
-  Widget _buildImage(MailBodySegment seg) {
-    Widget broken() => const Padding(
-          padding: EdgeInsets.symmetric(vertical: 4),
-          child: Icon(Icons.broken_image_outlined, size: 32),
-        );
-    final bytes = seg.dataBytes;
-    if (bytes != null) {
-      return Image.memory(bytes,
-          fit: BoxFit.contain, errorBuilder: (context, error, stack) => broken());
-    }
-    if (seg.isNetworkImage) {
-      return Image.network(seg.imageSrc!,
-          fit: BoxFit.contain, errorBuilder: (context, error, stack) => broken());
-    }
-    return broken();
+    return [MailHtmlBody(body.content)];
   }
 
   static String _formatTime(String iso) {
