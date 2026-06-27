@@ -2,10 +2,12 @@
 #
 # FileForge — one-time setup (Linux / macOS).
 #
-# Prepares all three components for local development:
+# Prepares the components for local development:
 #   server/       FastAPI backend  (Python venv + dependencies + .env)
-#   mail-server/  MailAnchor (Go)  (modules + .env + build)
+#                 — also serves the absorbed mail subsystem at /fileforge/mail/*
 #   client/       Flutter client   (packages + config/prod.json)
+# (mail-server/ is a non-operational legacy copy — no separate build/run; the
+#  'mail-server' target is a no-op kept only for automation compatibility.)
 #
 # Usage:
 #   ./setup.sh                      # set up everything (interactive)
@@ -15,12 +17,12 @@
 #   ./setup.sh --launchers-only     # only (re)generate the root run-server.sh / run-client.sh launchers
 #   GOOGLE_CLIENT_ID=... ./setup.sh -y    # pre-seed any value via environment, skip its prompt
 #
-# This script COLLECTS the values needed to write each .env (SECRET_KEY, DB,
-# Redis, Gmail OAuth, MailAnchor SecretStore, SMTP relay) by prompting for them, instead of copying a
-# placeholder template.
+# This script COLLECTS the values needed to write server/.env (SECRET_KEY, DB,
+# Redis, Gmail OAuth) by prompting for them, instead of copying a placeholder
+# template.
 #
-# It also GENERATES the root run launchers — run-server.sh (FastAPI + MailAnchor)
-# and run-client.sh (Flutter web) — so the project can be started straight from
+# It also GENERATES the root run launchers — run-server.sh (FastAPI, incl. the
+# absorbed mail subsystem) and run-client.sh (Flutter web) — so the project can be started straight from
 # the repository root without opening scripts/. They are regenerated every run;
 # set FILEFORGE_LAUNCHERS_ONLY=1 to (re)generate only the launchers and exit.
 #
@@ -141,25 +143,15 @@ collect_gmail() {
   fi
   ask        GOOGLE_CLIENT_ID     "Gmail OAuth client ID"     ""
   ask_secret GOOGLE_CLIENT_SECRET "Gmail OAuth client secret"
-  ask        GOOGLE_REDIRECT_URI  "Gmail OAuth redirect URI"  "http://localhost:8090/api/v1/accounts/oauth/callback"
+  ask        GOOGLE_REDIRECT_URI  "Gmail OAuth redirect URI"  "http://localhost:8000/fileforge/oauth/gmail/callback"
 }
 
-collect_smtp() {
-  if [ "$INTERACTIVE" -eq 1 ]; then
-    echo
-    info "Outbound SMTP relay (optional for Gmail OAuth; required for non-OAuth/password account sending)."
-  fi
-  ask        MAILANCHOR_SMTP_HOST     "SMTP relay host"     ""
-  ask        MAILANCHOR_SMTP_PORT     "SMTP relay port"     "587"
-  ask        MAILANCHOR_SMTP_USER     "SMTP relay username" ""
-  ask_secret MAILANCHOR_SMTP_PASSWORD "SMTP relay password"
-}
-
-collect_mail_secret_key() {
-  : "${MAILANCHOR_SECRET_ENCRYPTION_KEY:=}"
-  if [ -z "$MAILANCHOR_SECRET_ENCRYPTION_KEY" ]; then MAILANCHOR_SECRET_ENCRYPTION_KEY="$(gen_secret)"; fi
-  [ "$INTERACTIVE" -eq 1 ] && ask MAILANCHOR_SECRET_ENCRYPTION_KEY "MailAnchor OAuth SecretStore encryption key" "$MAILANCHOR_SECRET_ENCRYPTION_KEY"
-}
+# NR0003 D2: the standalone MailAnchor needed SMTP relay + SecretStore settings in
+# its own mail-server/.env. After absorption the FileForge app reads per-account
+# smtp_host from the DB and Gmail uses smtp.gmail.com over XOAUTH2, so
+# MAILANCHOR_SMTP_* / MAILANCHOR_SECRET_ENCRYPTION_KEY have no consumer. The dead
+# collectors (collect_smtp / collect_mail_secret_key) that were never called have
+# been removed.
 
 setup_server() {
   info "server/ — FastAPI backend"
@@ -255,7 +247,7 @@ setup_client() {
   if maybe_configure "config/prod.json" "client/config/prod.json"; then
     info "collecting values for client/config/prod.json"
     ask SERVER_URL      "FileForge server URL"   "http://localhost:8000/fileforge"
-    ask MAIL_SERVER_URL "MailAnchor server URL"  "http://localhost:8090/api/v1"
+    ask MAIL_SERVER_URL "Mail subsystem base URL" "http://localhost:8000/fileforge/mail"
     ask SHARE_BASE_URL  "Public share base URL"  "http://localhost:3000"
     info "writing client/config/prod.json"
     cat > config/prod.json <<JSON

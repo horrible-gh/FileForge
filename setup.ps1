@@ -4,16 +4,18 @@
   FileForge — one-time setup (Windows).
 
 .DESCRIPTION
-  Prepares all three components for local development:
+  Prepares the components for local development:
     server\       FastAPI backend  (Python venv + dependencies + .env)
-    mail-server\  MailAnchor (Go)  (modules + .env + build)
+                  - also serves the absorbed mail subsystem at /fileforge/mail/*
     client\       Flutter client   (packages + config\prod.json)
+  (mail-server\ is a non-operational legacy copy - no separate build/run; the
+   mail-server target is a no-op kept only for automation compatibility.)
 
-  COLLECTS the values needed to write each .env (SECRET_KEY, DB, Redis, Gmail
-  OAuth, MailAnchor SecretStore, SMTP relay) by prompting for them, instead of copying a placeholder template.
+  COLLECTS the values needed to write server\.env (SECRET_KEY, DB, Redis, Gmail
+  OAuth) by prompting for them, instead of copying a placeholder template.
 
-  Finally GENERATES the root run launchers - run-server.ps1 (FastAPI + MailAnchor)
-  and run-client.ps1 (Flutter web) - so the project can be started straight from
+  Finally GENERATES the root run launchers - run-server.ps1 (FastAPI, incl. the
+  absorbed mail subsystem) and run-client.ps1 (Flutter web) - so the project can be started straight from
   the repository root without opening scripts\. They are regenerated every run.
 
   When a .env / config already exists, an interactive run ASKS whether to
@@ -146,30 +148,16 @@ function Get-Gmail {
   $script:Gmail = [ordered]@{
     ClientId     = Read-Value  'GOOGLE_CLIENT_ID'     'Gmail OAuth client ID'     ''
     ClientSecret = Read-Secret 'GOOGLE_CLIENT_SECRET' 'Gmail OAuth client secret'
-    RedirectUri  = Read-Value  'GOOGLE_REDIRECT_URI'  'Gmail OAuth redirect URI'  'http://localhost:8090/api/v1/accounts/oauth/callback'
+    RedirectUri  = Read-Value  'GOOGLE_REDIRECT_URI'  'Gmail OAuth redirect URI'  'http://localhost:8000/fileforge/oauth/gmail/callback'
   }
   return $script:Gmail
 }
 
-function Get-Smtp {
-  if ($script:Interactive) {
-    Write-Host ''
-    Write-Info 'Outbound SMTP relay (optional for Gmail OAuth; required for non-OAuth/password account sending).'
-  }
-  return [ordered]@{
-    Host     = Read-Value  'MAILANCHOR_SMTP_HOST'     'SMTP relay host'     ''
-    Port     = Read-Value  'MAILANCHOR_SMTP_PORT'     'SMTP relay port'     '587'
-    User     = Read-Value  'MAILANCHOR_SMTP_USER'     'SMTP relay username' ''
-    Password = Read-Secret 'MAILANCHOR_SMTP_PASSWORD' 'SMTP relay password'
-  }
-}
-
-function Get-MailSecretKey {
-  $key = [Environment]::GetEnvironmentVariable('MAILANCHOR_SECRET_ENCRYPTION_KEY')
-  if (-not $key) { $key = New-Secret }
-  if ($script:Interactive) { $key = Read-Value 'MAILANCHOR_SECRET_ENCRYPTION_KEY' 'MailAnchor OAuth SecretStore encryption key' $key }
-  return $key
-}
+# NR0003 D2: the standalone MailAnchor needed SMTP relay + SecretStore settings in
+# its own mail-server\.env. After absorption the FileForge app reads per-account
+# smtp_host from the DB and Gmail uses smtp.gmail.com over XOAUTH2, so
+# MAILANCHOR_SMTP_* / MAILANCHOR_SECRET_ENCRYPTION_KEY have no consumer. The dead
+# collectors (Get-Smtp / Get-MailSecretKey) that were never called have been removed.
 
 function Initialize-Server {
   Write-Info 'server\ - FastAPI backend'
@@ -261,7 +249,7 @@ function Initialize-Client {
     if (Confirm-Configure 'config\prod.json' 'client\config\prod.json') {
       Write-Info 'collecting values for client\config\prod.json'
       $serverUrl = Read-Value 'SERVER_URL'      'FileForge server URL'  'http://localhost:8000/fileforge'
-      $mailUrl   = Read-Value 'MAIL_SERVER_URL' 'MailAnchor server URL' 'http://localhost:8090/api/v1'
+      $mailUrl   = Read-Value 'MAIL_SERVER_URL' 'Mail subsystem base URL' 'http://localhost:8000/fileforge/mail'
       $shareUrl  = Read-Value 'SHARE_BASE_URL'  'Public share base URL' 'http://localhost:3000'
       Write-Info 'writing client\config\prod.json'
       @{
