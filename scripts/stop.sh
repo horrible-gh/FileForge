@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 #
 # Stop locally running FileForge backends.
-# Replaces the old server/stop.ps1 (now also covers the Go mail-server).
+# The mail subsystem is now served by the FastAPI app (:8000); there is no
+# separate mail process.
 #
 # Usage:
-#   scripts/stop.sh            # stop server (:8000) and mail-server (:8090)
+#   scripts/stop.sh            # stop server (:8000)
 #   scripts/stop.sh 8000       # stop whatever listens on the given port(s)
 set -euo pipefail
 
 PORTS=("$@")
-[ ${#PORTS[@]} -eq 0 ] && PORTS=(8000 8090)
+[ ${#PORTS[@]} -eq 0 ] && PORTS=(8000)
 
 if ! command -v lsof >/dev/null 2>&1; then
   echo "[stop] lsof not available; cannot resolve listeners on this system." >&2

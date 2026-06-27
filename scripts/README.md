@@ -74,9 +74,13 @@ non-interactive, so the script never hangs.
 
 | Component | Linux / macOS | Windows | URL |
 |---|---|---|---|
-| FastAPI backend | `scripts/run-server.sh` | `scripts\run-server.ps1` | http://localhost:8000 |
-| MailAnchor (Go) | `scripts/run-mail-server.sh` | `scripts\run-mail-server.ps1` | http://localhost:8090 |
+| FastAPI backend (incl. mail subsystem) | `scripts/run-server.sh` | `scripts\run-server.ps1` | http://localhost:8000 |
 | Flutter client (web) | `scripts/run-client.sh` | `scripts\run-client.ps1` | http://localhost:3031 |
+
+The mail server is no longer a separate process. It was absorbed into the
+FastAPI backend as the mail subsystem (`/fileforge/mail/*`); there is no Go
+`mailanchord` build or `:8090` listener anymore. `scripts/run-mail-server.*`
+is kept only as a thin compatibility shim that forwards to `run-server.*`.
 
 Each component runner runs in the foreground; use a separate terminal per
 component when invoking these lower-level scripts directly.

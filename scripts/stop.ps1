@@ -2,16 +2,17 @@
 <#
 .SYNOPSIS
   Stop locally running FileForge backends.
-  Replaces the old server\stop.ps1 (now also covers the Go mail-server).
+  The mail subsystem is now served by the FastAPI app (:8000); there is no
+  separate mail process.
 
 .EXAMPLE
-  scripts\stop.ps1                # stop server (:8000) and mail-server (:8090)
+  scripts\stop.ps1                # stop server (:8000)
 .EXAMPLE
   scripts\stop.ps1 -Ports 8000    # stop whatever listens on the given port(s)
 #>
 [CmdletBinding()]
 param(
-  [int[]]$Ports = @(8000, 8090)
+  [int[]]$Ports = @(8000)
 )
 
 $ErrorActionPreference = 'Stop'

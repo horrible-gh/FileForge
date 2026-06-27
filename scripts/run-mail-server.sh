@@ -1,50 +1,22 @@
 #!/usr/bin/env bash
 #
-# Build and run the MailAnchor Go backend (mailanchord, http://localhost:8090).
-# Replaces the old mail-server/run.bat.
+# [ABSORBED] The standalone MailAnchor server no longer exists.
 #
-# Loads mail-server/.env (falls back to mail-server/.env.sample), frees the
-# listen port if a stale instance is holding it, rebuilds from source, and runs.
+# The mail server has been absorbed into the FileForge FastAPI backend as the
+# "mail subsystem" (routes under /fileforge/mail/*, /fileforge/oauth/gmail).
+# There is no separate Go backend (mailanchord) and no separate :8090 process
+# anymore - mail-server/ is now pure Python and ships no .go sources or cmd/.
+#
+# This script is kept only so existing automation that still invokes
+# scripts/run-mail-server.sh keeps working: it simply forwards to
+# scripts/run-server.sh, which starts the single uvicorn app (default
+# http://localhost:8000) that already includes the mail subsystem.
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MAIL_DIR="$ROOT_DIR/mail-server"
-cd "$MAIL_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Load environment (KEY=VALUE lines). Prefer .env, else the tracked sample.
-ENV_FILE="$MAIL_DIR/.env"
-[ -f "$ENV_FILE" ] || ENV_FILE="$MAIL_DIR/.env.sample"
-if [ -f "$ENV_FILE" ]; then
-  echo "[run-mail-server] loading env from $(basename "$ENV_FILE")"
-  set -a
-  # shellcheck disable=SC1090
-  . "$ENV_FILE"
-  set +a
-fi
+echo "[run-mail-server] The MailAnchor backend was absorbed into the FileForge server." >&2
+echo "[run-mail-server] There is no separate Go (mailanchord) build or :8090 process anymore." >&2
+echo "[run-mail-server] Forwarding to run-server.sh - mail routes live at /fileforge/mail/* on the main app." >&2
 
-ADDR="${MAILANCHOR_ADDR:-:8090}"
-PORT="${ADDR##*:}"; PORT="${PORT:-8090}"
-
-# Free the port if a previous mailanchord (or anything else) is still listening.
-if command -v lsof >/dev/null 2>&1; then
-  PIDS="$(lsof -ti "tcp:${PORT}" -s tcp:LISTEN 2>/dev/null || true)"
-  if [ -n "$PIDS" ]; then
-    echo "[run-mail-server] port ${PORT} busy — stopping PID(s): ${PIDS}"
-    # shellcheck disable=SC2086
-    kill $PIDS 2>/dev/null || true
-    sleep 1
-  fi
-fi
-
-if [ -z "${GOOGLE_CLIENT_ID:-}${MAILANCHOR_OAUTH_GMAIL_CLIENT_ID:-}" ]; then
-  echo "[run-mail-server] Gmail OAuth not configured — /accounts/oauth/authorize will return 503 (server still starts)."
-fi
-if [ -z "${MAILANCHOR_SMTP_HOST:-}" ]; then
-  echo "[run-mail-server] SMTP relay not configured - Gmail OAuth send can still use XOAUTH2; non-OAuth/password send needs MAILANCHOR_SMTP_HOST."
-fi
-
-echo "[run-mail-server] building mailanchord ..."
-go build -o mailanchord ./cmd/mailanchord
-
-echo "[run-mail-server] starting mailanchord on ${ADDR} ..."
-exec ./mailanchord
+exec "$SCRIPT_DIR/run-server.sh" "$@"
