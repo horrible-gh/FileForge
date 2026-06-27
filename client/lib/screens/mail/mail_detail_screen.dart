@@ -4,6 +4,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/mail_provider.dart';
 import '../../models/mail.dart';
 import '../../services/mail_compose.dart';
+import '../../utils/mail_body_render.dart';
 import '../../widgets/error_retry.dart';
 import 'mail_compose_screen.dart';
 
@@ -111,7 +112,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           style: theme.textTheme.bodySmall,
         ),
         const Divider(height: 32),
-        SelectableText(_renderBody(detail.body)),
+        ..._buildBodyContent(detail.body),
         if (detail.attachments.isNotEmpty) ...[
           const Divider(height: 32),
           Text(t.attachmentsLabel, style: theme.textTheme.titleMedium),
@@ -151,19 +152,45 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     );
   }
 
-  /// initial implementation Body translated text: texttext as-is, htmltext translated text translated text translated text text.
-  /// text HTML translated text NR0003 §6(flutter_widget_from_html text) text text.
-  static String _renderBody(MailBody body) {
-    if (!body.isHtml) return body.content;
-    return body.content
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n\n')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .trim();
+  /// Render the body: plain text as-is; HTML split into text + inline image
+  /// segments so pictures actually show (R0001). Inline `cid:` images arrive as
+  /// `data:` URIs (inlined server-side); remote `<img>` load over the network.
+  List<Widget> _buildBodyContent(MailBody body) {
+    if (!body.isHtml) {
+      return [SelectableText(body.content)];
+    }
+    final segments = parseMailHtmlBody(body.content);
+    if (segments.isEmpty) {
+      // Defensive: HTML with no renderable runs → fall back to stripped text.
+      return [SelectableText(stripHtmlToText(body.content))];
+    }
+    final widgets = <Widget>[];
+    for (final seg in segments) {
+      if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 8));
+      if (seg.isImage) {
+        widgets.add(_buildImage(seg));
+      } else {
+        widgets.add(SelectableText(seg.text));
+      }
+    }
+    return widgets;
+  }
+
+  Widget _buildImage(MailBodySegment seg) {
+    Widget broken() => const Padding(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Icon(Icons.broken_image_outlined, size: 32),
+        );
+    final bytes = seg.dataBytes;
+    if (bytes != null) {
+      return Image.memory(bytes,
+          fit: BoxFit.contain, errorBuilder: (context, error, stack) => broken());
+    }
+    if (seg.isNetworkImage) {
+      return Image.network(seg.imageSrc!,
+          fit: BoxFit.contain, errorBuilder: (context, error, stack) => broken());
+    }
+    return broken();
   }
 
   static String _formatTime(String iso) {
