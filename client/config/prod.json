@@ -1,7 +1,7 @@
 {
   "LOG_CONSOLE": "false",
   "LOG_FILE": "true",
-  "MAIL_SERVER_URL": "http://localhost:8090/api/v1",
+  "MAIL_SERVER_URL": "http://localhost:8000/fileforge/mail",
   "SHARE_BASE_URL": "http://localhost:3031/",
   "SERVER_URL": "http://localhost:8000/fileforge",
   "LOG_LEVEL": "warn"

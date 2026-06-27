@@ -16,7 +16,7 @@ class Env {
   /// `10.0.2.2` text **translated text translated text text** text(translated text→translated text loopback)text
   /// text/translated text/iOS runtimetranslated text translated text translated text. text runtimetext text text translated text text
   /// `net::ERR_CONNECTION_TIMED_OUT` text all translated text translated text(R0001 textsymptomtext
-  /// text translated text: text buildtext `10.0.2.2:8000/api/v1/accounts/oauth/authorize` translated text).
+  /// text translated text: text buildtext `10.0.2.2:8000/fileforge/mail/accounts` translated text).
   /// translated text translated text(text-text)text `10.0.2.2`, text text(text·translated text·iOS)text `localhost` text translated text.
   /// `--dart-define` text text translated text text text translated text.
   static String get _defaultHost {
@@ -33,23 +33,21 @@ class Env {
       ? _serverUrlOverride
       : 'http://$_defaultHost:8000/fileforge';
 
-  /// MailAnchor(Go translated text) API base URL — P0007 §notation ruletext `https://{host}/api/v1`.
-  /// merge translated text(NR0003 §1)text translated text text Go backendtext translated text file APItext
-  /// minutestranslated text. translated text translated text text origin text translated text path translated text translated text
-  /// text base URLtext text. build text --dart-define=MAIL_SERVER_URL=... text text.
+  /// Mail subsystem base URL (NR0003 / 0002 group).
   ///
-  /// ★ translated text text text = **8090** (Go MailAnchor), `:8000` (Python FileForge) text.
-  /// `:8000` text FastAPI text `/fileforge/*` translated text translated text `/api/v1/*` text
-  /// translated text **translated text text 404** text(R0001·T0008 text `localhost:8000/api/v1/
-  /// accounts/oauth/authorize 404` text translated text text text text). `String.fromEnvironment`
-  /// text textfiletext translated text `--dart-define-from-file=config/dev.json` text build/translated text
-  /// override text empty stringtext text text default valuetext translated text. translated text text translated text translated text
-  /// dev buildtext text API text translated text Go backend(:8090)text translated text text translated text
-  /// 8090 text text(file API translated text Python translated text :8000/fileforge keep). prod text
-  /// text prod.json(`https://.../api/v1`)text translated text text translated text text translated text.
+  /// The legacy standalone MailAnchor (Go, `:8090/api/v1`) has been absorbed into
+  /// the FileForge FastAPI server: the mail routes now live at
+  /// `:8000/fileforge/mail/*` on the SAME origin as the file API. There is no
+  /// separate `:8090` process anymore. The client's mail Dio uses this value as
+  /// `baseUrl` and appends `/accounts`, `/sync`, `/mails`, `/drafts`, ... which
+  /// resolve onto `:8000/fileforge/mail/...`.
+  ///
+  /// Override at build time with `--dart-define=MAIL_SERVER_URL=...` or
+  /// `--dart-define-from-file=config/dev.json`; an empty override falls back to
+  /// the default below.
   static String get mailServerUrl => _mailServerUrlOverride.isNotEmpty
       ? _mailServerUrlOverride
-      : 'http://$_defaultHost:8090/api/v1';
+      : 'http://$_defaultHost:8000/fileforge/mail';
 
   /// text text text: debug | info | warn | error
   static const String logLevel = String.fromEnvironment(
