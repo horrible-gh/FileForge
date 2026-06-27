@@ -25,16 +25,23 @@ client never carries account_uuid in the path.
 """
 
 from fastapi import APIRouter, Depends, Body, Request, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from typing import Optional, Tuple
 from datetime import datetime, timezone
 from email.utils import parseaddr
+from urllib.parse import urlparse, urlencode
 import base64
 import email
+import hashlib
+import hmac
+import ipaddress
 import json
 import os
 import re
+import socket
 import uuid as uuid_lib
+
+import httpx
 
 from config import settings, db
 from routers.login.auth import current_user_uuid
@@ -244,8 +251,122 @@ def _rewrite_cid_images(html: str, inline_images: dict) -> str:
     return _CID_SRC_RE.sub(_repl, html)
 
 
-def _detail_to_p0007(row: dict, attachments: list) -> dict:
-    """get_mail row (m.* + account) → P0007 §3.2 MailDetail (mail.dart)."""
+# ──────────────────────────────────────────────────────────────────────────────
+# Remote image proxy (R0001 / 0008.0007-NR — "원격 이미지 CORS 차단")
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# HTML mail commonly sources its pictures from third-party servers
+# (<img src="https://www.smbc-card.com/...png">). On the Flutter *Web* client the
+# CanvasKit renderer must read the raw pixel bytes to paint them, so its
+# NetworkImage fetch is subject to CORS — and third-party senders never send an
+# Access-Control-Allow-Origin header, so every remote image is blocked and the
+# mail (which is mostly images) shows as broken icons. The legacy Vue client
+# rendered DOM <img> tags, which the browser displays CORS-exempt; the regression
+# came entirely from the render medium changing to CanvasKit (NR0007 §2.3).
+#
+# CORS headers are the *sending* server's to grant, so the receiver can never fix
+# this per-domain. The general solution is for FileForge to fetch the bytes
+# server-side (server↔remote is not subject to browser CORS) and re-serve them
+# from its own origin, where the existing CORSMiddleware grants the read. We
+# rewrite each remote <img src> in the detail body to a same-origin proxy URL.
+#
+# Auth note: a Flutter-Web NetworkImage GET cannot carry the RS256 Bearer header,
+# so the proxy is NOT gated on current_user_uuid. Instead each proxy URL is
+# HMAC-signed with SECRET_KEY at rewrite time — only URLs the server itself
+# embedded into a delivered mail can be proxied. This both removes the
+# missing-header problem and bounds the SSRF surface to server-chosen URLs.
+# Defense-in-depth (see image_proxy): scheme allowlist, private/loopback IP block,
+# image/* content-type allowlist, timeout, size cap, redirects disabled.
+
+# <img ... src=http(s)://...> — bounded to a single tag ([^>]). The src value may
+# be double-quoted, single-quoted, OR **unquoted** (`src=https://…`): real mail
+# (e.g. Google's `<img alt="" height=1 src=https://notifications.google.com/g/img/…>`
+# tracking pixels) routinely omits the quotes, and a quote-only matcher left those
+# remote images untouched so CanvasKit still hit them cross-origin and CORS-blocked
+# them — the "일부는 나오는데 일부는 막힘" rework. The `(?<![\w-])` lookbehind keeps
+# `\bsrc` from matching the tail of `data-src`. cid: images are already data: URIs
+# by this point, so they never match.
+_REMOTE_IMG_SRC_RE = re.compile(
+    r"""(<img\b[^>]*?(?<![\w-])src\s*=\s*)"""
+    r"""(?:"(https?://[^"]+)"|'(https?://[^']+)'|(https?://[^\s"'>]+))""",
+    re.IGNORECASE,
+)
+
+_IMG_PROXY_TIMEOUT = 10.0              # seconds
+_IMG_PROXY_MAX_BYTES = 12 * 1024 * 1024  # 12 MiB ceiling per image
+
+
+def _img_proxy_sig(url: str) -> str:
+    """HMAC-SHA256 of the remote URL, keyed by SECRET_KEY (unforgeable token)."""
+    key = (settings.SECRET_KEY or "").encode("utf-8")
+    return hmac.new(key, url.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _sign_remote_url(url: str, proxy_endpoint: str) -> str:
+    """Build the same-origin, HMAC-signed proxy URL for a remote image URL."""
+    token = base64.urlsafe_b64encode(url.encode("utf-8")).decode("ascii").rstrip("=")
+    qs = urlencode({"u": token, "sig": _img_proxy_sig(url)})
+    return f"{proxy_endpoint}?{qs}"
+
+
+def _rewrite_remote_images(html: str, proxy_endpoint: Optional[str]) -> str:
+    """Rewrite remote <img src> → same-origin signed proxy URL (CORS-safe).
+
+    Handles double-quoted, single-quoted, and unquoted ``src`` values; the
+    rewritten value is always emitted double-quoted (the signed proxy URL carries
+    ``?``/``&``, so an unquoted result would be malformed).
+    """
+    if not html or not proxy_endpoint:
+        return html
+
+    def _repl(m: "re.Match") -> str:
+        prefix = m.group(1)
+        url = m.group(2) or m.group(3) or m.group(4)  # dq | sq | unquoted
+        return f'{prefix}"{_sign_remote_url(url, proxy_endpoint)}"'
+
+    return _REMOTE_IMG_SRC_RE.sub(_repl, html)
+
+
+def _is_safe_public_host(hostname: str) -> bool:
+    """SSRF guard: every resolved address must be a routable public IP.
+
+    Blocks private/loopback/link-local (incl. the 169.254.169.254 cloud metadata
+    endpoint)/multicast/reserved/unspecified targets. A DNS failure is treated as
+    unsafe (fail closed).
+    """
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except Exception:  # noqa: BLE001 — unresolvable → unsafe
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if (addr.is_private or addr.is_loopback or addr.is_link_local
+                or addr.is_multicast or addr.is_reserved or addr.is_unspecified):
+            return False
+    return True
+
+
+def _img_proxy_endpoint(request: Request) -> Optional[str]:
+    """Absolute URL of the image-proxy route for the current origin, or None."""
+    try:
+        return str(request.url_for("image_proxy"))
+    except Exception:  # noqa: BLE001 — route lookup is best-effort
+        return None
+
+
+def _detail_to_p0007(row: dict, attachments: list,
+                     proxy_endpoint: Optional[str] = None) -> dict:
+    """get_mail row (m.* + account) → P0007 §3.2 MailDetail (mail.dart).
+
+    When ``proxy_endpoint`` is given, remote <img src> in an HTML body are rewritten
+    to same-origin signed proxy URLs so Flutter-Web CanvasKit can read their bytes
+    (R0001 / NR0007). Left untouched when None (e.g. unit calls without a request).
+    """
     body_text = ""
     body_html = ""
     raw = b""
@@ -266,6 +387,9 @@ def _detail_to_p0007(row: dict, attachments: list) -> dict:
     if html_has_img:
         body_format = "html"
         body_content = _rewrite_cid_images(body_html, _inline_images_from_eml(raw))
+        # cid: images are now data: URIs; route the remaining remote images through
+        # the same-origin proxy so CanvasKit's byte fetch isn't CORS-blocked.
+        body_content = _rewrite_remote_images(body_content, proxy_endpoint)
     elif body_text:
         body_format, body_content = "text", body_text
     elif body_html:
@@ -446,7 +570,8 @@ async def list_mails(
 
 
 @router.get("/mails/{mail_id}")
-async def get_mail(mail_id: str, user_uuid: str = Depends(current_user_uuid)):
+async def get_mail(mail_id: str, request: Request,
+                   user_uuid: str = Depends(current_user_uuid)):
     """GET /mail/mails/{id} — full mail detail from the store."""
     sql = sqloader.load_sql(MAIL_JSON, "inbox.get_mail")
     row = db_instance.fetch_one(sql, (mail_id, user_uuid))
@@ -464,7 +589,60 @@ async def get_mail(mail_id: str, user_uuid: str = Depends(current_user_uuid)):
             })
     except Exception as exc:  # noqa: BLE001 — attachments are best-effort
         logger.debug(f"[compat detail] attachments load failed: {exc}")
-    return _ok(_detail_to_p0007(row, attachments))
+    return _ok(_detail_to_p0007(row, attachments, _img_proxy_endpoint(request)))
+
+
+@router.get("/image-proxy", name="image_proxy")
+async def image_proxy(u: str, sig: str):
+    """GET /mail/image-proxy?u=&sig= — re-serve a remote mail image same-origin.
+
+    Resolves the CORS block on remote <img> in the Flutter-Web client (R0001 /
+    0008.0007-NR). Intentionally unauthenticated — a NetworkImage GET cannot carry
+    the Bearer header — but gated by the HMAC signature so only URLs the server
+    itself embedded into a delivered mail can be fetched. The remaining SSRF
+    defenses run before any outbound request is made.
+    """
+    try:
+        pad = "=" * (-len(u) % 4)
+        url = base64.urlsafe_b64decode(u + pad).decode("utf-8")
+    except Exception:  # noqa: BLE001 — malformed token
+        return _err("VALIDATION_FAILED", "bad image token", 400, {"field": "u"})
+
+    # Signature gate: rejects any URL the server did not sign (SSRF gate #1).
+    if not hmac.compare_digest(_img_proxy_sig(url), sig or ""):
+        return _err("VALIDATION_FAILED", "bad image signature", 403, {"field": "sig"})
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return _err("VALIDATION_FAILED", "unsupported image url", 400, {"field": "u"})
+    if not _is_safe_public_host(parsed.hostname):
+        return _err("VALIDATION_FAILED", "blocked image host", 403, {"field": "u"})
+
+    try:
+        async with httpx.AsyncClient(timeout=_IMG_PROXY_TIMEOUT,
+                                     follow_redirects=False) as client:
+            resp = await client.get(url, headers={
+                "User-Agent": "FileForge-ImageProxy/1.0",
+                "Accept": "image/*",
+            })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[image-proxy] fetch failed {parsed.hostname}: {exc}")
+        return _err("UPSTREAM_UNAVAILABLE", "image fetch failed", 502)
+
+    if resp.status_code != 200:
+        return _err("UPSTREAM_UNAVAILABLE", "image fetch failed", 502,
+                    {"upstream_status": resp.status_code})
+    ctype = (resp.headers.get("content-type") or "").split(";")[0].strip().lower()
+    if not ctype.startswith("image/"):
+        return _err("VALIDATION_FAILED", "not an image", 415, {"content_type": ctype})
+    content = resp.content
+    if len(content) > _IMG_PROXY_MAX_BYTES:
+        return _err("VALIDATION_FAILED", "image too large", 413)
+
+    # CORS headers are added by the app's CORSMiddleware (echoes the app origin),
+    # which is exactly what lets CanvasKit read these bytes cross-origin.
+    return Response(content=content, media_type=ctype,
+                    headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.patch("/mails/{mail_id}")
