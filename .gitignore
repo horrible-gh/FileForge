@@ -19,6 +19,7 @@
 *.bak.*
 /server/fileforge.db
 /server/*.db
+/server/data/
 
 # === Server (Python) ===
 __pycache__/
