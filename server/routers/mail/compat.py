@@ -29,9 +29,11 @@ from fastapi.responses import JSONResponse
 from typing import Optional, Tuple
 from datetime import datetime, timezone
 from email.utils import parseaddr
+import base64
 import email
 import json
 import os
+import re
 import uuid as uuid_lib
 
 from config import settings, db
@@ -178,19 +180,93 @@ def _extract_body_from_eml(raw_email: bytes) -> Tuple[str, str]:
     return body_text, body_html
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Inline image surfacing (R0001 / 0007 group — "이미지 표시가 되지 않음")
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# HTML mail embeds pictures as <img src="cid:ID">, where ID maps to a MIME part's
+# Content-ID. The previous detail path (a) preferred the text/plain alternative,
+# so the image-bearing HTML never reached the client, and (b) even when HTML was
+# returned the client stripped every tag. We re-parse the stored .eml, collect the
+# inline image parts, and rewrite each cid: reference to a self-contained data:
+# URI. This needs no auth-bearing image endpoint, no extra round-trip, and no
+# schema change — the raw .eml already holds the image bytes.
+
+_CID_SRC_RE = re.compile(r"""src\s*=\s*(["'])cid:([^"']+)\1""", re.IGNORECASE)
+
+
+def _inline_images_from_eml(raw_email: bytes) -> dict:
+    """Map Content-ID (angle brackets stripped) → (content_type, raw bytes).
+
+    Collects every image/* MIME part that carries a Content-ID so the HTML body's
+    `cid:` references can be inlined as base64 data: URIs.
+    """
+    out: dict = {}
+    try:
+        msg = email.message_from_bytes(raw_email)
+    except Exception:  # noqa: BLE001 — defensive
+        return out
+    if not msg.is_multipart():
+        return out
+    for part in msg.walk():
+        ctype = part.get_content_type()
+        if not ctype.startswith("image/"):
+            continue
+        cid = part.get("Content-ID")
+        if not cid:
+            continue
+        cid = cid.strip().strip("<>").strip()
+        if not cid or cid in out:
+            continue
+        try:
+            payload = part.get_payload(decode=True)
+        except Exception:  # noqa: BLE001 — skip undecodable parts
+            continue
+        if payload:
+            out[cid] = (ctype, payload)
+    return out
+
+
+def _rewrite_cid_images(html: str, inline_images: dict) -> str:
+    """Rewrite <img src="cid:ID"> → <img src="data:<ct>;base64,..."> in HTML."""
+    if not html or not inline_images:
+        return html
+
+    def _repl(m: "re.Match") -> str:
+        quote, cid = m.group(1), m.group(2).strip()
+        entry = inline_images.get(cid)
+        if not entry:
+            return m.group(0)
+        ctype, data = entry
+        b64 = base64.b64encode(data).decode("ascii")
+        return f"src={quote}data:{ctype};base64,{b64}{quote}"
+
+    return _CID_SRC_RE.sub(_repl, html)
+
+
 def _detail_to_p0007(row: dict, attachments: list) -> dict:
     """get_mail row (m.* + account) → P0007 §3.2 MailDetail (mail.dart)."""
     body_text = ""
     body_html = ""
+    raw = b""
     bfp = row.get("body_file_path")
     if bfp and os.path.exists(bfp):
         try:
             with open(bfp, "rb") as fh:
-                body_text, body_html = _extract_body_from_eml(fh.read())
+                raw = fh.read()
         except OSError:
-            body_text = body_html = ""
-    # Prefer plain text; fall back to HTML; finally the stored snippet.
-    if body_text:
+            raw = b""
+    if raw:
+        body_text, body_html = _extract_body_from_eml(raw)
+    # Prefer HTML when it carries images so the pictures actually render in the
+    # client (R0001 — cid: inline images are rewritten to data: URIs). For ordinary
+    # mail keep the clean text/plain alternative (avoids the 0006 "excessive info"
+    # markup noise). Finally fall back to whatever HTML/snippet exists.
+    html_has_img = bool(body_html) and "<img" in body_html.lower()
+    if html_has_img:
+        body_format = "html"
+        body_content = _rewrite_cid_images(body_html, _inline_images_from_eml(raw))
+    elif body_text:
         body_format, body_content = "text", body_text
     elif body_html:
         body_format, body_content = "html", body_html
