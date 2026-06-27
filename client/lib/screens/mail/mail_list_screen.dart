@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -39,14 +41,88 @@ class MailListScreen extends StatefulWidget {
   State<MailListScreen> createState() => _MailListScreenState();
 }
 
-class _MailListScreenState extends State<MailListScreen> {
+class _MailListScreenState extends State<MailListScreen>
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
+
+  /// R0001(0022) 실시간 수신 — 받은편지함이 화면에 떠 있는 동안 주기적으로 서버
+  /// 동기화(POST /sync)를 끌어와 외부 도착 메일을 자동 반영한다. NR0003 방향 A:
+  /// 서버 무변경(백그라운드 워커 부재는 클라 폴링으로 보완).
+  ///
+  /// 간격 = 10초(T0007, 이전 15초에서 단축). "부하 심하나?"에 대한 근거:
+  /// 새 메일이 없는 폴은 IMAP SEARCH가 빈 결과를 돌려주고 즉시 끝나므로 **본문
+  /// 다운로드가 전혀 없다**(sync.go doSyncLocked: 적용할 변경 0건이면 FetchChanges
+  /// 1페이지에서 종료). 따라서 빈 폴 1회의 실비용은 단발성 TLS+IMAP 로그인
+  /// 왕복뿐이고 트래픽은 수십 KB 미만이다. 게다가 폴링은 (a) 받은편지함이
+  /// **포그라운드 최상위**일 때만 돌고(작성/상세 push·앱 백그라운드 시 정지),
+  /// (b) 서버 `acquireSyncLock`(sync.go:53)이 중복 동시 sync를 멱등 차단하며,
+  /// (c) 한 번에 연결 1개를 직렬로 열고 즉시 닫으므로 동시 연결이 누적되지 않는다.
+  /// 10초 = 계정 1개 기준 활성 화면에서 분당 6회로, 받은편지함 포그라운드 동안만
+  /// 도는 임시 수신 보완책이다. 더 줄이려면(예: <10초) 폴마다 TLS
+  /// 재접속 오버헤드가 지배적이 되어 연결 재사용/IMAP IDLE(방향 C)이 필요하다.
+  static const Duration _pollInterval = Duration(seconds: 10);
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _enterMail());
+    _startPolling();
+  }
+
+  // ── 주기 폴링(실시간 수신) ─────────────────────────────────────────────────
+  //
+  // ★T0004 제약(반드시 준수): "메일을 작성하는 중에 리프레시가 작성을 방해해서는
+  // 안 된다." 이를 두 겹으로 보장한다.
+  //   (1) 작성/상세 화면이 받은편지함 위로 push되어 있으면(= 이 라우트가 최상위가
+  //       아니면) 폴링 tick은 아무 동작도 하지 않는다(_pollTick의 isCurrent 가드).
+  //   (2) 설령 tick이 돌더라도 동기화는 받은편지함 *목록* 상태만 갱신하며,
+  //       MailComposeScreen은 자체 로컬 상태(TextEditingController 등)만 쓰고
+  //       MailProvider를 watch하지 않으므로 입력 중인 본문이 사라지지 않는다.
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _pollTick());
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  /// 주기 동기화 1회. 작성/상세 등 다른 화면이 위에 올라와 있거나, 계정이 없거나,
+  /// 받은편지함이 아닌 라벨이거나, 이미 동기화/로딩 중이면 건너뛴다.
+  void _pollTick() {
+    if (!mounted) return;
+    // (1) 메일 작성 중 방해 금지 — 받은편지함이 최상위 라우트가 아니면 절대 sync 안 함.
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return;
+    if (!context.read<AccountProvider>().hasAccounts) return;
+    final mail = context.read<MailProvider>();
+    // 받은편지함에서만 자동 수신. 보낸편지함/임시보관함은 수신 대상이 아니다.
+    if (mail.currentLabel != 'inbox') return;
+    if (mail.isSyncing || mail.isLoading) return;
+    // 목록이 비어 있지 않으면 syncInbox는 전체화면 스피너를 띄우지 않고 조용히 갱신한다.
+    mail.syncInbox();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 백그라운드에선 폴링을 멈추고(네트워크/배터리 절약), 포그라운드 복귀 시 즉시
+    // 1회 동기화 후 폴링을 재개한다 — 복귀 직후 한발짝 늦지 않도록.
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _startPolling();
+        _pollTick();
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        _stopPolling();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
   }
 
   /// text text translated text(NR0003 §5.5) — inbox text text text translated text accounttext translated text
@@ -89,6 +165,8 @@ class _MailListScreenState extends State<MailListScreen> {
 
   @override
   void dispose() {
+    _stopPolling();
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
