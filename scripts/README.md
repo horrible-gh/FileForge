@@ -38,13 +38,13 @@ From the repository root:
 This sets up all three components. Pass a single target to set up just one:
 `server`, `mail-server`, or `client`.
 
-Setup **prompts you for the values each `.env` needs** — the app `SECRET_KEY`
-(auto-generated default), database type/connection, Redis host/port/password, the
-MailAnchor OAuth SecretStore encryption key, the outbound SMTP relay, and the Gmail
-OAuth client ID / secret / redirect URI — and writes a real `.env` from your
-answers. Pressing Enter accepts the shown default; SMTP and Gmail fields are optional
-(blank Gmail → `/accounts/oauth/authorize` 503; no Gmail OAuth token and no SMTP
-relay → `POST /mails` returns `SEND_FAILED` 502; server still starts).
+Setup **prompts you for the values `server/.env` needs** — the app `SECRET_KEY`
+(auto-generated default), database type/connection, Redis host/port/password, and
+the Gmail OAuth client ID / secret / redirect URI — and writes a real `.env` from
+your answers. Pressing Enter accepts the shown default; the Gmail fields are
+optional (blank Gmail → `/fileforge/oauth/gmail/authorize` 503; server still
+starts). The mail subsystem is part of the FileForge server, so there is no
+separate `mail-server/.env` to configure.
 
 **Re-running with existing files.** If a `.env`/config already exists, an
 interactive run **asks whether to reconfigure it** (default: keep). Answer `y`
@@ -96,13 +96,11 @@ component when invoking these lower-level scripts directly.
 
 - **server** — copy `server/.env.sample` → `server/.env` (done by setup). Needs a
   reachable Redis (`REDIS_HOST` in `.env`).
-- **mail-server** — setup creates or keeps `mail-server/.env`. Set
-  `MAILANCHOR_SMTP_HOST`/`MAILANCHOR_SMTP_PORT` before testing non-OAuth/password
-  account sending. Gmail OAuth accounts use the connected account's OAuth token
-  over Gmail SMTP XOAUTH2 and do not require `MAILANCHOR_SMTP_HOST`. OAuth
-  credentials are persisted in the MailAnchor DB-backed SecretStore; set
-  `MAILANCHOR_SECRET_ENCRYPTION_KEY` to encrypt those blobs at rest. Edit Gmail OAuth
-  and the FileForge bridge public key as needed.
+- **mail subsystem** — absorbed into the FileForge server; there is no separate
+  `mail-server/.env`. Per-account SMTP settings are stored in the database, and
+  Gmail OAuth accounts send over Gmail SMTP XOAUTH2 using the connected account's
+  token. Gmail OAuth client credentials live in `server/.env`
+  (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`).
 - **client** — copy `client/config/dev.json` → `client/config/prod.json` (done by
   setup) for production builds.
 

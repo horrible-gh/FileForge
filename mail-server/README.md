@@ -1,6 +1,19 @@
-# FileForge Server
+# mail-server/ — NON-OPERATIONAL LEGACY (do not run)
 
-FileForge Server Application
+> **This directory is a stale, non-operational copy. It is NOT built or started by
+> any setup/run script (NR0003, group 0002).** The standalone MailAnchor backend
+> was absorbed into the FileForge FastAPI server: the mail subsystem now lives at
+> `server/routers/mail/*` and is served on the same origin as the file API
+> (`http://localhost:8000/fileforge/mail/*`). There is no separate `:8090`
+> process, no separate `mail-server/.env`, and the `mail-server` setup target is a
+> no-op kept only for automation compatibility.
+>
+> Run the project from the repository root instead: `./run-server.sh` (or
+> `.\run-server.ps1`). The notes below are retained for historical reference only.
+
+---
+
+FileForge Server Application (legacy reference)
 
 ## Local OAuth test setup
 

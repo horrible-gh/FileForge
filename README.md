@@ -101,7 +101,7 @@ The client is built with Flutter and is intended to run across web, mobile, and 
 ```text
 FileForge/
 ├── server/                 # Backend API (FastAPI, :8000)
-├── mail-server/            # MailAnchor backend (Go, :8090)
+├── mail-server/            # non-operational legacy copy (absorbed into server/, not built or run)
 ├── client/                 # Flutter client
 ├── setup.sh / setup.ps1    # One-time dev setup (Linux/macOS · Windows)
 ├── scripts/                # Cross-platform run/build/stop scripts
@@ -131,7 +131,7 @@ from the repository root — no need to open `scripts/` to figure out what to ru
 ```bash
 # Linux / macOS
 ./setup.sh            # sets up all components AND generates ./run-server.sh, ./run-client.sh
-./run-server.sh       # FastAPI (:8000) + MailAnchor (:8090)
+./run-server.sh       # FastAPI (:8000), incl. absorbed mail subsystem (/fileforge/mail/*)
 ./run-client.sh       # Flutter web (dev) -> http://localhost:3031
 ```
 
