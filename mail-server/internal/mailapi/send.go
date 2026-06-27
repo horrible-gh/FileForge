@@ -171,6 +171,13 @@ func makeSnippet(content string) string {
 	return c
 }
 
+// MakeSnippet exposes the receive-time snippet rule so the body backfill tool can
+// regenerate the list-view snippet from a (re-decoded) body with byte-identical logic.
+// New mail already gets its snippet via makeSnippet(decoded body); old rows kept a
+// snippet built from the *raw* (base64 / untranscoded ISO-2022-JP) body, which is what
+// the mail list still rendered after only body_content was repaired (0021 TR0008 reject).
+func MakeSnippet(content string) string { return makeSnippet(content) }
+
 // resolveAttachments loads the bytes-bearing metadata for a mail's attachments so the
 // Sender can build the MIME body. Used by the send handler after persistence checks.
 func (s *Store) draftOutgoingAttachments(userID string, draftID *string, ids []string) ([]OutgoingAttachment, error) {
