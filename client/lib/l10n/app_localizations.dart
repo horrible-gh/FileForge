@@ -274,6 +274,36 @@ abstract class AppLocalizations {
   /// **'Attachments'**
   String get attachmentsLabel;
 
+  /// No description provided for @mailActionCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get mailActionCopy;
+
+  /// No description provided for @mailCopySubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy subject'**
+  String get mailCopySubject;
+
+  /// No description provided for @mailCopyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy body'**
+  String get mailCopyBody;
+
+  /// No description provided for @mailCopyFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy sender address'**
+  String get mailCopyFrom;
+
+  /// No description provided for @mailCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get mailCopied;
+
   /// No description provided for @addLabel.
   ///
   /// In en, this message translates to:

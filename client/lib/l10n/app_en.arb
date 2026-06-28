@@ -36,6 +36,11 @@
   "formatPlain": "Plain",
   "formatHtml": "HTML",
   "attachmentsLabel": "Attachments",
+  "mailActionCopy": "Copy",
+  "mailCopySubject": "Copy subject",
+  "mailCopyBody": "Copy body",
+  "mailCopyFrom": "Copy sender address",
+  "mailCopied": "Copied to clipboard",
   "addLabel": "Add",
   "removeLabel": "Remove",
 

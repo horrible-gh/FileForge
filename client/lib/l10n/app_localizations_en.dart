@@ -96,6 +96,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachmentsLabel => 'Attachments';
 
   @override
+  String get mailActionCopy => 'Copy';
+
+  @override
+  String get mailCopySubject => 'Copy subject';
+
+  @override
+  String get mailCopyBody => 'Copy body';
+
+  @override
+  String get mailCopyFrom => 'Copy sender address';
+
+  @override
+  String get mailCopied => 'Copied to clipboard';
+
+  @override
   String get addLabel => 'Add';
 
   @override

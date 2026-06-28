@@ -35,6 +35,11 @@
   "formatPlain": "일반",
   "formatHtml": "HTML",
   "attachmentsLabel": "첨부파일",
+  "mailActionCopy": "복사",
+  "mailCopySubject": "제목 복사",
+  "mailCopyBody": "본문 복사",
+  "mailCopyFrom": "보낸사람 주소 복사",
+  "mailCopied": "클립보드에 복사했습니다",
   "addLabel": "추가",
   "removeLabel": "삭제",
 

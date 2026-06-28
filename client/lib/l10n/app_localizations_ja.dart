@@ -96,6 +96,21 @@ class AppLocalizationsJa extends AppLocalizations {
   String get attachmentsLabel => '添付ファイル';
 
   @override
+  String get mailActionCopy => 'コピー';
+
+  @override
+  String get mailCopySubject => '件名をコピー';
+
+  @override
+  String get mailCopyBody => '本文をコピー';
+
+  @override
+  String get mailCopyFrom => '差出人アドレスをコピー';
+
+  @override
+  String get mailCopied => 'クリップボードにコピーしました';
+
+  @override
   String get addLabel => '追加';
 
   @override

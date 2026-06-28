@@ -35,6 +35,11 @@
   "formatPlain": "プレーン",
   "formatHtml": "HTML",
   "attachmentsLabel": "添付ファイル",
+  "mailActionCopy": "コピー",
+  "mailCopySubject": "件名をコピー",
+  "mailCopyBody": "本文をコピー",
+  "mailCopyFrom": "差出人アドレスをコピー",
+  "mailCopied": "クリップボードにコピーしました",
   "addLabel": "追加",
   "removeLabel": "削除",
 
