@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/mail_provider.dart';
@@ -48,6 +49,26 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          // Copy actions live behind a single overflow icon (R0001 — the user
+          // asked for copy of subject/body/address but explicitly did NOT want
+          // buttons scattered across the screen). The body is also drag-
+          // selectable via the SelectionArea below; this menu guarantees copy
+          // even for HTML bodies, which HtmlWidget renders as non-selectable
+          // RichText.
+          if (detail != null)
+            PopupMenuButton<_CopyTarget>(
+              icon: const Icon(Icons.content_copy_rounded),
+              tooltip: t.mailActionCopy,
+              onSelected: (target) => _copy(target, detail),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: _CopyTarget.subject, child: Text(t.mailCopySubject)),
+                PopupMenuItem(
+                    value: _CopyTarget.body, child: Text(t.mailCopyBody)),
+                PopupMenuItem(
+                    value: _CopyTarget.from, child: Text(t.mailCopyFrom)),
+              ],
+            ),
           if (detail != null)
             PopupMenuButton<ComposeMode>(
               icon: const Icon(Icons.reply_rounded),
@@ -80,6 +101,32 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     );
   }
 
+  /// Copy one field of the open mail to the clipboard. HTML bodies are copied
+  /// as their readable plain-text form (the same strip the fallback renderer
+  /// uses) so the clipboard never receives raw markup/CSS.
+  Future<void> _copy(_CopyTarget target, MailDetail detail) async {
+    final t = AppLocalizations.of(context);
+    final String value;
+    switch (target) {
+      case _CopyTarget.subject:
+        value = detail.subject;
+        break;
+      case _CopyTarget.body:
+        value = detail.body.isHtml
+            ? stripHtmlToText(detail.body.content)
+            : detail.body.content;
+        break;
+      case _CopyTarget.from:
+        value = detail.from.address;
+        break;
+    }
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(t.mailCopied)),
+    );
+  }
+
   Widget _buildBody(BuildContext context, MailProvider mail, MailDetail? detail) {
     final t = AppLocalizations.of(context);
     if (mail.detailLoading && detail == null) {
@@ -96,9 +143,16 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     }
 
     final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+    // Wrap the whole detail in a SelectionArea so the subject, address rows and
+    // (plain-text) body become drag-selectable — the root of R0001's "본문 선택이
+    // 잘 안 될 때가 있다": plain `Text`/`SelectableText` selection was
+    // inconsistent and HTML bodies were not selectable at all. The AppBar copy
+    // menu remains the guaranteed path for HTML bodies that HtmlWidget renders
+    // as non-selectable RichText.
+    return SelectionArea(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
         Text(
           detail.subject.isEmpty ? t.noSubject : detail.subject,
           style: theme.textTheme.titleLarge,
@@ -126,7 +180,8 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
                 // text downloadtext text text(text T)text translated text(P0007 §6.4).
               )),
         ],
-      ],
+        ],
+      ),
     );
   }
 
@@ -168,11 +223,15 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   /// cannot relayout the hovered subtree (0009 R0001 / NR0003 — the
   /// `mouse_tracker.dart:199` re-entrancy assertion flood).
   List<Widget> _buildBodyContent(MailBody body) {
+    // Plain `Text` here, not `SelectableText`: the surrounding [SelectionArea]
+    // owns selection, and a nested SelectableText would create a second,
+    // conflicting selectable. (HTML bodies still go through [MailHtmlBody]; the
+    // AppBar copy menu guarantees copy for those regardless of selectability.)
     if (!body.isHtml) {
-      return [SelectableText(body.content)];
+      return [Text(body.content)];
     }
     if (body.content.trim().isEmpty) {
-      return [SelectableText(stripHtmlToText(body.content))];
+      return [Text(stripHtmlToText(body.content))];
     }
     return [MailHtmlBody(body.content)];
   }
@@ -191,3 +250,6 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
+
+/// The fields offered by the detail screen's consolidated copy menu (R0001).
+enum _CopyTarget { subject, body, from }
