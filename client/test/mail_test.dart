@@ -49,6 +49,41 @@ void main() {
       expect(s.labels, isEmpty);
       expect(s.from.address, '');
     });
+
+    test('R0001(0013): parses receiving-account identity', () {
+      final s = MailSummary.fromJson({
+        'mail_id': 'm3',
+        'from': {'address': 'sender@ext.com'},
+        'account': {
+          'account_id': 'acc_work',
+          'email': 'work@gmail.com',
+          'name': 'Work Gmail',
+          'color': '#EA4335',
+        },
+      });
+      expect(s.account.accountId, 'acc_work');
+      expect(s.account.email, 'work@gmail.com');
+      expect(s.account.name, 'Work Gmail');
+      expect(s.account.label, 'Work Gmail'); // name preferred
+      expect(s.account.hasIdentity, true);
+      // copyWithRead must preserve the account.
+      expect(s.copyWithRead(true).account.accountId, 'acc_work');
+    });
+
+    test('R0001(0013): account label falls back to email; absent → no identity',
+        () {
+      final withEmail = MailSummary.fromJson({
+        'mail_id': 'm4',
+        'from': {'address': 'x@y'},
+        'account': {'account_id': 'a2', 'email': 'me2@imap.net'},
+      });
+      expect(withEmail.account.label, 'me2@imap.net');
+      expect(withEmail.account.hasIdentity, true);
+
+      final none = MailSummary.fromJson({'mail_id': 'm5'});
+      expect(none.account.hasIdentity, false);
+      expect(none.account.label, '');
+    });
   });
 
   group('MailDetail', () {

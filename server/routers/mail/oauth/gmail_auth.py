@@ -12,6 +12,7 @@ from services.gmail_service import GmailOAuthService
 from urllib.parse import urlencode, urlsplit
 from html import escape
 from typing import Optional
+import json
 import secrets
 
 SECRET_KEY = settings.SECRET_KEY
@@ -82,16 +83,64 @@ def _oauth_result_url(**params) -> Optional[str]:
 
 
 def _oauth_result_page(*, success: bool, heading: str, message: str,
-                       status_code: int = 200) -> HTMLResponse:
+                       status_code: int = 200,
+                       deeplink: Optional[str] = None,
+                       auto_close: bool = False) -> HTMLResponse:
     """브라우저로 직접 반환하는 self-contained OAuth 결과 페이지.
 
     웹 프론트엔드가 없는(데스크톱/로컬) 구성에서 redirect 목적지가 없을 때, 브라우저에
-    raw JSON(`{"detail":...}`) 대신 사람이 읽을 수 있는 안내를 보여준다. 앱은 포그라운드
-    복귀 시 계정 목록을 다시 읽어 연결을 감지하므로(클라 _refreshAfterReturn), 이 페이지는
-    "창을 닫고 앱으로 돌아가세요" 만 안내하면 된다.
+    raw JSON(`{"detail":...}`) 대신 사람이 읽을 수 있는 안내를 보여준다.
+
+    R0001/NR0003/T0004 §Option C — 성공 시 "닫고 앱으로 돌아가세요" 안내를 수동에 맡기지
+    않고 다음을 계층적으로 시도한다(모바일 불편 해소가 목적):
+      1) deeplink 가 있으면 짧은 지연 후 커스텀 스킴으로 자동 리다이렉트 → OS 가 앱을
+         foreground 로 올리고, 앱은 딥링크 수신 시 계정 목록을 재로딩해 연결을 감지한다.
+      2) 카운트다운 후 window.close() 시도(데스크톱/스크립트로 열린 창 폴백).
+      3) 위가 모두 막히는 환경(모바일 브라우저 등)을 위해 "FileForge 앱으로 돌아가기"
+         수동 버튼/링크를 항상 노출한다.
+    실패 페이지는 사용자가 메시지를 읽어야 하므로 자동 닫기/리다이렉트를 하지 않는다.
     """
     accent = "#1a73e8" if success else "#d93025"
     icon = "✓" if success else "✕"
+
+    action_html = ""
+    script_html = ""
+    if success and deeplink:
+        safe_link = escape(deeplink, quote=True)
+        action_html = (
+            f'<a class="btn" href="{safe_link}">FileForge 앱으로 돌아가기</a>'
+        )
+    if success:
+        # JS는 별도 변수에 안전한 JSON 문자열로 주입(스킴/메시지 인젝션 방지).
+        deeplink_js = json.dumps(deeplink) if deeplink else "null"
+        script_html = f"""
+<script>
+(function() {{
+  var deeplink = {deeplink_js};
+  // 1) 딥링크 자동 복귀 시도(모바일 핵심 경로).
+  if (deeplink) {{
+    setTimeout(function() {{ try {{ window.location.href = deeplink; }} catch (e) {{}} }}, 600);
+  }}
+  // 2) 데스크톱/스크립트로 열린 창 폴백 — 카운트다운 후 자동 닫기.
+  var remain = 3;
+  var el = document.getElementById('countdown');
+  var timer = setInterval(function() {{
+    remain -= 1;
+    if (el) {{ el.textContent = String(remain); }}
+    if (remain <= 0) {{
+      clearInterval(timer);
+      try {{ window.close(); }} catch (e) {{}}
+    }}
+  }}, 1000);
+}})();
+</script>"""
+
+    countdown_note = (
+        '<p class="note">잠시 후(<span id="countdown">3</span>초) 이 창은 자동으로 닫힙니다. '
+        '자동으로 닫히거나 앱으로 돌아가지 않으면 아래 버튼을 누르거나 창을 닫아 주세요.</p>'
+        if success else ""
+    )
+
     html = f"""<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -105,12 +154,17 @@ def _oauth_result_page(*, success: bool, heading: str, message: str,
             font-size:30px; line-height:56px; margin:0 auto 18px; }}
   h1 {{ font-size:20px; margin:0 0 10px; color:#202124; }}
   p {{ font-size:14px; color:#5f6368; line-height:1.6; margin:0; }}
+  .note {{ font-size:13px; color:#80868b; margin-top:14px; }}
+  .btn {{ display:inline-block; margin-top:18px; padding:10px 22px; background:{accent};
+          color:#fff; text-decoration:none; border-radius:8px; font-size:14px; }}
 </style></head>
 <body><div class="card">
   <div class="badge">{icon}</div>
   <h1>{escape(heading)}</h1>
   <p>{escape(message)}</p>
-</div></body></html>"""
+  {countdown_note}
+  {action_html}
+</div>{script_html}</body></html>"""
     return HTMLResponse(content=html, status_code=status_code)
 
 
@@ -223,9 +277,11 @@ async def gmail_oauth_callback(
         result_url = _oauth_result_url(gmail_connected="true", email=user_info["email"])
         if result_url:
             return RedirectResponse(url=result_url)
+        deeplink = settings.OAUTH_SUCCESS_DEEPLINK.strip() or None
         return _oauth_result_page(
             success=True, heading="연결 완료",
-            message=f"{user_info['email']} 계정이 연결되었습니다. 이 창을 닫고 앱으로 돌아가세요.")
+            message=f"{user_info['email']} 계정이 연결되었습니다.",
+            deeplink=deeplink, auto_close=True)
 
     except HTTPException:
         # redirect-URL 빌더 등 내부에서 의도적으로 올린 4xx/5xx는 의미·메시지를

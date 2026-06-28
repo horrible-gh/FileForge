@@ -523,6 +523,35 @@ class _LabelSwitcher extends StatelessWidget {
   }
 }
 
+/// R0001(0013) — 계정별 구분색 팔레트. 서버 `display_color`는 계정마다 동일한
+/// 기본값(Gmail #EA4335 등)으로 부여되는 경우가 많아, 색만으로는 구분이 안 된다.
+/// 따라서 색은 계정 식별자 해시로 이 팔레트에서 안정적으로 파생해 *계정마다
+/// 서로 다른 색*을 보장한다(텍스트 라벨이 1차 단서, 색은 보조 단서).
+const List<Color> _kAccountPalette = [
+  Color(0xFF1565C0), // blue
+  Color(0xFF2E7D32), // green
+  Color(0xFFAD1457), // pink
+  Color(0xFF6A1B9A), // purple
+  Color(0xFFEF6C00), // orange
+  Color(0xFF00838F), // cyan
+  Color(0xFFC62828), // red
+  Color(0xFF4527A0), // deep purple
+  Color(0xFF558B2F), // light green
+  Color(0xFF00695C), // teal
+];
+
+/// 계정 식별자 → 안정적 구분색. 같은 계정은 항상 같은 색, 다른 계정은(거의)
+/// 다른 색. 식별자가 없으면 중립 회색.
+Color _accountColor(MailAccountRef account) {
+  final key = account.key;
+  if (key.isEmpty) return const Color(0xFF607D8B);
+  var hash = 0;
+  for (final unit in key.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return _kAccountPalette[hash % _kAccountPalette.length];
+}
+
 class _MailListTile extends StatelessWidget {
   final MailSummary summary;
   final VoidCallback onTap;
@@ -535,14 +564,33 @@ class _MailListTile extends StatelessWidget {
     final weight = unread ? FontWeight.w700 : FontWeight.w400;
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final acct = summary.account;
+    final acctColor = _accountColor(acct);
     return ListTile(
       onTap: onTap,
-      leading: CircleAvatar(
-        child: Text(
-          summary.from.display.isNotEmpty
-              ? summary.from.display.characters.first.toUpperCase()
-              : '?',
-        ),
+      // 좌측 색상 바 + 아바타 — 바 색은 계정별로 달라 어느 계정인지 한눈에 보인다.
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 4,
+            height: 40,
+            decoration: BoxDecoration(
+              color: acct.hasIdentity ? acctColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          CircleAvatar(
+            backgroundColor: acct.hasIdentity ? acctColor : null,
+            foregroundColor: acct.hasIdentity ? Colors.white : null,
+            child: Text(
+              summary.from.display.isNotEmpty
+                  ? summary.from.display.characters.first.toUpperCase()
+                  : '?',
+            ),
+          ),
+        ],
       ),
       title: Row(
         children: [
@@ -581,6 +629,34 @@ class _MailListTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall,
+            ),
+          // R0001(0013) — 어느 계정으로 받았는지 표시하는 배지(점 + 계정 라벨).
+          if (acct.hasIdentity)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration:
+                        BoxDecoration(color: acctColor, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      acct.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: acctColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
         ],
       ),

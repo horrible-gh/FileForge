@@ -93,6 +93,50 @@ class MailBody {
   bool get isHtml => format == 'html';
 }
 
+/// R0001(0013) — 메일이 도착한 *내 계정*의 식별 정보(MailSummary에 부착).
+///
+/// 다계정 연동 시 리스트에서 "이 메일이 내 어느 메일함(계정)으로 왔는가"를
+/// 한눈에 알려면 행마다 계정 단서가 필요하다. 서버 `_summary_to_p0007`이
+/// 통합 인박스 JOIN의 계정 컬럼(account_uuid/name/email/display_color)을
+/// `account` 객체로 실어 보내며, 이 모델이 그것을 받는다. 송신자(from)와는
+/// 별개의 *수신 계정* 정보다.
+class MailAccountRef {
+  final String accountId;
+  final String email;
+  final String name;
+
+  /// 서버 display_color(예: `#EA4335`). 비어 있거나 계정마다 동일할 수 있어,
+  /// 리스트 색 구분은 이 값에 의존하지 않고 계정 식별자 해시로 파생한다(아래 hasIdentity 라벨이 1차 단서).
+  final String color;
+
+  const MailAccountRef({
+    this.accountId = '',
+    this.email = '',
+    this.name = '',
+    this.color = '',
+  });
+
+  factory MailAccountRef.fromJson(Map<String, dynamic> json) {
+    return MailAccountRef(
+      accountId: json['account_id'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      color: json['color'] as String? ?? '',
+    );
+  }
+
+  /// 리스트에 표시할 계정 라벨 — 이름이 있으면 이름, 없으면 이메일.
+  /// (이름/이메일은 계정마다 본질적으로 다르므로 색이 같아도 구분된다.)
+  String get label => name.isNotEmpty ? name : email;
+
+  /// 식별자(색 파생용) — id > email > name 순.
+  String get key => accountId.isNotEmpty
+      ? accountId
+      : (email.isNotEmpty ? email : name);
+
+  bool get hasIdentity => label.isNotEmpty;
+}
+
 /// P0007 §3.1 — text text(MailSummary).
 class MailSummary {
   final String mailId;
@@ -105,6 +149,9 @@ class MailSummary {
   final bool hasAttachment;
   final List<String> labels;
 
+  /// R0001(0013) — 이 메일이 도착한 내 계정. 식별 정보가 없으면 빈 ref.
+  final MailAccountRef account;
+
   const MailSummary({
     required this.mailId,
     this.threadId = '',
@@ -115,6 +162,7 @@ class MailSummary {
     this.isRead = false,
     this.hasAttachment = false,
     this.labels = const [],
+    this.account = const MailAccountRef(),
   });
 
   factory MailSummary.fromJson(Map<String, dynamic> json) {
@@ -131,6 +179,8 @@ class MailSummary {
       labels: (json['labels'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(),
+      account: MailAccountRef.fromJson(
+          (json['account'] as Map?)?.cast<String, dynamic>() ?? const {}),
     );
   }
 
@@ -145,6 +195,7 @@ class MailSummary {
         isRead: read,
         hasAttachment: hasAttachment,
         labels: labels,
+        account: account,
       );
 }
 

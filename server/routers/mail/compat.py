@@ -125,7 +125,17 @@ def _labels_for(row: dict) -> list:
 
 
 def _summary_to_p0007(row: dict) -> dict:
-    """integrated mail row → P0007 §3.1 MailSummary (mail.dart)."""
+    """integrated mail row → P0007 §3.1 MailSummary (mail.dart).
+
+    R0001 (0013): in the multi-account inbox the user could not tell *which of
+    their own mailboxes* each message arrived in without opening it. The
+    integrated-mail SQL already JOINs the owning account
+    (`a.account_name`, `a.email as account_email`, `a.display_color`,
+    `m.account_uuid`), but this summary mapper used to drop every one of those
+    columns — so the client literally never received the account identity and
+    the list could not render it. Surface it here as an `account` object the
+    client can show as a per-row badge.
+    """
     return {
         "mail_id": row.get("message_uuid", "") or "",
         "thread_id": "",
@@ -136,6 +146,12 @@ def _summary_to_p0007(row: dict) -> dict:
         "is_read": bool(row.get("is_read")),
         "has_attachment": bool(row.get("has_attachments")),
         "labels": _labels_for(row),
+        "account": {
+            "account_id": row.get("account_uuid", "") or "",
+            "email": row.get("account_email", "") or "",
+            "name": row.get("account_name", "") or "",
+            "color": row.get("display_color", "") or "",
+        },
     }
 
 
