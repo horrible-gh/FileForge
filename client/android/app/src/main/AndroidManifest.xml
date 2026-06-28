@@ -26,6 +26,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- R0001/NR0003/T0004 §Option C: OAuth 성공 페이지의 fileforge:// 딥링크를 이 앱이
+                 수신하도록 등록. 모바일 외부 브라우저에서 연동 완료 후 앱으로 자동 복귀(foreground)
+                 시키고, 수신 시 계정 목록을 재로딩한다(클라 DeepLinkService → AccountProvider.load).
+                 launchMode=singleTop 이므로 기존 인스턴스로 재진입한다. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="fileforge"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -12,6 +12,7 @@ import 'providers/share_link_provider.dart';
 import 'providers/mail_provider.dart';
 import 'providers/account_provider.dart';
 import 'services/account_cache.dart';
+import 'services/deep_link_service.dart';
 import 'services/mail_api_client.dart';
 
 /// text text text
@@ -36,6 +37,7 @@ class _AppState extends State<App> {
   late final MailApiClient _mailApiClient;
   late final MailProvider _mailProvider;
   late final AccountProvider _accountProvider;
+  late final DeepLinkService _deepLinkService;
   late final RouterConfig<Object> _routerConfig;
 
   @override
@@ -76,6 +78,21 @@ class _AppState extends State<App> {
       _accountProvider.reset();
     });
     _routerConfig = AppRoutes.createRouter(_authProvider);
+
+    // R0001/NR0003/T0004 §Option C: OAuth 성공 페이지의 fileforge:// 딥링크를 수신하면
+    // 앱이 foreground 로 복귀하고, 계정 목록을 재로딩해 연결을 즉시 감지한다.
+    // (account_connect_screen 의 lifecycle 기반 수동 복귀 감지는 폴백으로 유지된다.)
+    _deepLinkService = DeepLinkService()
+      ..onOAuthSuccess = () {
+        _accountProvider.load();
+      };
+    _deepLinkService.init();
+  }
+
+  @override
+  void dispose() {
+    _deepLinkService.dispose();
+    super.dispose();
   }
 
   @override

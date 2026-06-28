@@ -49,6 +49,7 @@ dependencies:
   shared_preferences: ^2.3.0
   flutter_dropzone: ^4.0.1
   url_launcher: ^6.3.0
+  app_links: ^6.3.2
   flutter_widget_from_html_core: ^0.17.2
 
 dev_dependencies:
