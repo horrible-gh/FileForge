@@ -10,7 +10,7 @@ from pathlib import Path
 from schemas.mail.sync import SyncRequest
 import threading
 
-from config import settings, db
+from config import settings, db, mail_storage_base
 from routers.login.auth import verify_token
 from services.imap_service import IMAPService
 from util.crypto import encrypt_password, decrypt_password
@@ -263,8 +263,8 @@ def parse_email_message(raw_email: bytes) -> dict:
 
 def save_email_to_filesystem(account_uuid: str, message_uuid: str, raw_email: bytes) -> str:
     """메일 원본을 파일 시스템에 저장"""
-    # {MAIL_STORAGE_BASE_PATH}/{account_uuid}/messages/{uuid[:2]}/{uuid}.eml
-    base_path = Path(f"{settings.MAIL_STORAGE_BASE_PATH}/{account_uuid}/messages")
+    # {mail_storage_base(account)}/{account_uuid}/messages/{uuid[:2]}/{uuid}.eml
+    base_path = Path(mail_storage_base(account_uuid=account_uuid)) / account_uuid / "messages"
     subdir = message_uuid[:2]
     file_path = base_path / subdir / f"{message_uuid}.eml"
 
@@ -280,8 +280,8 @@ def save_email_to_filesystem(account_uuid: str, message_uuid: str, raw_email: by
 
 def save_attachment_to_filesystem(account_uuid: str, attachment_uuid: str, filename: str, content: bytes) -> str:
     """첨부파일을 파일 시스템에 저장"""
-    # {MAIL_STORAGE_BASE_PATH}/{account_uuid}/attachments/{uuid[:2]}/{uuid}_{filename}
-    base_path = Path(f"{settings.MAIL_STORAGE_BASE_PATH}/{account_uuid}/attachments")
+    # {mail_storage_base(account)}/{account_uuid}/attachments/{uuid[:2]}/{uuid}_{filename}
+    base_path = Path(mail_storage_base(account_uuid=account_uuid)) / account_uuid / "attachments"
     subdir = attachment_uuid[:2]
     file_path = base_path / subdir / f"{attachment_uuid}_{filename}"
 

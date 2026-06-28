@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 
-from config import settings, db
+from config import settings, db, mail_storage_base
 from routers.login.auth import verify_token
 from .sync import make_preview
 import LogAssist.log as logger
@@ -108,7 +108,7 @@ async def save_draft(request: DraftSaveRequest):
             if eml_path and eml_path['body_file_path']:
                 eml_file_path = eml_path['body_file_path']
             else:
-                eml_dir = os.path.join(settings.MAIL_STORAGE_BASE_PATH, request.account_uuid, "messages")
+                eml_dir = os.path.join(mail_storage_base(account_uuid=request.account_uuid), request.account_uuid, "messages")
                 os.makedirs(eml_dir, exist_ok=True)
                 eml_file_path = os.path.join(eml_dir, f"{message_uuid}.eml")
             
@@ -178,7 +178,7 @@ async def save_draft(request: DraftSaveRequest):
             if request.body_html:
                 msg.attach(MIMEText(request.body_html, 'html', 'utf-8'))
             
-            eml_dir = os.path.join(settings.MAIL_STORAGE_BASE_PATH, request.account_uuid, "messages")
+            eml_dir = os.path.join(mail_storage_base(account_uuid=request.account_uuid), request.account_uuid, "messages")
             os.makedirs(eml_dir, exist_ok=True)
             eml_path = os.path.join(eml_dir, f"{message_uuid}.eml")
             

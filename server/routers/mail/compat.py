@@ -45,7 +45,7 @@ import uuid as uuid_lib
 
 import httpx
 
-from config import settings, db
+from config import settings, db, mail_storage_base
 from routers.login.auth import current_user_uuid
 from .sync import strip_html_to_text
 
@@ -493,12 +493,38 @@ def _resolve_body_path(bfp: Optional[str]) -> Optional[str]:
     """
     if not bfp:
         return None
-    if os.path.exists(bfp):
-        return bfp
-    if not os.path.isabs(bfp):
-        anchored = os.path.join(_SERVER_ROOT, bfp)
-        if os.path.exists(anchored):
-            return anchored
+
+    def _try(p: Optional[str]) -> Optional[str]:
+        if not p:
+            return None
+        if os.path.exists(p):
+            return p
+        if not os.path.isabs(p):
+            anchored = os.path.join(_SERVER_ROOT, p)
+            if os.path.exists(anchored):
+                return anchored
+        return None
+
+    found = _try(bfp)
+    if found:
+        return found
+
+    # 0021/R0001 migration safety: rows may carry any of several historical bases
+    # (legacy `data/mails/...`, the interim `storage/mail/...`, or the DB-designated
+    # absolute mail storage root) while the file physically lives under another during
+    # a partial backfill. Re-anchor the per-account suffix (`{account}/messages/…` or
+    # `{account}/attachments/…`) onto the DB-designated base so a body never silently
+    # drops to a blank just because the base was switched.
+    norm = bfp.replace("\\", "/")
+    KNOWN_BASES = ("data/mails", "storage/mail")
+    for base in KNOWN_BASES:
+        if norm.startswith(base + "/"):
+            suffix = norm[len(base) + 1:]           # {account}/messages/{..}/x.eml
+            account = suffix.split("/", 1)[0] if "/" in suffix else None
+            designated = mail_storage_base(account_uuid=account)
+            found = _try(os.path.join(designated, *suffix.split("/")))
+            if found:
+                return found
     return None
 
 
@@ -938,7 +964,7 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
 # the P0007 draft CRUD with a dialect-independent JSON file store keyed per user.
 
 def _drafts_dir(user_uuid: str) -> str:
-    base = settings.MAIL_STORAGE_BASE_PATH or "./data/mails"
+    base = mail_storage_base(user_uuid=user_uuid)
     return os.path.join(base, "_drafts", user_uuid)
 
 
@@ -1044,7 +1070,7 @@ async def upload_attachment(file: UploadFile = File(...),
     """POST /mail/attachments — stage a compose attachment, return its handle."""
     attachment_id = str(uuid_lib.uuid4())
     content = await file.read()
-    base = settings.MAIL_STORAGE_BASE_PATH or "./data/mails"
+    base = mail_storage_base(user_uuid=user_uuid)
     dest_dir = os.path.join(base, "_compose_attachments", user_uuid)
     try:
         os.makedirs(dest_dir, exist_ok=True)

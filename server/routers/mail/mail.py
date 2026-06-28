@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from typing import Optional, List
-from config import settings, db
+from config import settings, db, mail_storage_base
 from schemas.mail.accounts import AccountCreateRequest, AccountUpdateRequest, AccountGetRequest
 from routers.login.auth import verify_token
 from services.imap_service import IMAPService
@@ -475,7 +475,7 @@ async def send_mail(
             msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
         # .eml 파일 저장 경로
-        eml_dir = os.path.join(settings.MAIL_STORAGE_BASE_PATH, account_uuid, "messages")
+        eml_dir = os.path.join(mail_storage_base(account_uuid=account_uuid), account_uuid, "messages")
         os.makedirs(eml_dir, exist_ok=True)
         eml_path = os.path.join(eml_dir, f"{message_uuid}.eml")
 
