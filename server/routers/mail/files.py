@@ -6,7 +6,7 @@ import email
 from email import policy
 
 from config import settings, db
-from routers.login.auth import verify_token
+from routers.login.auth import verify_token, current_user_uuid
 import LogAssist.log as logger
 
 db_instance = db.db_instance
@@ -19,28 +19,25 @@ router = APIRouter()
 # 첨부파일 다운로드 API
 # ========================================
 
-@router.get("/attachment/{message_uuid}/{attachment_uuid}", dependencies=[Depends(verify_token)])
+@router.get("/attachment/{message_uuid}/{attachment_uuid}")
 async def download_attachment(
     message_uuid: str,
     attachment_uuid: str,
-    user_uuid: str
+    user_uuid: str = Depends(current_user_uuid)
 ):
     """
     첨부파일 다운로드
-    
+
+    - 인증 토큰에서 user_uuid를 도출(IDOR 차단): 호출자가 소유한 계정의
+      메일에 속한 첨부만 조회되도록 mail_accounts.user_uuid로 스코프.
     - DB에서 첨부파일 정보 조회
     - 파일 시스템에서 파일 읽어서 반환
     """
-    
-    # 1. DB에서 첨부파일 정보 조회
-    query = """
-        SELECT a.*, m.account_uuid 
-        FROM mail_attachments a
-        JOIN mail_messages m ON a.message_uuid = m.message_uuid
-        WHERE a.attachment_uuid = %s AND a.message_uuid = %s
-    """
-    
-    attachment = db_instance.fetch_one(query, (attachment_uuid, message_uuid))
+
+    # 1. DB에서 첨부파일 정보 조회 (user 스코프 — IDOR 차단)
+    query = sqloader.load_sql("mail_anchor.json", "inbox.get_attachment_for_download")
+
+    attachment = db_instance.fetch_one(query, (attachment_uuid, message_uuid, user_uuid))
     
     if not attachment:
         raise HTTPException(status_code=404, detail="첨부파일을 찾을 수 없음")

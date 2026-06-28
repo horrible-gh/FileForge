@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from config import settings, db
 from routers.login.auth import verify_token
+from .sync import make_preview
 import LogAssist.log as logger
 
 from email.mime.multipart import MIMEMultipart
@@ -148,7 +149,7 @@ async def save_draft(request: DraftSaveRequest):
                     "cc_emails": request.cc_addresses or '',
                     "bcc_emails": request.bcc_addresses or '',
                     "subject": request.subject,
-                    "preview": request.body_text[:200] if request.body_text else (request.body_html[:200] if request.body_html else ''),
+                    "preview": make_preview(request.body_text, request.body_html, 200),
                     "body_file_path": eml_file_path
                 }
             )
@@ -215,7 +216,7 @@ async def save_draft(request: DraftSaveRequest):
                     "cc_emails": request.cc_addresses or '',
                     "bcc_emails": request.bcc_addresses or '',
                     "subject": request.subject or '(제목 없음)',
-                    "preview": request.body_text[:200] if request.body_text else (request.body_html[:200] if request.body_html else ''),
+                    "preview": make_preview(request.body_text, request.body_html, 200),
                     "sent_date": datetime.now(),
                     "received_date": datetime.now(),
                     "is_read": True,

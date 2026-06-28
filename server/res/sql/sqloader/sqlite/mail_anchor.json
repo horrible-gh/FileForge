@@ -22,7 +22,8 @@
     "get_integrated_mail2": "inbox/get_integrated_mail2.sql",
     "get_integrated_count": "inbox/get_integrated_count.sql",
     "get_mail": "inbox/get_mail.sql",
-    "get_attachment": "SELECT attachment_uuid, filename, content_type, size_bytes, file_path FROM mail_attachments WHERE message_uuid = ? ORDER BY created_at"
+    "get_attachment": "SELECT attachment_uuid, filename, content_type, size_bytes, file_path FROM mail_attachments WHERE message_uuid = ? ORDER BY created_at",
+    "get_attachment_for_download": "SELECT a.attachment_uuid, a.filename, a.content_type, a.size_bytes, a.file_path FROM mail_attachments a JOIN mail_messages m ON a.message_uuid = m.message_uuid JOIN mail_accounts ac ON m.account_uuid = ac.account_uuid WHERE a.attachment_uuid = ? AND a.message_uuid = ? AND ac.user_uuid = ?"
   },
   "labels": {
     "assign_label": "labels/assign_label.sql",

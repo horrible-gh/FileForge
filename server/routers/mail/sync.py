@@ -97,6 +97,84 @@ def decode_address_list(header_value) -> str:
     return ', '.join(out)
 
 
+import re
+
+# Non-displayed element blocks whose *inner content* must be dropped (not just the
+# tags) before a preview is taken — otherwise CSS inside <style>, JS inside
+# <script>, <head>/<title> metadata and HTML comments leak into the snippet as
+# raw text. Mirrors the client's stripHtmlToText policy (mail_body_render.dart).
+_NON_DISPLAYED_BLOCK_RE = re.compile(
+    r"<!--.*?-->"
+    r"|<style\b[^>]*>.*?</style\s*>"
+    r"|<script\b[^>]*>.*?</script\s*>"
+    r"|<head\b[^>]*>.*?</head\s*>"
+    r"|<title\b[^>]*>.*?</title\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+
+
+def strip_html_to_text(html: str) -> str:
+    """Strip HTML to readable plain text for a preview/snippet.
+
+    B0001 / 0018: HTML-only mail (no text/plain part) used to surface the raw
+    first 100 chars of markup — comments + ``<html><head>…`` — as the list
+    snippet. Drop non-displayed block *content* first (so <style>/<script>/
+    comments can't leak), then remove the remaining tags and collapse whitespace.
+    """
+    if not html:
+        return ""
+    text = _NON_DISPLAYED_BLOCK_RE.sub("", html)
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"</p\s*>", " ", text, flags=re.IGNORECASE)
+    text = _TAG_RE.sub("", text)
+    text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
+                .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"'))
+    return _WS_RE.sub(" ", text).strip()
+
+
+def make_preview(body_text: str, body_html: str, limit: int = 100) -> str:
+    """Build a clean snippet: prefer plain text; otherwise strip the HTML body.
+
+    Never returns raw markup (B0001) — the HTML branch is always tag-stripped.
+    """
+    if body_text and body_text.strip():
+        # Plain text wins, but drop HTML comment / style / script blocks: Gmail's
+        # text/plain alternative routinely leaks `<!--[if !mso]>` conditional-comment
+        # fragments into the body. Genuine bracketed content (`<https://url>`,
+        # `<a@b>`) is not a comment block and is preserved.
+        src = _NON_DISPLAYED_BLOCK_RE.sub("", body_text)
+    else:
+        src = strip_html_to_text(body_html)
+    return _WS_RE.sub(" ", src).strip()[:limit]
+
+
+def _decode_part_text(part) -> str:
+    """Decode a MIME text part using its declared charset (not a hardcoded utf-8).
+
+    B0001 / 0018 defect 2: hardcoding ``utf-8`` mangled EUC-KR / ISO-2022-JP
+    bodies (the snippet showed ESC sequences / mojibake). Honour the part's
+    Content-Type charset, fall back to utf-8, and replace undecodable bytes.
+    """
+    payload = part.get_payload(decode=True)
+    if payload is None:
+        return ""
+    charset = part.get_content_charset() or "utf-8"
+    try:
+        primary = payload.decode(charset, errors="replace")
+    except (LookupError, TypeError):
+        primary = payload.decode("utf-8", errors="replace")
+    # Some senders mislabel the charset (e.g. declare iso-2022-jp on a UTF-8 body —
+    # B0001/0018), which produces a body full of U+FFFD replacement chars. If the
+    # declared decode looks corrupt, retry as utf-8 and keep whichever is cleaner.
+    if charset.lower() not in ("utf-8", "utf8") and primary.count("�") > 2:
+        alt = payload.decode("utf-8", errors="replace")
+        if alt.count("�") < primary.count("�"):
+            return alt
+    return primary
+
+
 def parse_email_message(raw_email: bytes) -> dict:
     """RFC822 메일 파싱"""
     msg = email.message_from_bytes(raw_email)
@@ -141,31 +219,30 @@ def parse_email_message(raw_email: bytes) -> dict:
                         "content_type": content_type,
                         "size": len(part.get_payload(decode=True) or b'')
                     })
-            # 본문
+            # 본문 (파트 charset 존중 디코딩 — B0001/0018 defect 2)
             elif content_type == "text/plain" and not body_text:
                 try:
-                    body_text = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                    body_text = _decode_part_text(part)
                 except:
                     body_text = str(part.get_payload())
             elif content_type == "text/html" and not body_html:
                 try:
-                    body_html = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                    body_html = _decode_part_text(part)
                 except:
                     body_html = str(part.get_payload())
     else:
         # Single part message
         content_type = msg.get_content_type()
         try:
-            payload = msg.get_payload(decode=True)
             if content_type == "text/plain":
-                body_text = payload.decode('utf-8', errors='ignore')
+                body_text = _decode_part_text(msg)
             elif content_type == "text/html":
-                body_html = payload.decode('utf-8', errors='ignore')
+                body_html = _decode_part_text(msg)
         except:
             body_text = str(msg.get_payload())
 
-    # Preview 생성 (본문 앞 100자)
-    preview = (body_text or body_html)[:100].replace('\n', ' ').strip()
+    # Preview 생성: 평문 우선, HTML뿐이면 태그 strip 후 평문화 (원시 마크업 금지 — B0001/0018)
+    preview = make_preview(body_text, body_html, 100)
 
     return {
         "message_id": msg.get('Message-ID', ''),

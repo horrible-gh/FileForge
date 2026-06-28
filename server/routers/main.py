@@ -17,14 +17,24 @@ import io
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-# NOTE: use the pure-ASGI middleware, NOT SlowAPIMiddleware. SlowAPIMiddleware
-# subclasses Starlette BaseHTTPMiddleware, which on Starlette 0.45.x + anyio 4.13
-# + Python 3.14 raises `RuntimeError: No response returned.` whenever an inner
-# handler propagates an exception/response through call_next — that 500'd every
-# real route (GET and POST) after auth (R0001 blocker, TSR0012). SlowAPIASGIMiddleware
-# is functionally equivalent for rate limiting (same Limiter / decorators / headers)
-# but never touches BaseHTTPMiddleware, so the response path is intact.
-from slowapi.middleware import SlowAPIASGIMiddleware
+# NOTE: use a pure-ASGI rate-limit middleware, NOT SlowAPIMiddleware.
+# SlowAPIMiddleware subclasses Starlette BaseHTTPMiddleware, which on
+# Starlette 0.45.x + anyio 4.13 + Python 3.14 raises `RuntimeError: No response
+# returned.` whenever an inner handler propagates an exception/response through
+# call_next — that 500'd every real route (GET and POST) after auth (R0001
+# blocker, TSR0012).
+#
+# We do NOT use slowapi's own SlowAPIASGIMiddleware directly either: its
+# `_ASGIMiddlewareResponder.send_wrapper` re-sends the buffered
+# `http.response.start` on *every* `http.response.body` chunk, so any multi-chunk
+# response (a FileResponse for a file > 64 KB chunk_size — i.e. real mail
+# attachments) emits a second response.start → uvicorn `RuntimeError: Expected
+# ASGI message 'http.response.body', but got 'http.response.start'` and the
+# browser sees `net::ERR_CONTENT_LENGTH_MISMATCH` (200, truncated body). That
+# silently broke every attachment download (0019.0005-TR). StreamSafe...
+# subclasses slowapi and corrects only the response-relay loop (start emitted
+# once), reusing all of slowapi's rate-limiting logic unchanged.
+from util.ratelimit_asgi import StreamSafeSlowAPIASGIMiddleware
 
 # Force Windows console encoding to UTF-8
 if sys.platform == 'win32':
@@ -44,7 +54,7 @@ limiter = Limiter(
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIASGIMiddleware)  # pure-ASGI rate-limit middleware (see import note)
+app.add_middleware(StreamSafeSlowAPIASGIMiddleware)  # pure-ASGI rate-limit middleware (see import note)
 
 
 app.include_router(login.router, prefix=f"{CONTEXT}/login", tags=["Login"])

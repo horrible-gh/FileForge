@@ -47,6 +47,13 @@ import httpx
 
 from config import settings, db
 from routers.login.auth import current_user_uuid
+from .sync import strip_html_to_text
+
+# A genuine HTML tag (``<div>``, ``<html lang=…>``, ``<br/>``, ``</p>``) — the tag
+# name must be followed by whitespace, ``>`` or ``/>``. This deliberately does NOT
+# match plain-text ``<https://…>`` URLs or ``<user@host>`` addresses (after the
+# leading word comes ``:``/``@``), so legitimate bracketed text is left intact.
+_HTML_TAGISH_RE = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]*(?:\s|/?>)")
 from util.crypto import decrypt_password
 import LogAssist.log as logger
 
@@ -156,12 +163,22 @@ def _summary_to_p0007(row: dict) -> dict:
     the list could not render it. Surface it here as an `account` object the
     client can show as a per-row badge.
     """
+    # Defense-in-depth (B0001 / 0018): an un-backfilled legacy preview may still hold
+    # raw HTML markup (HTML-only mail had no text/plain). Strip it at read time so the
+    # list never shows tags/comments even before the DB backfill lands. Detect a real
+    # HTML comment or tag (``<div>``/``<html …``/``<br/>``) — NOT bracketed plain-text
+    # URLs/emails (``<https://…>``, ``<a@b>``), which must survive intact. (Charset
+    # mojibake in old previews can't be recovered here — that needs the .eml re-read
+    # backfill — but raw markup always can.)
+    snippet = row.get("preview") or ""
+    if "<!--" in snippet or _HTML_TAGISH_RE.search(snippet):
+        snippet = strip_html_to_text(snippet)
     return {
         "mail_id": row.get("message_uuid", "") or "",
         "thread_id": "",
         "from": {"name": row.get("from_name") or "", "address": row.get("from_email") or ""},
         "subject": row.get("subject") or "",
-        "snippet": row.get("preview") or "",
+        "snippet": snippet,
         "received_at": _iso(row.get("sent_date")),
         "is_read": bool(row.get("is_read")),
         "has_attachment": bool(row.get("has_attachments")),
@@ -391,10 +408,15 @@ def _rewrite_remote_images(html: str, proxy_endpoint: Optional[str]) -> str:
     Responsive marketing mail (KB Card etc.) leans heavily on CSS background and the
     ``background`` attribute for layout images; the previous ``<img>``-only matcher
     left those CORS-blocked on Flutter-Web CanvasKit — the visible "안 나옴" in B0001
-    (0015.0003-NR defect A). All forms are emitted double-quoted; cid: (already data:
-    URIs by this point) and data: are never matched. The three passes target disjoint
-    syntactic contexts, so the proxy URL one pass inserts is never re-wrapped by
-    another (the emitted URL lives in ``src=…``/``background=…``, never ``url(…)``).
+    (0015.0003-NR defect A). Attribute rewrites (``src=``/``background=``) emit the
+    proxy URL double-quoted because they replace the whole attribute; the CSS
+    ``url(…)`` rewrite emits it UNQUOTED because it is nested inside a (usually
+    double-quoted) ``style="…"`` attribute and a double quote there would close the
+    attribute early and make the HTML parser swallow the rest of the body (B0001 /
+    0018 — KB statement rendered blank). cid: (already data: URIs by this point) and
+    data: are never matched. The three passes target disjoint syntactic contexts, so
+    the proxy URL one pass inserts is never re-wrapped by another (the emitted URL
+    lives in ``src=…``/``background=…``/``url(…)``, none of which re-match).
     """
     if not html or not proxy_endpoint:
         return html
@@ -406,7 +428,17 @@ def _rewrite_remote_images(html: str, proxy_endpoint: Optional[str]) -> str:
 
     def _css_repl(m: "re.Match") -> str:
         url = m.group(2) or m.group(3) or m.group(4)  # dq | sq | unquoted
-        return f'{m.group(1)}"{_sign_remote_url(url, proxy_endpoint)}"{m.group(5)}'
+        # Emit the proxy URL UNQUOTED. A CSS url() almost always lives inside a
+        # double-quoted style="…" attribute (`style="background:url(https://…)"`);
+        # wrapping the rewritten URL in double quotes there — `style="…url("PROXY")…"`
+        # — closes the attribute at the first inner quote, so the HTML parser treats
+        # the rest of the URL/tag as garbage and SWALLOWS the remainder of the
+        # document. That is exactly why the KB-statement body rendered blank in the
+        # Flutter client (B0001 / 0018 — fwfh produced zero text widgets). The signed
+        # proxy URL is pure [A-Za-z0-9_?=&/:.-] (urlsafe-base64 token + hex sig + the
+        # endpoint path), i.e. a valid *unquoted* CSS url token, so it collides with
+        # neither double- nor single-quoted style attributes nor a <style> block.
+        return f'{m.group(1)}{_sign_remote_url(url, proxy_endpoint)}{m.group(5)}'
 
     html = _REMOTE_IMG_SRC_RE.sub(_attr_repl, html)
     html = _BG_ATTR_RE.sub(_attr_repl, html)
@@ -446,6 +478,30 @@ def _img_proxy_endpoint(request: Request) -> Optional[str]:
         return None
 
 
+# Server package root (…/server) — compat.py is at …/server/routers/mail/compat.py.
+# body_file_path is stored RELATIVE ("data/mails/…"); resolving it only against the
+# process CWD silently failed when the server was launched from elsewhere, dropping
+# the detail body to the raw-HTML preview rendered as plain text (B0001 / 0018 §4.1).
+_SERVER_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _resolve_body_path(bfp: Optional[str]) -> Optional[str]:
+    """Resolve a stored (possibly relative) body_file_path to an existing file.
+
+    Tries the path as-is (absolute, or relative to CWD), then anchored to the
+    server root. Returns the first existing path, else None.
+    """
+    if not bfp:
+        return None
+    if os.path.exists(bfp):
+        return bfp
+    if not os.path.isabs(bfp):
+        anchored = os.path.join(_SERVER_ROOT, bfp)
+        if os.path.exists(anchored):
+            return anchored
+    return None
+
+
 def _detail_to_p0007(row: dict, attachments: list,
                      proxy_endpoint: Optional[str] = None) -> dict:
     """get_mail row (m.* + account) → P0007 §3.2 MailDetail (mail.dart).
@@ -457,8 +513,8 @@ def _detail_to_p0007(row: dict, attachments: list,
     body_text = ""
     body_html = ""
     raw = b""
-    bfp = row.get("body_file_path")
-    if bfp and os.path.exists(bfp):
+    bfp = _resolve_body_path(row.get("body_file_path"))
+    if bfp:
         try:
             with open(bfp, "rb") as fh:
                 raw = fh.read()

@@ -5,6 +5,7 @@ from schemas.mail.accounts import AccountCreateRequest, AccountUpdateRequest, Ac
 from routers.login.auth import verify_token
 from services.imap_service import IMAPService
 from services.smtp_service import SMTPService, test_smtp_connection
+from .sync import make_preview
 from util.crypto import aes_encrypt, aes_decrypt, get_encryption_key, get_encryption_iv, encrypt_password, decrypt_password
 from Crypto.Protocol.KDF import PBKDF2
 import os
@@ -514,7 +515,7 @@ async def send_mail(
                 "cc_emails": cc_addresses or '',
                 "bcc_emails": bcc_addresses or '',
                 "subject": subject,
-                "preview": body_text[:200] if body_text else (body_html[:200] if body_html else ''),
+                "preview": make_preview(body_text, body_html, 200),
                 "sent_date": datetime.now(),
                 "received_date": datetime.now(),
                 "is_read": True,
