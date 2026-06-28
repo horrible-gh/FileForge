@@ -41,10 +41,23 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
 
+    # 🔹 Official FileForge storage root (0021/R0001). The platform keeps user files
+    #    under the storages subsystem whose physical files land beneath this root
+    #    (the `storage` storage = storage_path `/storage` → `./storage`, `note` = `./note`).
+    #    Mail artifacts must live under this official root, NOT in a self-invented
+    #    server-local `./data/mails` directory (see mail_storage_base()).
+    STORAGE_ROOT_PATH: str = "./storage"
+
     # 🔹 Mail subsystem settings (absorbed from legacy mail-server, NR0003 Gap B/D).
     #    All carry defaults so a shared .env without these keys cannot cause a
     #    boot-death (extra="ignore" + defaults). MailAnchorServer/config.py equivalents.
-    MAIL_STORAGE_BASE_PATH: str = "./data/mails"
+    #
+    #    0021/R0001: default is now EMPTY so mail data is derived from the official
+    #    STORAGE_ROOT_PATH (→ `{STORAGE_ROOT_PATH}/mail`) instead of the legacy
+    #    server-local `./data/mails`. Set explicitly only to override that location
+    #    (e.g. an absolute mount). Resolve via mail_storage_base(), never read this
+    #    field directly — empty means "derive", and call sites must honor that.
+    MAIL_STORAGE_BASE_PATH: str = ""
     ENVIRONMENT: str = ""
     FRONTEND_BASE_URL: str = ""
     OAUTH_SUCCESS_REDIRECT_URL: str = ""
@@ -89,6 +102,117 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 settings = Settings()
+
+
+# 🔹 Effective base directory for mail artifacts (.eml bodies, attachments, drafts,
+#    compose attachments). 0021/R0001 (rev1): mail data must live under the storage
+#    that is DESIGNATED IN THE DB — the `storages` row whose storage_type='mail'
+#    (e.g. storage_path `C:\storage\mailanchor`), resolved per-user via
+#    `user_storages`. The previous rev derived a config-only `{STORAGE_ROOT_PATH}/mail`
+#    and so wrote nowhere near the DB-designated path (review reject: files never
+#    appeared under C:\storage\mailanchor). Resolution order:
+#      1. explicit MAIL_STORAGE_BASE_PATH (ops override / absolute mount) — always wins.
+#      2. DB-designated mail storage for the owning user (account_uuid → user_uuid →
+#         user_storages ⋈ storages where storage_type='mail'); else the newest active
+#         mail-type storage globally.
+#      3. fallback `{STORAGE_ROOT_PATH}/mail` (tests / no-DB / mail storage not yet
+#         provisioned) — keeps the app booting on deployments without a mail storage.
+#    All mail call sites must use this resolver and pass whatever identity they have
+#    (account_uuid preferred, else user_uuid). Never read settings.MAIL_STORAGE_BASE_PATH.
+
+# Cache successful DB resolutions for the process lifetime so a sync of hundreds of
+# messages does not re-query per message. Only positive (DB-backed) results are cached
+# — the config fallback is intentionally not cached so a later-provisioned mail
+# storage is picked up without a restart of the resolver state.
+_mail_base_cache: dict = {}
+
+
+def clear_mail_storage_cache() -> None:
+    """Drop the resolver cache (tests / after re-provisioning a mail storage)."""
+    _mail_base_cache.clear()
+
+
+def _physical_mail_base(storage_path: str) -> str:
+    """Turn a `storages.storage_path` into a filesystem base, mirroring
+    storages._helper.get_physical_path: platform-relative roots ('/mail') become
+    CWD-relative ('mail'); absolute roots ('C:\\storage\\mailanchor') stay absolute."""
+    p = (storage_path or "").replace("/", os.sep).lstrip(os.sep)
+    return p or "."
+
+
+def _query_designated_mail_storage(account_uuid=None, user_uuid=None):
+    """Return the storage_path of the DB-designated mail storage, or None.
+
+    Per-user designation (via user_storages) is preferred so a multi-account / multi
+    -tenant deployment routes each user's mail to their own mail storage; falls back
+    to the newest active mail-type storage when no per-user mapping exists. Any DB /
+    schema error (e.g. a sqlite test DB without a storages.storage_type column) is
+    swallowed so the caller falls back to the config base.
+    """
+    try:
+        inst = db.db_instance
+        if inst is None:
+            return None
+        uid = user_uuid
+        if not uid and account_uuid:
+            row = inst.fetch_one(
+                adapt_query("SELECT user_uuid FROM mail_accounts WHERE account_uuid = ?"),
+                (account_uuid,),
+            )
+            if row:
+                uid = row["user_uuid"] if isinstance(row, dict) else row[0]
+        if uid:
+            row = inst.fetch_one(
+                adapt_query(
+                    "SELECT s.storage_path FROM user_storages us "
+                    "JOIN storages s ON s.storage_uuid = us.storage_uuid "
+                    "WHERE us.user_uuid = ? AND s.storage_type = 'mail' "
+                    "AND s.status = 'active' "
+                    "ORDER BY us.is_default DESC, s.created_at ASC LIMIT 1"
+                ),
+                (uid,),
+            )
+            if row:
+                sp = row["storage_path"] if isinstance(row, dict) else row[0]
+                if sp:
+                    return sp
+        # No per-user mapping → newest active mail-type storage (system designation).
+        row = inst.fetch_one(
+            adapt_query(
+                "SELECT storage_path FROM storages "
+                "WHERE storage_type = 'mail' AND status = 'active' "
+                "ORDER BY created_at DESC LIMIT 1"
+            ),
+            (),
+        )
+        if row:
+            sp = row["storage_path"] if isinstance(row, dict) else row[0]
+            if sp:
+                return sp
+    except Exception:
+        return None
+    return None
+
+
+def mail_storage_base(account_uuid: str = None, user_uuid: str = None) -> str:
+    explicit = (settings.MAIL_STORAGE_BASE_PATH or "").strip()
+    if explicit:
+        return explicit
+
+    cache_key = ("a", account_uuid) if account_uuid else \
+                ("u", user_uuid) if user_uuid else ("_", "_")
+    if cache_key in _mail_base_cache:
+        return _mail_base_cache[cache_key]
+
+    storage_path = _query_designated_mail_storage(account_uuid, user_uuid)
+    if storage_path:
+        base = _physical_mail_base(storage_path)
+        _mail_base_cache[cache_key] = base
+        return base
+
+    # Fallback (not cached): official storage root subtree.
+    return os.path.join(settings.STORAGE_ROOT_PATH or "./storage", "mail")
+
 
 # 🔹 central Redis client(single instance/pool). 4text translated text consolidates duplicate creation code.
 #    decode_responses=True preserved(callers depend on string comparison), password="" → None normalizationtext avoid unnecessary AUTH.
