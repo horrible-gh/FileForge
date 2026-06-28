@@ -3,7 +3,7 @@ from typing import Optional, Dict, List
 from datetime import datetime
 import email
 from email.header import decode_header
-from email.utils import parsedate_to_datetime
+from email.utils import parsedate_to_datetime, getaddresses
 import os
 import uuid
 from pathlib import Path
@@ -74,6 +74,29 @@ def extract_email_address(addr_string):
     return parse_email_header(name), email_addr
 
 
+def decode_address_list(header_value) -> str:
+    """Address-list 헤더(To/Cc)를 RFC2047 디코딩하여 'Name <addr>, ...' 문자열로.
+
+    R0001 / 0017: To 헤더의 표시이름이 RFC2047 인코딩워드(=?..?B?..?=)로 와도
+    From/Subject처럼 디코딩하여 저장한다. getaddresses로 콤마 안전하게 분리하고,
+    표시이름만 parse_email_header로 디코딩한다(주소부는 ASCII이므로 그대로).
+    """
+    if not header_value:
+        return ""
+    out = []
+    for name, addr in getaddresses([str(header_value)]):
+        name = parse_email_header(name)
+        # NOTE: build the display string by hand — formataddr() would RE-encode a
+        # non-ASCII name back into an RFC2047 encoded-word, reintroducing R0001.
+        if addr and name:
+            out.append("%s <%s>" % (name, addr))
+        elif addr:
+            out.append(addr)
+        elif name:
+            out.append(name)
+    return ', '.join(out)
+
+
 def parse_email_message(raw_email: bytes) -> dict:
     """RFC822 메일 파싱"""
     msg = email.message_from_bytes(raw_email)
@@ -82,9 +105,11 @@ def parse_email_message(raw_email: bytes) -> dict:
     from_header = msg.get('From', '')
     from_name, from_email = extract_email_address(from_header)
 
-    # To 파싱
-    to_header = msg.get('To', '')
-    to_emails = [addr.strip() for addr in to_header.split(',') if addr.strip()]
+    # To 파싱 (RFC2047 인코딩워드 디코딩 — From/Subject와 대칭)
+    to_emails = decode_address_list(msg.get('To', ''))
+
+    # Cc 파싱 (compat 상세 응답의 cc 필드 채움)
+    cc_emails = decode_address_list(msg.get('Cc', ''))
 
     # Subject 파싱
     subject = parse_email_header(msg.get('Subject', '(제목없음)'))
@@ -146,7 +171,8 @@ def parse_email_message(raw_email: bytes) -> dict:
         "message_id": msg.get('Message-ID', ''),
         "from_email": from_email,
         "from_name": from_name,
-        "to_emails": ','.join(to_emails),
+        "to_emails": to_emails,
+        "cc_emails": cc_emails,
         "subject": subject,
         "sent_date": sent_date,
         "body_text": body_text,

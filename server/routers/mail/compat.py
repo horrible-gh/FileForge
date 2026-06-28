@@ -28,7 +28,8 @@ from fastapi import APIRouter, Depends, Body, Request, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from typing import Optional, Tuple
 from datetime import datetime, timezone
-from email.utils import parseaddr
+from email.utils import parseaddr, getaddresses
+from email.header import decode_header, make_header
 from urllib.parse import urlparse, urlencode
 import base64
 import email
@@ -85,17 +86,36 @@ def _iso(value) -> str:
         return str(value)
 
 
+def _decode_mime_words(value: str) -> str:
+    """Decode RFC 2047 encoded-words (``=?charset?B?..?=``) to plain text.
+
+    R0001 / 0017: non-ASCII display names arrive encoded; ``parseaddr`` does NOT
+    decode them, so an undecoded To header surfaced raw Base64 in the 宛先 field.
+    Idempotent — already-plain text passes through unchanged.
+    """
+    if not value or "=?" not in value:
+        return value or ""
+    try:
+        return str(make_header(decode_header(value)))
+    except Exception:  # noqa: BLE001 — never let a malformed encoded-word break the response
+        return value
+
+
 def _addr_list(raw) -> list:
-    """\"Name <a@b>, c@d\" → [{name, address}] (P0007 §3.3)."""
+    """\"Name <a@b>, c@d\" → [{name, address}] (P0007 §3.3).
+
+    Uses ``getaddresses`` (comma-safe across quoted/encoded display names) and
+    decodes RFC 2047 encoded-words in the display name so the 宛先 field shows the
+    real name instead of raw Base64 (R0001).
+    """
     if not raw:
         return []
     out = []
-    for part in str(raw).split(","):
-        part = part.strip()
-        if not part:
+    for name, addr in getaddresses([str(raw)]):
+        name = _decode_mime_words(name)
+        if not name and not addr:
             continue
-        name, addr = parseaddr(part)
-        out.append({"name": name or "", "address": addr or part})
+        out.append({"name": name or "", "address": addr or name})
     return out
 
 
@@ -309,8 +329,41 @@ _REMOTE_IMG_SRC_RE = re.compile(
     re.IGNORECASE,
 )
 
+# HTML `background="http(s)://…"` attribute — responsive marketing mail puts layout
+# images on <td>/<table> via this attribute. The `(?<![\w-])` lookbehind keeps it
+# from matching `data-background`; CSS `background:` uses a colon (→ _CSS_URL_RE), so
+# the two never collide. (B0001 / 0015.0003-NR defect A — these bypassed the
+# <img>-only rewrite and stayed CORS-blocked on Flutter-Web CanvasKit.)
+_BG_ATTR_RE = re.compile(
+    r"""((?<![\w-])background\s*=\s*)"""
+    r"""(?:"(https?://[^"]+)"|'(https?://[^']+)'|(https?://[^\s"'>]+))""",
+    re.IGNORECASE,
+)
+
+# CSS `url( http(s)://… )` inside inline style= or <style> blocks, e.g.
+# `background:url(https://img1.kbcard.com/…/email_dot.jpg)` — the visible "안 나옴"
+# in B0001. Quotes are optional in CSS. cid:/data: are not http(s):// so the
+# inlined images never match. The same-origin proxy URL we emit always lives inside
+# an `src="…"`/`background="…"`, never inside `url(…)`, so this pass never re-wraps it.
+_CSS_URL_RE = re.compile(
+    r"""(url\(\s*)"""
+    r"""(?:"(https?://[^"]+)"|'(https?://[^']+)'|(https?://[^)\s"']+))"""
+    r"""(\s*\))""",
+    re.IGNORECASE,
+)
+
 _IMG_PROXY_TIMEOUT = 10.0              # seconds
 _IMG_PROXY_MAX_BYTES = 12 * 1024 * 1024  # 12 MiB ceiling per image
+
+# 1×1 fully transparent PNG — served (200) in place of a hard error when a remote
+# mail image cannot be fetched or validated (B0001 / 0015.0003-NR defect B). Open-
+# tracking beacons (email.kbcard.com/check.jsp) and senders whose TLS chain certifi
+# can't verify otherwise surface as 502/415 console noise + a broken-image glyph; a
+# transparent pixel renders nothing, the correct outcome for an un-loadable image.
+_BLANK_PIXEL_PNG = base64.b64decode(
+    b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk"
+    b"+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+)
 
 
 def _img_proxy_sig(url: str) -> str:
@@ -327,21 +380,38 @@ def _sign_remote_url(url: str, proxy_endpoint: str) -> str:
 
 
 def _rewrite_remote_images(html: str, proxy_endpoint: Optional[str]) -> str:
-    """Rewrite remote <img src> → same-origin signed proxy URL (CORS-safe).
+    """Rewrite every remote image reference → same-origin signed proxy URL.
 
-    Handles double-quoted, single-quoted, and unquoted ``src`` values; the
-    rewritten value is always emitted double-quoted (the signed proxy URL carries
-    ``?``/``&``, so an unquoted result would be malformed).
+    Covers all the ways HTML mail sources a remote picture, not just ``<img src>``:
+
+      * ``<img src=…>``              (double/single/unquoted)
+      * ``<td>/<table background=…>``  attribute
+      * CSS ``url(…)`` in ``style=`` / ``<style>`` (e.g. ``background:url(https://…)``)
+
+    Responsive marketing mail (KB Card etc.) leans heavily on CSS background and the
+    ``background`` attribute for layout images; the previous ``<img>``-only matcher
+    left those CORS-blocked on Flutter-Web CanvasKit — the visible "안 나옴" in B0001
+    (0015.0003-NR defect A). All forms are emitted double-quoted; cid: (already data:
+    URIs by this point) and data: are never matched. The three passes target disjoint
+    syntactic contexts, so the proxy URL one pass inserts is never re-wrapped by
+    another (the emitted URL lives in ``src=…``/``background=…``, never ``url(…)``).
     """
     if not html or not proxy_endpoint:
         return html
 
-    def _repl(m: "re.Match") -> str:
+    def _attr_repl(m: "re.Match") -> str:
         prefix = m.group(1)
         url = m.group(2) or m.group(3) or m.group(4)  # dq | sq | unquoted
         return f'{prefix}"{_sign_remote_url(url, proxy_endpoint)}"'
 
-    return _REMOTE_IMG_SRC_RE.sub(_repl, html)
+    def _css_repl(m: "re.Match") -> str:
+        url = m.group(2) or m.group(3) or m.group(4)  # dq | sq | unquoted
+        return f'{m.group(1)}"{_sign_remote_url(url, proxy_endpoint)}"{m.group(5)}'
+
+    html = _REMOTE_IMG_SRC_RE.sub(_attr_repl, html)
+    html = _BG_ATTR_RE.sub(_attr_repl, html)
+    html = _CSS_URL_RE.sub(_css_repl, html)
+    return html
 
 
 def _is_safe_public_host(hostname: str) -> bool:
@@ -638,6 +708,18 @@ async def image_proxy(u: str, sig: str):
     if not _is_safe_public_host(parsed.hostname):
         return _err("VALIDATION_FAILED", "blocked image host", 403, {"field": "u"})
 
+    # Past the SSRF/signature gates, an un-fetchable or non-image upstream is a
+    # *normal* condition for mail (open-tracking beacons, dead CDNs, senders whose
+    # TLS chain certifi can't complete e.g. email.kbcard.com). Rather than a hard
+    # 502/415 — which the Flutter-Web client surfaces as a broken-image glyph plus a
+    # console error (B0001 / 0015.0003-NR defect B) — serve a transparent 1×1 pixel
+    # so the un-loadable image simply renders as nothing. Security gates above stay
+    # hard errors; only post-fetch outcomes are tolerant. follow_redirects stays
+    # False so a redirect can't slip past _is_safe_public_host (SSRF).
+    def _blank() -> Response:
+        return Response(content=_BLANK_PIXEL_PNG, media_type="image/png",
+                        headers={"Cache-Control": "private, max-age=3600"})
+
     try:
         async with httpx.AsyncClient(timeout=_IMG_PROXY_TIMEOUT,
                                      follow_redirects=False) as client:
@@ -645,19 +727,17 @@ async def image_proxy(u: str, sig: str):
                 "User-Agent": "FileForge-ImageProxy/1.0",
                 "Accept": "image/*",
             })
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(f"[image-proxy] fetch failed {parsed.hostname}: {exc}")
-        return _err("UPSTREAM_UNAVAILABLE", "image fetch failed", 502)
+    except Exception as exc:  # noqa: BLE001 — unreachable host / TLS chain / timeout
+        logger.info(f"[image-proxy] fetch failed {parsed.hostname}: {exc}")
+        return _blank()
 
-    if resp.status_code != 200:
-        return _err("UPSTREAM_UNAVAILABLE", "image fetch failed", 502,
-                    {"upstream_status": resp.status_code})
     ctype = (resp.headers.get("content-type") or "").split(";")[0].strip().lower()
-    if not ctype.startswith("image/"):
-        return _err("VALIDATION_FAILED", "not an image", 415, {"content_type": ctype})
     content = resp.content
-    if len(content) > _IMG_PROXY_MAX_BYTES:
-        return _err("VALIDATION_FAILED", "image too large", 413)
+    if (resp.status_code != 200 or not ctype.startswith("image/")
+            or len(content) > _IMG_PROXY_MAX_BYTES):
+        logger.info(f"[image-proxy] unservable {parsed.hostname} "
+                    f"status={resp.status_code} ctype={ctype!r} bytes={len(content)}")
+        return _blank()
 
     # CORS headers are added by the app's CORSMiddleware (echoes the app origin),
     # which is exactly what lets CanvasKit read these bytes cross-origin.
