@@ -196,10 +196,17 @@ class GmailSMTPService:
         import base64
         
         try:
-            self.connection = smtplib.SMTP(self.SMTP_HOST, self.SMTP_PORT)
-            self.connection.ehlo()
+            # local_hostname is forced to 'localhost': some environments resolve a
+            # malformed FQDN via socket.getfqdn() (e.g. an ISP reverse-DNS that
+            # contains a space), which smtplib would send as the EHLO argument and
+            # Gmail rejects with 501 syntax error → STARTTLS appears "unsupported"
+            # → connect fails → caller returns 502. Mirrors smtp_service.py's
+            # `ehlo('localhost')  # 호스트네임 문제 해결`.
+            self.connection = smtplib.SMTP(
+                self.SMTP_HOST, self.SMTP_PORT, local_hostname="localhost")
+            self.connection.ehlo("localhost")
             self.connection.starttls()
-            self.connection.ehlo()
+            self.connection.ehlo("localhost")
             
             # XOAUTH2 인증
             auth_string = f"user={self.email}\x01auth=Bearer {self.access_token}\x01\x01"

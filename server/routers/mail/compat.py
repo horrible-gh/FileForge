@@ -34,6 +34,7 @@ import base64
 import email
 import hashlib
 import hmac
+import asyncio
 import ipaddress
 import json
 import os
@@ -478,7 +479,10 @@ async def delete_account(account_id: str, user_uuid: str = Depends(current_user_
     """DELETE /mail/accounts/{id} — disconnect account."""
     sql = sqloader.load_sql(MAIL_JSON, "accounts.remove_account")
     db_instance.execute_query(sql, {"account_uuid": account_id})
-    return JSONResponse(status_code=204, content=None)
+    # 204 must be body-less: JSONResponse(content=None) emits b"null" (4 bytes),
+    # which h11 rejects with "Too much data for declared Content-Length",
+    # breaking the connection and failing the delete (B0001).
+    return Response(status_code=204)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -692,9 +696,46 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
 
     try:
         if account.get("account_type") == "gmail":
-            return _err("UPSTREAM_UNAVAILABLE",
-                        "gmail send requires an active OAuth session; reconnect if needed",
-                        503, {"reason": "oauth send"})
+            # Gmail (OAuth/XOAUTH2) send — reuses the same OAuth send primitives as
+            # routers/mail/mail.py::send_mail (refresh token → access token → XOAUTH2
+            # SMTP). A missing refresh token is the only genuinely retriable/reauth
+            # case; everything else attempts a real send instead of a blanket 503.
+            if not account.get("refresh_token_encrypted"):
+                return _err("REAUTH_REQUIRED",
+                            "gmail account requires re-authentication (no refresh token)",
+                            401, {"reason": "oauth reauth"})
+            from services.gmail_service import GmailOAuthService, GmailSMTPService
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+
+            refresh_token = decrypt_password(
+                settings.SECRET_KEY, user_uuid, account["refresh_token_encrypted"])
+            gmail_oauth = GmailOAuthService()
+            # Sync endpoint runs in a threadpool, so a private event loop is safe here.
+            token_data = asyncio.run(gmail_oauth.refresh_access_token(refresh_token))
+            access_token = token_data["access_token"]
+
+            smtp = GmailSMTPService(account["email"], access_token)
+            connect_result = smtp.connect()
+            if not connect_result.get("success"):
+                return _err("SEND_FAILED",
+                            connect_result.get("message", "gmail smtp connect failed"), 502)
+            try:
+                msg = MIMEMultipart("mixed")
+                msg["From"] = f"{account.get('account_name', account['email'])} <{account['email']}>"
+                msg["To"] = ", ".join(to_list)
+                if cc_list:
+                    msg["Cc"] = ", ".join(cc_list)
+                msg["Subject"] = subject
+                if body_html:
+                    msg.attach(MIMEText(body_html, "html", "utf-8"))
+                elif body_text:
+                    msg.attach(MIMEText(body_text, "plain", "utf-8"))
+                all_recipients = to_list + (cc_list or []) + (bcc_list or [])
+                smtp.connection.sendmail(account["email"], all_recipients, msg.as_string())
+            finally:
+                smtp.disconnect()
+            return _ok({"mail_id": str(uuid_lib.uuid4()), "status": "sent"})
         from services.smtp_service import SMTPService
         smtp_password = decrypt_password(
             settings.SECRET_KEY, user_uuid, account["smtp_password_encrypted"])
@@ -841,7 +882,8 @@ async def delete_draft(draft_id: str, user_uuid: str = Depends(current_user_uuid
     except OSError as exc:
         logger.error(f"[compat draft delete] {exc}")
         return _err("UPSTREAM_UNAVAILABLE", "draft delete failed", 503)
-    return JSONResponse(status_code=204, content=None)
+    # 204 must be body-less (see delete_account / B0001).
+    return Response(status_code=204)
 
 
 @router.post("/attachments")
