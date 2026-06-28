@@ -48,6 +48,18 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 class MailHtmlBody extends StatelessWidget {
   const MailHtmlBody(this.html, {super.key});
 
+  /// Table-family tags forced to `display:block` so fwfh's collapsing column
+  /// width algorithm is never entered (0020 R0001 / NR0003).
+  static const Set<String> _tableTags = {
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'td',
+    'th',
+  };
+
   final String html;
 
   @override
@@ -55,13 +67,33 @@ class MailHtmlBody extends StatelessWidget {
     return HtmlWidget(
       html,
       factoryBuilder: () => MailImageFactory(),
-      // Force images to block-level: an inline image becomes a WidgetSpan whose
-      // baseline the RenderParagraph computes via getDryBaseline, tripping
-      // box.dart:2292 for our wrapped box. As a block the baseline is never
-      // queried. (`max-width:100%` keeps wide images inside the viewport.)
-      customStylesBuilder: (element) => element.localName == 'img'
-          ? const {'display': 'block', 'max-width': '100%'}
-          : null,
+      // Per-element style overrides:
+      //  - `<img>`: force block-level. An inline image becomes a WidgetSpan
+      //    whose baseline the RenderParagraph computes via getDryBaseline,
+      //    tripping box.dart:2292 for our wrapped box. As a block the baseline
+      //    is never queried. (`max-width:100%` keeps wide images in the
+      //    viewport.)
+      //  - table family (`table`/`thead`/`tbody`/`tfoot`/`tr`/`td`/`th`): force
+      //    block-level (0020 R0001 / NR0003). fwfh 0.17.2's table column-width
+      //    algorithm (`html_table.dart`) collapses the content column of a
+      //    `min-width` nested table — the layout Google's security-alert mail
+      //    uses (outer min-width table + a nested table whose content cell is
+      //    flanked by ~8px spacer columns) — down to ~1 character per line, so
+      //    the body renders "vertically, one glyph per row". Rendering the
+      //    cells as ordinary block children bypasses that algorithm entirely
+      //    and the content takes the available width. Mail-layout tables are
+      //    near-linear reading flows, so block-stacking costs little
+      //    readability. (`width:auto` clears any inline cell width that would
+      //    otherwise pin the block narrow.)
+      customStylesBuilder: (element) {
+        if (element.localName == 'img') {
+          return const {'display': 'block', 'max-width': '100%'};
+        }
+        if (_tableTags.contains(element.localName)) {
+          return const {'display': 'block', 'width': 'auto'};
+        }
+        return null;
+      },
       // Non-image render errors still fall back to a small broken-image glyph,
       // matching the previous detail-screen behaviour.
       onErrorBuilder: (context, element, error) =>
