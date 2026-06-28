@@ -96,6 +96,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get attachmentsLabel => '첨부파일';
 
   @override
+  String get attachmentDownloaded => '첨부파일을 저장했습니다';
+
+  @override
+  String get attachmentDownloadFailed => '첨부파일을 다운로드하지 못했습니다';
+
+  @override
   String get mailActionCopy => '복사';
 
   @override

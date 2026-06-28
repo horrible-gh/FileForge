@@ -96,6 +96,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachmentsLabel => 'Attachments';
 
   @override
+  String get attachmentDownloaded => 'Attachment saved';
+
+  @override
+  String get attachmentDownloadFailed => 'Failed to download attachment';
+
+  @override
   String get mailActionCopy => 'Copy';
 
   @override

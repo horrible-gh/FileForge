@@ -36,6 +36,8 @@
   "formatPlain": "Plain",
   "formatHtml": "HTML",
   "attachmentsLabel": "Attachments",
+  "attachmentDownloaded": "Attachment saved",
+  "attachmentDownloadFailed": "Failed to download attachment",
   "mailActionCopy": "Copy",
   "mailCopySubject": "Copy subject",
   "mailCopyBody": "Copy body",

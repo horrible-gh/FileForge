@@ -274,6 +274,18 @@ abstract class AppLocalizations {
   /// **'Attachments'**
   String get attachmentsLabel;
 
+  /// No description provided for @attachmentDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment saved'**
+  String get attachmentDownloaded;
+
+  /// No description provided for @attachmentDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download attachment'**
+  String get attachmentDownloadFailed;
+
   /// No description provided for @mailActionCopy.
   ///
   /// In en, this message translates to:

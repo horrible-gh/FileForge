@@ -35,6 +35,8 @@
   "formatPlain": "일반",
   "formatHtml": "HTML",
   "attachmentsLabel": "첨부파일",
+  "attachmentDownloaded": "첨부파일을 저장했습니다",
+  "attachmentDownloadFailed": "첨부파일을 다운로드하지 못했습니다",
   "mailActionCopy": "복사",
   "mailCopySubject": "제목 복사",
   "mailCopyBody": "본문 복사",

@@ -96,6 +96,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get attachmentsLabel => '添付ファイル';
 
   @override
+  String get attachmentDownloaded => '添付ファイルを保存しました';
+
+  @override
+  String get attachmentDownloadFailed => '添付ファイルをダウンロードできませんでした';
+
+  @override
   String get mailActionCopy => 'コピー';
 
   @override
