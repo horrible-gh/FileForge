@@ -155,4 +155,23 @@ class MailService {
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
     return MailAttachment.fromJson(expectMapData(data, httpStatus: resp.statusCode));
   }
+
+  /// GET /files/attachment/{mailId}/{attachmentId} — 첨부파일 다운로드(NR0003 §4).
+  ///
+  /// 서버는 인증 토큰에서 user_uuid를 도출해 소유자 스코프로 첨부를 반환한다
+  /// (verbose `/mail/files/*` 엔드포인트 재사용). 응답 바이트와 Content-Disposition
+  /// 헤더는 호출부가 [DownloadSaveService.saveBytes]로 위임해 저장한다.
+  Future<Response<List<int>>> downloadAttachment({
+    required String mailId,
+    required String attachmentId,
+    void Function(int, int)? onReceiveProgress,
+    CancelToken? cancelToken,
+  }) {
+    return _dio.get<List<int>>(
+      '/files/attachment/$mailId/$attachmentId',
+      options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onReceiveProgress,
+      cancelToken: cancelToken,
+    );
+  }
 }

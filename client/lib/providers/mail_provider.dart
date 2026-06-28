@@ -179,6 +179,18 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
+  /// 첨부파일 다운로드(NR0003 §4) — 응답 바이트/헤더를 그대로 화면에 전달해
+  /// [DownloadSaveService]로 저장하도록 한다. provider 상태는 바꾸지 않는다.
+  Future<Response<List<int>>> downloadAttachment({
+    required String mailId,
+    required String attachmentId,
+  }) {
+    return _service.downloadAttachment(
+      mailId: mailId,
+      attachmentId: attachmentId,
+    );
+  }
+
   /// text text + local text/text translated text refresh.
   Future<void> markRead(String mailId, {bool isRead = true}) async {
     try {

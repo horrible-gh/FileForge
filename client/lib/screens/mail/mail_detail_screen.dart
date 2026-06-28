@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/mail_provider.dart';
 import '../../models/mail.dart';
 import '../../services/mail_compose.dart';
+import '../../services/download_save_service.dart';
 import '../../utils/mail_body_render.dart';
+import '../../widgets/app_toast.dart';
 import '../../widgets/error_retry.dart';
 import '../../widgets/mail_html_body.dart';
 import 'mail_compose_screen.dart';
@@ -177,12 +180,41 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
                 leading: const Icon(Icons.attach_file_rounded),
                 title: Text(a.filename),
                 subtitle: Text(_humanSize(a.sizeBytes)),
-                // text downloadtext text text(text T)text translated text(P0007 §6.4).
+                trailing: const Icon(Icons.download_rounded),
+                // 탭하면 서버에서 바이트를 받아 DownloadSaveService로 저장(NR0003 §4).
+                onTap: () => _handleAttachmentDownload(a),
               )),
         ],
         ],
       ),
     );
+  }
+
+  /// 첨부 다운로드: 서버에서 바이트 수신 → 플랫폼별 저장 → 성공/실패 토스트.
+  Future<void> _handleAttachmentDownload(MailAttachment attachment) async {
+    final t = AppLocalizations.of(context);
+    try {
+      final response = await context.read<MailProvider>().downloadAttachment(
+            mailId: widget.mailId,
+            attachmentId: attachment.attachmentId,
+          );
+      final bytes = response.data;
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) AppToast.error(context, t.attachmentDownloadFailed);
+        return;
+      }
+      final cdHeader = response.headers.value('content-disposition');
+      final filename = DownloadSaveService.extractFilename(cdHeader) ??
+          (attachment.filename.isNotEmpty
+              ? attachment.filename
+              : attachment.attachmentId);
+      await DownloadSaveService.saveBytes(bytes: bytes, filename: filename);
+      if (mounted) AppToast.success(context, t.attachmentDownloaded);
+    } on DioException {
+      if (mounted) AppToast.error(context, t.attachmentDownloadFailed);
+    } catch (_) {
+      if (mounted) AppToast.error(context, t.attachmentDownloadFailed);
+    }
   }
 
   Widget _addrRow(BuildContext context, String label, List<MailAddress> addrs) {
