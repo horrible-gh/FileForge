@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../models/user.dart';
 import '../models/auth_exception.dart';
 import '../services/api_client.dart';
@@ -11,6 +12,11 @@ import '../config/app_config.dart';
 /// L002 ST-01 login result translated text
 enum LoginResult { success, totpRequired, failed }
 
+/// Outcome of the most recent rotation attempt — lets the 401 interceptor tell
+/// a genuine expiry (log out) from a transient network blip (keep session).
+/// L0004 §2.4.
+enum _RefreshOutcome { none, success, expired, transient }
+
 /// authentication state management Provider
 /// Phase 1+2 text:
 ///   - access/refresh token notetext text
@@ -20,7 +26,20 @@ enum LoginResult { success, totpRequired, failed }
 ///   - logout() — logout
 ///   - login() — ID/PW login (Phase 2)
 ///   - verifyTotp() — TOTP 2text authentication (Phase 2)
-class AuthProvider extends ChangeNotifier {
+class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
+  // ── 3rd-gen session keep-alive parameters (L0004 §1) ─────────────────────
+  /// Rotate this long before the access token expires so expiry never surfaces
+  /// to a user request as a 401.
+  static const int refreshSkewMs = 60 * 1000;
+  /// Floor for the proactive timer delay (avoid a busy-loop near expiry).
+  static const int minRefreshDelayMs = 2 * 1000;
+  /// On resume/focus, treat the token as "due" if it expires within this window.
+  static const int nearExpiryThresholdMs = refreshSkewMs;
+  /// Network-error retries during a rotation before giving up as transient.
+  static const int refreshNetworkRetry = 2;
+  /// Backoff (ms) between network retries (index by attempt).
+  static const List<int> refreshRetryBackoffMs = [1000, 3000];
+
   // state
   User? _user;
   String? _accessToken;
@@ -28,6 +47,21 @@ class AuthProvider extends ChangeNotifier {
   String? _tempToken;   // TOTP screentext translated text temp_token
   bool _isLoading = false;
   String? _error;
+
+  // ── token-manager internals (NR0003 F1/F2, L0004 §2) ─────────────────────
+  /// The single in-flight rotation. Every caller (both Dios' 401 handlers, the
+  /// proactive timer, startup) awaits this same future so the refresh token is
+  /// POSTed at most once — fixes the dual-Dio race (F2).
+  Future<String?>? _refreshFuture;
+  /// Outcome of the last completed rotation (drives logout-vs-keep decision).
+  _RefreshOutcome _lastRefreshOutcome = _RefreshOutcome.none;
+  /// Proactive pre-expiry refresh timer.
+  Timer? _proactiveTimer;
+  /// True once the app shell has started session keep-alive (lifecycle observer
+  /// + proactive scheduling). Gated so plain unit tests never spawn timers.
+  bool _keepAliveActive = false;
+  /// Suppress rotations while an explicit logout is in progress (L0004 §5).
+  bool _loggingOut = false;
 
   // translated text
   late final ApiClient _apiClient;
@@ -49,6 +83,12 @@ class AuthProvider extends ChangeNotifier {
   String? get tempToken => _tempToken;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  /// True iff the most recent rotation failed with a genuine server rejection
+  /// (real expiry). The shared 401 interceptor uses this to log out only on a
+  /// real expiry, never on a transient network failure (L0004 §2.4).
+  bool get lastRefreshWasExpired =>
+      _lastRefreshOutcome == _RefreshOutcome.expired;
 
   /// StorageProvider / FileProvider text text translated text translated text text translated text.
   Dio get dio => _apiClient.dio;
@@ -85,14 +125,70 @@ class AuthProvider extends ChangeNotifier {
     _authService = AuthService(_apiClient.dio);
     _apiClient.configure(
       getAccessToken: () => _accessToken,
-      onRefreshToken: refreshAccessToken,
-      onSessionExpired: _handleSessionExpired,
+      ensureFreshToken: ensureFreshToken,
+      isSessionExpired: () => _lastRefreshOutcome == _RefreshOutcome.expired,
+      onSessionExpired: handleSessionExpired,
     );
+  }
+
+  // ── session keep-alive lifecycle (L0004 §2.5/§2.6) ───────────────────────
+
+  /// Start proactive refresh + lifecycle-resume keep-alive. Called by the app
+  /// shell once the providers are wired. Idempotent.
+  void startSessionKeepAlive() {
+    if (_keepAliveActive) return;
+    _keepAliveActive = true;
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleProactiveRefresh();
+  }
+
+  /// Stop proactive refresh and detach the lifecycle observer.
+  void stopSessionKeepAlive() {
+    if (!_keepAliveActive) return;
+    _keepAliveActive = false;
+    WidgetsBinding.instance.removeObserver(this);
+    _cancelProactiveRefresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Timers are throttled/parked while backgrounded or while the machine
+    // sleeps; on return the token may already be (near) expired, so check now.
+    // On web this also fires for tab visibility regain.
+    if (state == AppLifecycleState.resumed) {
+      _onResume();
+    }
+  }
+
+  void _onResume() {
+    if (_refreshToken == null) return;
+    final expMs = _accessToken == null ? null : _decodeJwtExpMs(_accessToken!);
+    if (expMs == null ||
+        expMs - DateTime.now().millisecondsSinceEpoch <= nearExpiryThresholdMs) {
+      // Due/expired → rotate immediately (fire-and-forget; failures recover via
+      // the reactive 401 path).
+      unawaited(ensureFreshToken());
+    } else {
+      _scheduleProactiveRefresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_keepAliveActive) {
+      WidgetsBinding.instance.removeObserver(this);
+    }
+    _cancelProactiveRefresh();
+    super.dispose();
   }
 
   // ── session expired text (401 refresh failed) ──────────────────────────────────────
 
-  Future<void> _handleSessionExpired() async {
+  /// Tear the local session down and route back to login. Invoked by the shared
+  /// 401 interceptor only on a genuine refresh rejection (real expiry), never on
+  /// a transient network failure (L0004 §2.4).
+  Future<void> handleSessionExpired() async {
+    _cancelProactiveRefresh();
     _onProviderReset?.call();
     await _clearTokens();
     notifyListeners();
@@ -147,6 +243,7 @@ class AuthProvider extends ChangeNotifier {
 
     // branch 1: access tokentext translated text expiredtext translated text as-is session keep
     if (storedAccess != null && !_isJwtExpired(storedAccess)) {
+      _scheduleProactiveRefresh();
       notifyListeners();
       return true;
     }
@@ -173,22 +270,111 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── token refresh ────────────────────────────────────────────────────────────────
+  // ── token refresh (3rd-gen, NR0003 F1/F2 · L0004 §2) ─────────────────────
 
-  /// POST /login/refresh text. success text text access token save text true return.
-  /// failed text savetext token translated text deletetext false return.
+  /// Boolean convenience wrapper around [ensureFreshToken] (kept for callers
+  /// such as tryAutoLogin). Returns true iff a fresh access token is now held.
   Future<bool> refreshAccessToken() async {
-    if (_refreshToken == null) return false;
+    final token = await ensureFreshToken();
+    return token != null;
+  }
+
+  /// Single in-flight, coalesced rotation (L0004 §2.2). All concurrent callers —
+  /// both Dios' 401 handlers, the proactive timer, startup — join the same
+  /// future, so the refresh token is POSTed exactly once. On success the
+  /// proactive timer is re-armed off the new token.
+  Future<String?> ensureFreshToken() {
+    if (_loggingOut) return Future<String?>.value(null);
+    _refreshFuture ??= _runRefresh().then((token) {
+      if (token != null) _scheduleProactiveRefresh();
+      return token;
+    }).whenComplete(() {
+      _refreshFuture = null;
+    });
+    return _refreshFuture!;
+  }
+
+  /// Perform one rotation with transient-network protection. Returns the new
+  /// access token, or null on failure (inspect [_lastRefreshOutcome] to tell a
+  /// real expiry — which logs out — from a transient blip — which keeps the
+  /// session). Persists the rotated access AND refresh tokens atomically to both
+  /// memory and storage, closing the NR0003 F1 desync.
+  Future<String?> _runRefresh() async {
+    final current = _refreshToken ??
+        await _secureStorage.read(AppConfig.keyRefreshToken);
+    if (current == null) {
+      _lastRefreshOutcome = _RefreshOutcome.expired;
+      return null;
+    }
+    var attempt = 0;
+    while (true) {
+      try {
+        final pair = await _authService.rotateToken(current);
+        // ★ NR0003 F1: in-memory refresh is replaced too, not just access.
+        _accessToken = pair.accessToken;
+        _refreshToken = pair.refreshToken;
+        await Future.wait([
+          _secureStorage.write(AppConfig.keyAccessToken, pair.accessToken),
+          _secureStorage.write(AppConfig.keyRefreshToken, pair.refreshToken),
+        ]);
+        _lastRefreshOutcome = _RefreshOutcome.success;
+        notifyListeners();
+        return pair.accessToken;
+      } on RefreshExpiredException {
+        // Server rejected the token: real expiry/revocation/reuse.
+        _lastRefreshOutcome = _RefreshOutcome.expired;
+        return null;
+      } on RefreshNetworkException {
+        if (attempt < refreshNetworkRetry) {
+          await Future<void>.delayed(Duration(
+            milliseconds: refreshRetryBackoffMs[
+                attempt.clamp(0, refreshRetryBackoffMs.length - 1)],
+          ));
+          attempt++;
+          continue;
+        }
+        // Exhausted retries — keep the session, fail just this request.
+        _lastRefreshOutcome = _RefreshOutcome.transient;
+        return null;
+      }
+    }
+  }
+
+  /// (Re)arm the proactive pre-expiry refresh timer. No-op until keep-alive has
+  /// been started by the app shell, so unit tests never spawn timers.
+  void _scheduleProactiveRefresh() {
+    if (!_keepAliveActive) return;
+    _cancelProactiveRefresh();
+    final token = _accessToken;
+    if (token == null || _refreshToken == null) return;
+    final expMs = _decodeJwtExpMs(token);
+    if (expMs == null) return; // unparseable → rely on reactive 401 path
+    final raw = expMs - DateTime.now().millisecondsSinceEpoch - refreshSkewMs;
+    final delayMs = raw < minRefreshDelayMs ? minRefreshDelayMs : raw;
+    _proactiveTimer = Timer(Duration(milliseconds: delayMs), () {
+      _proactiveTimer = null;
+      unawaited(ensureFreshToken());
+    });
+  }
+
+  void _cancelProactiveRefresh() {
+    _proactiveTimer?.cancel();
+    _proactiveTimer = null;
+  }
+
+  /// Decode the JWT `exp` claim (seconds) to epoch ms, or null if unparseable.
+  int? _decodeJwtExpMs(String token) {
     try {
-      final newAccessToken = await _authService.refreshToken(_refreshToken!);
-      _accessToken = newAccessToken;
-      await _secureStorage.write(AppConfig.keyAccessToken, newAccessToken);
-      notifyListeners();
-      return true;
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(
+        base64Url.decode(base64Url.normalize(parts[1])),
+      );
+      final json = jsonDecode(payload) as Map<String, dynamic>;
+      final exp = json['exp'] as int?;
+      return exp == null ? null : exp * 1000;
     } catch (_) {
-      await _clearTokens();
-      notifyListeners();
-      return false;
+      return null;
     }
   }
 
@@ -280,6 +466,9 @@ class AuthProvider extends ChangeNotifier {
       _secureStorage.write(AppConfig.keyUsername, resp.user.username),
       _secureStorage.write(AppConfig.keyUserUuid, resp.user.userUuid ?? ''),
     ]);
+    // Arm the proactive timer off the just-issued access token so a long-running
+    // session rotates before expiry instead of waiting for a 401.
+    _scheduleProactiveRefresh();
   }
 
   // ── logout ─────────────────────────────────────────────────────────────────
@@ -287,6 +476,10 @@ class AuthProvider extends ChangeNotifier {
   /// POST /logout → local token text delete.
   Future<void> logout() async {
     _isLoading = true;
+    // Suppress any concurrent rotation (e.g. a proactive timer or in-flight 401)
+    // from re-issuing tokens mid-logout (L0004 §5).
+    _loggingOut = true;
+    _cancelProactiveRefresh();
     notifyListeners();
     try {
       if (_refreshToken != null) {
@@ -298,6 +491,7 @@ class AuthProvider extends ChangeNotifier {
     _onProviderReset?.call();
     await _clearTokens();
     _isLoading = false;
+    _loggingOut = false;
     notifyListeners();
   }
 

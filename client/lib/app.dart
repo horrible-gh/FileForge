@@ -57,8 +57,11 @@ class _AppState extends State<App> {
     _mailApiClient = MailApiClient()
       ..configure(
         getAccessToken: () => _authProvider.accessToken,
-        onRefreshToken: _authProvider.refreshAccessToken,
-        onSessionExpired: _authProvider.logout,
+        // Share the AuthProvider's single coalesced rotation with the file Dio
+        // so the two never rotate the refresh token concurrently (NR0003 F2).
+        ensureFreshToken: _authProvider.ensureFreshToken,
+        isSessionExpired: () => _authProvider.lastRefreshWasExpired,
+        onSessionExpired: _authProvider.handleSessionExpired,
       );
     // B0001 / NR0003 §3: 서버 주소 오버라이드가 파일 Dio뿐 아니라 메일 Dio에도
     // 전파되도록 배선한다. 이 배선이 없으면 설정에서 서버를 바꿔도 메일/계정
@@ -84,6 +87,11 @@ class _AppState extends State<App> {
     });
     _routerConfig = AppRoutes.createRouter(_authProvider);
 
+    // R0001/NR0003/L0004 §2.5-2.6: start 3rd-gen session keep-alive — proactive
+    // pre-expiry rotation + lifecycle-resume re-check — so a long-running app no
+    // longer falls back to the login screen ("팅김").
+    _authProvider.startSessionKeepAlive();
+
     // R0001/NR0003/T0004 §Option C: OAuth 성공 페이지의 fileforge:// 딥링크를 수신하면
     // 앱이 foreground 로 복귀하고, 계정 목록을 재로딩해 연결을 즉시 감지한다.
     // (account_connect_screen 의 lifecycle 기반 수동 복귀 감지는 폴백으로 유지된다.)
@@ -96,6 +104,7 @@ class _AppState extends State<App> {
 
   @override
   void dispose() {
+    _authProvider.stopSessionKeepAlive();
     _deepLinkService.dispose();
     super.dispose();
   }

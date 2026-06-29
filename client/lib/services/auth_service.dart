@@ -1,9 +1,30 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/auth_exception.dart';
-import '../utils/secure_storage.dart';
+
+/// A rotated access+refresh token pair returned by POST /login/refresh.
+/// The server rotates the refresh token on every call (login.py:159-203), so a
+/// successful rotation always yields BOTH a new access and a new refresh token;
+/// the caller must persist both atomically (NR0003 F1 / L0004 §2.1).
+class TokenPair {
+  final String accessToken;
+  final String refreshToken;
+  const TokenPair(this.accessToken, this.refreshToken);
+}
+
+/// The server rejected the refresh token (HTTP 401): it is expired, revoked, or
+/// was already rotated (reuse). This is the only failure that ends the session.
+class RefreshExpiredException implements Exception {
+  const RefreshExpiredException();
+}
+
+/// The rotation could not reach a verdict from the server (timeout, connection
+/// failure, 5xx). The session is kept alive and the next trigger retries
+/// (L0004 §2.4 transient protection).
+class RefreshNetworkException implements Exception {
+  const RefreshNetworkException();
+}
 
 /// login success text text
 class AuthLoginResponse {
@@ -97,19 +118,34 @@ class AuthService {
 
   /// POST /login/refresh
   /// Body: {refresh_token}
-  /// return: text access_token (text refresh_tokentext SecureStoragetext save)
-  Future<String> refreshToken(String refreshToken) async {
-    final response = await _dio.post(
-      '/login/refresh',
-      data: {'refresh_token': refreshToken},
-    );
-    final data = response.data as Map<String, dynamic>;
-    final newAccessToken = data['access_token'] as String;
-    final newRefreshToken = data['refresh_token'] as String?;
-    if (newRefreshToken != null) {
-      await SecureStorage().write(AppConfig.keyRefreshToken, newRefreshToken);
+  /// Returns the rotated access+refresh pair. Persistence is the caller's job
+  /// (AuthProvider writes both in-memory and SecureStorage atomically) so the
+  /// in-memory refresh token can never drift from storage — the desync that was
+  /// NR0003 F1.
+  ///
+  /// Throws [RefreshExpiredException] on HTTP 401 (real expiry/revocation) and
+  /// [RefreshNetworkException] on any other failure (timeout/connection/5xx),
+  /// letting the caller keep the session alive on a transient blip (L0004 §2.4).
+  Future<TokenPair> rotateToken(String refreshToken) async {
+    try {
+      final response = await _dio.post(
+        '/login/refresh',
+        data: {'refresh_token': refreshToken},
+      );
+      final data = response.data as Map<String, dynamic>;
+      final newAccessToken = data['access_token'] as String;
+      // Server always rotates; fall back to the sent token only defensively.
+      final newRefreshToken =
+          data['refresh_token'] as String? ?? refreshToken;
+      return TokenPair(newAccessToken, newRefreshToken);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw const RefreshExpiredException();
+      }
+      // No response (timeout/connection) or a non-401 status (e.g. 5xx) →
+      // transient: do not log the user out over a blip.
+      throw const RefreshNetworkException();
     }
-    return newAccessToken;
   }
 
   /// POST /logout
