@@ -57,9 +57,14 @@ def push_bolt(body: PushRequest, user_uuid: str = Depends(current_user_uuid)):
 
     Server push acceptance ladder (L0006 §4.2):
       1) identity unresolved          → 401 (raised by current_user_uuid)
-      2) data_type not allowed        → 400 {status:failed, "Unsupported data_type"}
+      2) data_type missing/not allowed→ 400 {status:failed, "Unsupported data_type"}
       3) content missing/empty        → 400 {status:failed, "Empty content"}
       4) else                         → upsert → 200 {status:success}
+
+    ``data_type``/``content`` are Optional in :class:`PushRequest` so a *missing*
+    field is caught here and rendered as the legacy 400 envelope, rather than
+    leaking FastAPI's 422 (L0006 §4.2 / P0005 부록 A — uniform error contract for
+    absent vs blank).
     """
     if body.data_type not in ALLOWED_DATA_TYPES:
         logger.warning(f"bolt.push rejected unsupported data_type={body.data_type!r}")
