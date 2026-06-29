@@ -5,7 +5,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 import zipfile
 import io
 from fastapi.responses import StreamingResponse
-from config import settings, db
+from config import settings, db, adapt_query
+from datetime import datetime, timezone
 from schemas.storages import UserStoragesRequest
 from routers.login.auth import verify_token
 import LogAssist.log as logger
@@ -23,12 +24,69 @@ sqloader = db.sqloader
 
 router = APIRouter()
 
+# SecureBolt is a first-class storage *type* ('password'), not a special menu
+# entry (fileforge.securebolt.0003 / NR0003). The vault content lives in
+# bolt_data keyed by user_uuid, so a SINGLE shared 'password'-type storage row
+# ("SecureBolt") is safe across all users — every user just needs a
+# user_storages link to it. We ensure that link on storage-list read so the
+# SecureBolt tile appears with zero manual provisioning.
+_SECUREBOLT_STORAGE_NAME = "SecureBolt"
+
+
+def _ensure_securebolt_storage(user_uuid: str) -> None:
+    """Idempotently create the shared SecureBolt ('password') storage and link
+    it to this user. Defensive: never let a provisioning hiccup break the
+    storage list — a missing tile is recoverable on the next load."""
+    if not user_uuid:
+        return
+    try:
+        row = db_instance.fetch_one(
+            adapt_query(
+                "SELECT storage_uuid FROM storages "
+                "WHERE storage_name = ? AND storage_type = 'password' AND status = 'active'"
+            ),
+            (_SECUREBOLT_STORAGE_NAME,),
+        )
+        if row:
+            storage_uuid = row["storage_uuid"]
+        else:
+            storage_uuid = str(uuid.uuid4())
+            # DB-portable timestamp (MySQL DATETIME / PG TIMESTAMP / SQLite TEXT).
+            now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            db_instance.execute(
+                adapt_query(
+                    "INSERT INTO storages "
+                    "(storage_uuid, storage_name, storage_path, storage_type, status, created_at, modified_at) "
+                    "VALUES (?, ?, ?, 'password', 'active', ?, ?)"
+                ),
+                (storage_uuid, _SECUREBOLT_STORAGE_NAME, f"/{_SECUREBOLT_STORAGE_NAME}", now, now),
+            )
+
+        existing = db_instance.fetch_one(
+            adapt_query(
+                "SELECT 1 AS one FROM user_storages WHERE user_uuid = ? AND storage_uuid = ?"
+            ),
+            (user_uuid, storage_uuid),
+        )
+        if not existing:
+            db_instance.execute(
+                adapt_query(
+                    "INSERT INTO user_storages (user_uuid, storage_uuid, is_default) VALUES (?, ?, 0)"
+                ),
+                (user_uuid, storage_uuid),
+            )
+    except Exception:
+        logger.error("securebolt storage provisioning failed", traceback.format_exc())
+
+
 @router.get("/get_user_storages", dependencies=[Depends(verify_token)])
 async def get_user_storages(params: UserStoragesRequest = Depends()):
     dump_data = params.model_dump()
     logger.debug("dump_data", dump_data)
+    user_uuid = dump_data.get("user_uuid", "")
+    _ensure_securebolt_storage(user_uuid)
     data = (
-        dump_data.get("user_uuid", ""),
+        user_uuid,
         dump_data.get("group_uuid", ""),
     )
     return db_instance.fetch_all(sqloader.load_sql("file_forge.json", "storages.get_user_storages"), data)

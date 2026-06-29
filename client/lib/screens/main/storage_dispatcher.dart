@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/storage_provider.dart';
 import '../file/file_list_screen.dart';
 import '../mail/mail_list_screen.dart';
+import '../vault/vault_screen.dart';
 
 /// storage text branch translated text — NR0003 §1.1.
 ///
@@ -60,6 +61,11 @@ class _StorageDispatcherState extends State<StorageDispatcher> {
 
     if (target.storageType == 'mail') {
       return MailListScreen(storageUuid: widget.storageUuid);
+    }
+    // SecureBolt is a 'password'-type storage (fileforge.securebolt.0003 /
+    // NR0003): open it like any other storage and render the vault inline.
+    if (target.storageType == 'password') {
+      return const VaultStorageView();
     }
     return FileListScreen(
       storageUuid: widget.storageUuid,

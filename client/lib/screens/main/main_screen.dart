@@ -50,10 +50,14 @@ class _MainScreenState extends State<MainScreen> {
     fileProvider.reset();
     Navigator.of(context).pop(); // Drawer text
     context.go('/${storage.storageUuid}');
-    fileProvider.loadChildren(
-      storage.storageUuid,
-      authProvider.user?.userUuid ?? '',
-    );
+    // A 'password' (SecureBolt) storage has no file nodes — skip the file
+    // preload so we don't fire a meaningless children query (NR0003 §6.5).
+    if (storage.storageType != 'password') {
+      fileProvider.loadChildren(
+        storage.storageUuid,
+        authProvider.user?.userUuid ?? '',
+      );
+    }
   }
 
   void _onFolderTapped(Node node) {
@@ -208,13 +212,15 @@ class _MainScreenState extends State<MainScreen> {
                 tooltip: 'Exit search',
                 onPressed: () => _exitSearchMode(context),
               )
-            else ...[
-              if (storageType != 'password')
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: 'Add',
-                  onPressed: () => _showFabMenu(context, storageType),
-                ),
+            // A 'password' (SecureBolt) storage drives its own search/lock/add
+            // from the embedded VaultStorageView — keep the shell AppBar clean
+            // (only the overflow menu) for it (NR0003 §6.2).
+            else if (storageType != 'password') ...[
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: 'Add',
+                onPressed: () => _showFabMenu(context, storageType),
+              ),
               if (storageType == 'file')
                 IconButton(
                   icon: Icon(
@@ -570,24 +576,12 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
             // storage selection
+            // SecureBolt no longer has a dedicated drawer entry: it is a
+            // 'password'-type storage that appears in the StorageSelector list
+            // below and dispatches to the embedded vault (fileforge.securebolt.
+            // 0003 / NR0003 — the user asked for a plain storage type, not a
+            // special menu item).
             StorageSelector(onStorageSelected: _onStorageSelected),
-            const Divider(),
-            // SecureBolt (fileforge.securebolt.0002 / TR0005): 좌측 서랍 전용 진입점.
-            // 팝업 메뉴의 'SecureBolt Vault' 항목은 제거되고, 비밀번호 금고는
-            // 여기서 /vault 풀스크린으로 연다. 로그인 시 마스터 키가 이미 파생돼
-            // 있으면(신선 로그인) 잠금 화면 없이 바로 항목 목록 + [+] 가 보인다.
-            ListTile(
-              leading: const Icon(Icons.shield_outlined),
-              title: const Text('SecureBolt'),
-              subtitle: const Text(
-                '비밀번호 금고',
-                style: TextStyle(fontSize: 11),
-              ),
-              onTap: () {
-                Navigator.of(context).pop(); // close drawer
-                context.push(AppRoutes.vault);
-              },
-            ),
             const Divider(),
             // folder text
             if (fileProvider.isTreeLoading)

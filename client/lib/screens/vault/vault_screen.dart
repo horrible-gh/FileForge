@@ -76,6 +76,94 @@ class VaultScreen extends StatelessWidget {
   }
 }
 
+/// Embedded SecureBolt vault — the body of a 'password'-type storage rendered
+/// inside the MainScreen shell (fileforge.securebolt.0003 / NR0003), mirroring
+/// how MailListScreen renders for a 'mail' storage. It has NO AppBar of its own
+/// (the shell AppBar shows the storage name); a transparent Scaffold supplies
+/// the [+] FAB, and an inline toolbar carries the lock/sync/offline actions the
+/// standalone [VaultScreen] keeps in its AppBar. All the heavy lifting reuses
+/// the same private widgets ([_VaultBody], [_UnlockView], [_openEditor]).
+class VaultStorageView extends StatelessWidget {
+  const VaultStorageView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final vault = context.watch<VaultProvider>();
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      // Hide add while in a decrypt-failure state — saving would clobber the
+      // real (undecryptable) server vault (L0006 §5-B).
+      floatingActionButton: (vault.isUnlocked && !vault.hasDecryptError)
+          ? FloatingActionButton(
+              onPressed: () => _openEditor(context, vault, null),
+              child: const Icon(Icons.add),
+            )
+          : null,
+      body: Column(
+        children: [
+          if (vault.isUnlocked) _VaultToolbar(vault: vault),
+          Expanded(
+            child:
+                vault.isUnlocked ? _VaultBody(vault: vault) : const _UnlockView(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Inline lock/sync/offline toolbar for the embedded vault (the standalone
+/// [VaultScreen] keeps these in its AppBar; the embedded view has none).
+class _VaultToolbar extends StatelessWidget {
+  const _VaultToolbar({required this.vault});
+
+  final VaultProvider vault;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.shield_outlined, size: 18),
+          const SizedBox(width: 6),
+          const Text('SecureBolt',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          if (vault.isLocalMode) ...[
+            const SizedBox(width: 8),
+            const Chip(
+              label: Text('오프라인', style: TextStyle(fontSize: 11)),
+              visualDensity: VisualDensity.compact,
+              avatar: Icon(Icons.cloud_off, size: 14),
+            ),
+          ],
+          const Spacer(),
+          if (vault.isSyncing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Sync',
+              onPressed: () => vault.refresh(),
+            ),
+          IconButton(
+            icon: const Icon(Icons.lock_outline),
+            tooltip: 'Lock',
+            onPressed: () => vault.lock(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 Future<void> _openEditor(
   BuildContext context,
   VaultProvider vault,
