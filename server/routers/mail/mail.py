@@ -12,6 +12,7 @@ import os
 import LogAssist.log as logger
 import uuid as uuid_lib
 from datetime import datetime
+from util.mail_time import now_utc_naive
 from email.utils import make_msgid
 from email.mime.multipart import MIMEMultipart  # ✅ 추가
 from email.mime.text import MIMEText  # ✅ 추가
@@ -516,8 +517,8 @@ async def send_mail(
                 "bcc_emails": bcc_addresses or '',
                 "subject": subject,
                 "preview": make_preview(body_text, body_html, 200),
-                "sent_date": datetime.now(),
-                "received_date": datetime.now(),
+                "sent_date": now_utc_naive(),       # naive-UTC 규약(0025.0003-NR)
+                "received_date": now_utc_naive(),
                 "is_read": True,
                 "is_starred": False,
                 "is_deleted": False,

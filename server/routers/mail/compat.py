@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends, Body, Request, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from typing import Optional, Tuple
 from datetime import datetime, timezone
+from util.mail_time import iso_utc
 from email.utils import parseaddr, getaddresses
 from email.header import decode_header, make_header
 from urllib.parse import urlparse, urlencode
@@ -84,13 +85,13 @@ def _err(code: str, message: str, status_code: int, details: Optional[dict] = No
 
 
 def _iso(value) -> str:
-    """DB datetime (str/None/datetime) → ISO-8601 string (P0007 notation)."""
-    if value is None:
-        return ""
-    try:
-        return value.isoformat()  # datetime
-    except AttributeError:
-        return str(value)
+    """DB sent_date (UTC by storage convention) → ISO-8601 with explicit +00:00.
+
+    The stored sent_date is naive-UTC (see util.mail_time / 0025.0003-NR). Emitting
+    an explicit offset is what lets the client's DateTime.parse(...).toLocal()
+    convert to the viewer's local zone instead of rendering UTC verbatim.
+    """
+    return iso_utc(value)
 
 
 def _decode_mime_words(value: str) -> str:

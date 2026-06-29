@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from typing import Optional, List
 from datetime import datetime
+from util.mail_time import now_utc_naive
 from pydantic import BaseModel
 
 from config import settings, db, mail_storage_base
@@ -217,8 +218,8 @@ async def save_draft(request: DraftSaveRequest):
                     "bcc_emails": request.bcc_addresses or '',
                     "subject": request.subject or '(제목 없음)',
                     "preview": make_preview(request.body_text, request.body_html, 200),
-                    "sent_date": datetime.now(),
-                    "received_date": datetime.now(),
+                    "sent_date": now_utc_naive(),       # naive-UTC 규약(0025.0003-NR)
+                    "received_date": now_utc_naive(),
                     "is_read": True,
                     "is_starred": False,
                     "is_deleted": False,

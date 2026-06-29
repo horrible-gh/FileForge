@@ -4,6 +4,7 @@ from datetime import datetime
 import email
 from email.header import decode_header
 from email.utils import parsedate_to_datetime, getaddresses
+from util.mail_time import to_storage_utc, now_utc_naive
 import os
 import uuid
 from pathlib import Path
@@ -192,12 +193,15 @@ def parse_email_message(raw_email: bytes) -> dict:
     # Subject 파싱
     subject = parse_email_header(msg.get('Subject', '(제목없음)'))
 
-    # Date 파싱
+    # Date 파싱 — 발신 오프셋을 보존해 UTC로 정규화 후 저장(naive-UTC 규약).
+    # 과거엔 aware datetime을 그대로 insert → 드라이버가 오프셋을 버려 발신자
+    # 로컬 벽시계가 저장됨(R0001 '그놈의 UTC' / 0025.0003-NR). to_storage_utc로
+    # 항상 UTC 벽시계만 저장하고, 표시 직렬화(compat._iso)가 +00:00을 붙인다.
     date_header = msg.get('Date')
     try:
-        sent_date = parsedate_to_datetime(date_header) if date_header else datetime.now()
-    except:
-        sent_date = datetime.now()
+        sent_date = to_storage_utc(parsedate_to_datetime(date_header)) if date_header else now_utc_naive()
+    except Exception:
+        sent_date = now_utc_naive()
 
     # 본문 추출
     body_text = ""
