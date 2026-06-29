@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/storage_provider.dart';
 import '../../providers/file_provider.dart';
+import '../../providers/mail_provider.dart';
 import '../../providers/selection_provider.dart';
 import '../../providers/upload_provider.dart';
 import '../../models/storage.dart';
@@ -67,9 +68,27 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  /// 검색 제출 — storage 종류에 따라 분기(B0001/0026).
+  ///
+  /// 공용 AppBar 검색창은 모든 storage에서 같은 UI를 쓰지만, 메일 storage에서는
+  /// 검색을 [FileProvider](파일 노드 API)가 아니라 [MailProvider](`GET /mails?q=`)로
+  /// 라우팅해야 한다. MailListScreen이 MailProvider만 watch하므로, 메일 검색을
+  /// FileProvider로 보내면(기존 동작) 결과가 화면에 전혀 반영되지 않았다(= 무반응).
   void _onSearchSubmitted(String query, BuildContext context) {
-    final authProvider = context.read<AuthProvider>();
     final storageProvider = context.read<StorageProvider>();
+    final storageType = storageProvider.currentStorage?.storageType ?? 'file';
+    if (storageType == 'mail') {
+      final mailProvider = context.read<MailProvider>();
+      if (query.trim().isEmpty) {
+        // 빈 검색어 = 검색 종료. AppBar 토글(FileProvider)만 닫고 목록을 복귀시킨다.
+        context.read<FileProvider>().exitSearchModeUiOnly();
+        mailProvider.clearSearch();
+      } else {
+        mailProvider.searchMails(query);
+      }
+      return;
+    }
+    final authProvider = context.read<AuthProvider>();
     final fileProvider = context.read<FileProvider>();
     final storageUuid = storageProvider.currentStorage?.storageUuid;
     final userUuid = authProvider.user?.userUuid ?? '';
@@ -78,12 +97,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _exitSearchMode(BuildContext context) {
-    final authProvider = context.read<AuthProvider>();
     final storageProvider = context.read<StorageProvider>();
     final fileProvider = context.read<FileProvider>();
+    _searchController.clear();
+    final storageType = storageProvider.currentStorage?.storageType ?? 'file';
+    if (storageType == 'mail') {
+      // 메일 검색 종료 — UI 토글만 닫고(파일 API 재호출 금지) 메일 목록을 복귀.
+      fileProvider.exitSearchModeUiOnly();
+      context.read<MailProvider>().clearSearch();
+      return;
+    }
+    final authProvider = context.read<AuthProvider>();
     final storageUuid = storageProvider.currentStorage?.storageUuid;
     final userUuid = authProvider.user?.userUuid ?? '';
-    _searchController.clear();
     if (storageUuid != null) {
       fileProvider.exitSearchMode(storageUuid, userUuid);
     }
@@ -217,9 +243,7 @@ class _MainScreenState extends State<MainScreen> {
           ],
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'vault') {
-                context.push(AppRoutes.vault);
-              } else if (value == 'share_links') {
+              if (value == 'share_links') {
                 context.push('/share-links');
               } else if (value == 'server_settings') {
                 showDialog(
@@ -234,7 +258,6 @@ class _MainScreenState extends State<MainScreen> {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'vault', child: Text('SecureBolt Vault')),
               PopupMenuItem(value: 'share_links', child: Text('Manage Share Links')),
               PopupMenuItem(value: 'server_settings', child: Text('Server Settings')),
               PopupMenuItem(value: 'settings', child: Text('Security Settings')),
@@ -548,6 +571,23 @@ class _MainScreenState extends State<MainScreen> {
             ),
             // storage selection
             StorageSelector(onStorageSelected: _onStorageSelected),
+            const Divider(),
+            // SecureBolt (fileforge.securebolt.0002 / TR0005): 좌측 서랍 전용 진입점.
+            // 팝업 메뉴의 'SecureBolt Vault' 항목은 제거되고, 비밀번호 금고는
+            // 여기서 /vault 풀스크린으로 연다. 로그인 시 마스터 키가 이미 파생돼
+            // 있으면(신선 로그인) 잠금 화면 없이 바로 항목 목록 + [+] 가 보인다.
+            ListTile(
+              leading: const Icon(Icons.shield_outlined),
+              title: const Text('SecureBolt'),
+              subtitle: const Text(
+                '비밀번호 금고',
+                style: TextStyle(fontSize: 11),
+              ),
+              onTap: () {
+                Navigator.of(context).pop(); // close drawer
+                context.push(AppRoutes.vault);
+              },
+            ),
             const Divider(),
             // folder text
             if (fileProvider.isTreeLoading)

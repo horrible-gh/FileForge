@@ -46,7 +46,7 @@ import uuid as uuid_lib
 
 import httpx
 
-from config import settings, db, mail_storage_base
+from config import settings, db, mail_storage_base, DBType
 from routers.login.auth import current_user_uuid
 from .sync import strip_html_to_text
 
@@ -717,29 +717,54 @@ async def list_mails(
     except (TypeError, ValueError):
         offset = 0
 
+    # B0001 (0028): the Drafts label is backed by the dialect-free on-disk JSON
+    # draft store (save_draft writes ONLY there — see _drafts_dir), never
+    # `mail_messages`. The integrated-mail SQL below can therefore never surface a
+    # saved draft, so 임시보관함 stayed empty and a draft could not be reopened.
+    # Serve the label straight from that store instead.
+    if label and label.strip().lower() in ("draft", "drafts"):
+        return _list_drafts_summaries(user_uuid, offset, lim)
+
     mail1 = sqloader.load_sql(MAIL_JSON, "inbox.get_integrated_mail1")
     mail2 = sqloader.load_sql(MAIL_JSON, "inbox.get_integrated_mail2")
     # mail1 ends on "AND a.status = 'active'"; it is designed to take further AND
-    # clauses before mail2 (ORDER BY ... LIMIT ? OFFSET ?). Integer literals only
-    # → dialect-safe (no extra bind params inserted between the existing ones).
+    # clauses before mail2 (ORDER BY ... LIMIT ? OFFSET ?). Any bind params injected
+    # here land *between* the leading user_uuid (mail1) and the trailing
+    # limit/offset (mail2), so we extend the params tuple in that same order.
+    params: list = [user_uuid]
     extra = " AND m.is_deleted = 0 "
     if unread:
-        extra += " AND m.is_read = 0 "
+        extra += " AND m.is_read = 0 "  # integer literal — no bind param
+
+    # B0001 / 0026: lower the free-text search into the SQL WHERE so it filters the
+    # *whole* archive (every account, every page), not just the current page a
+    # post-pagination Python filter could see (the §4.1 "current-page-only" defect).
+    # We match the same fields the old in-memory filter did, case-folded.
+    if q and q.strip():
+        ph = "?" if settings.DB_TYPE in (DBType.SQLITE, DBType.SQLITE3) else "%s"
+        # LIKE wildcard-escape the needle so a user typing % or _ searches literally.
+        needle = (
+            q.strip().lower()
+            .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        pattern = f"%{needle}%"
+        # SQLite has no default LIKE escape char; MySQL/Postgres default to backslash.
+        esc = " ESCAPE '\\'" if ph == "?" else ""
+        extra += (
+            f" AND (LOWER(m.subject) LIKE {ph}{esc}"
+            f" OR LOWER(m.from_email) LIKE {ph}{esc}"
+            f" OR LOWER(m.from_name) LIKE {ph}{esc}"
+            f" OR LOWER(m.preview) LIKE {ph}{esc}) "
+        )
+        params.extend([pattern, pattern, pattern, pattern])
+
     sql = mail1 + extra + mail2
+    params.extend([lim + 1, offset])
     # fetch one extra row to compute has_more without a second COUNT query
-    rows = db_instance.fetch_all(sql, (user_uuid, lim + 1, offset)) or []
+    rows = db_instance.fetch_all(sql, tuple(params)) or []
     has_more = len(rows) > lim
     rows = rows[:lim]
 
-    if q:
-        ql = q.lower()
-        rows = [
-            r for r in rows
-            if ql in (
-                f"{r.get('subject', '')}{r.get('from_email', '')}"
-                f"{r.get('from_name', '')}{r.get('preview', '')}"
-            ).lower()
-        ]
     if label and label.lower() not in ("inbox", "all", ""):
         rows = [r for r in rows if (r.get("folder_name") or "").lower() == label.lower()]
 
@@ -1016,6 +1041,95 @@ def _draft_from_payload(payload: dict, draft_id: str, updated_at: str) -> dict:
         "attachments": payload.get("attachments") or [],
         "updated_at": updated_at,
     }
+
+
+def _draft_to_summary(record: dict) -> dict:
+    """A JSON-store draft record → P0007 §3.1 MailSummary (mail.dart).
+
+    B0001 (0028): drafts live in the dialect-free on-disk JSON store, NOT in
+    `mail_messages`, so the integrated-mail SQL behind the inbox/sent labels can
+    never see them. The Drafts label is served straight from that store
+    (list_mails early-branches into _list_drafts_summaries), and each record is
+    shaped into the same MailSummary the list renders for any other mailbox.
+    Conventionally a draft shows its *recipients* (where it is headed) rather than
+    a sender, so the recipient line is surfaced in the `from` slot the list tile
+    already renders. mail_id == draft_id so a tap re-opens it via GET /drafts/{id}.
+    """
+    def _addr(a) -> str:
+        if isinstance(a, dict):
+            return (a.get("address") or "").strip()
+        return str(a or "").strip()
+
+    recipients = [x for x in (_addr(a) for a in (record.get("to") or [])) if x]
+    body = record.get("body") or {}
+    content = body.get("content") or ""
+    snippet = strip_html_to_text(content) if ("<" in content) else content
+    snippet = (snippet or "").strip()[:200]
+    return {
+        "mail_id": record.get("draft_id", "") or "",
+        "thread_id": "",
+        "from": {
+            "name": ", ".join(recipients),
+            "address": recipients[0] if recipients else "",
+        },
+        "subject": record.get("subject") or "",
+        "snippet": snippet,
+        # updated_at is already an ISO-8601 string with an explicit UTC offset
+        # (_now_iso → datetime.now(timezone.utc).isoformat()), which the client's
+        # DateTime.parse(...).toLocal() renders in the viewer's zone.
+        "received_at": record.get("updated_at") or "",
+        "is_read": True,
+        "is_pinned": False,
+        "is_starred": False,
+        "has_attachment": bool(record.get("attachments")),
+        "labels": ["drafts"],
+        "account": {"account_id": "", "email": "", "name": "", "color": ""},
+    }
+
+
+def _list_drafts_summaries(user_uuid: str, offset: int, lim: int):
+    """Serve the Drafts label from the on-disk JSON store (B0001 / 0028).
+
+    Drafts are persisted by save_draft/update_draft to `_drafts/{user_uuid}/*.json`
+    and are absent from `mail_messages`; the inbox/sent SQL behind list_mails can
+    never surface them. Read the store directly, newest-edit-first, with the same
+    offset/limit paging contract the SQL path uses (has_more when more remain).
+    Corrupt/unreadable records are skipped (logged) rather than failing the page.
+    """
+    directory = _drafts_dir(user_uuid)
+    try:
+        names = os.listdir(directory)
+    except FileNotFoundError:
+        names = []
+    except OSError as exc:
+        logger.error(f"[compat draft list] {exc}")
+        names = []
+
+    records = []
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(directory, name), "r", encoding="utf-8") as fh:
+                rec = json.load(fh)
+        except (OSError, ValueError) as exc:
+            logger.error(f"[compat draft list] skip {name}: {exc}")
+            continue
+        if isinstance(rec, dict):
+            records.append(rec)
+
+    # newest edit first — updated_at is an ISO-8601 string, lexically sortable.
+    records.sort(key=lambda r: r.get("updated_at") or "", reverse=True)
+    total = len(records)
+    window = records[offset: offset + lim]
+    has_more = total > offset + lim
+    items = [_draft_to_summary(r) for r in window]
+    meta = {
+        "next_cursor": str(offset + lim) if has_more else None,
+        "has_more": has_more,
+        "count": len(items),
+    }
+    return _ok(items, meta)
 
 
 @router.post("/drafts")

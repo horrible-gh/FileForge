@@ -45,6 +45,11 @@ class _MailListScreenState extends State<MailListScreen>
     with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
 
+  /// R0001(0027) — "ピン留め(고정됨)" 트레이 펼침/접힘 상태. 핀이 많아도 공간을
+  /// 차지하지 않도록 접을 수 있고, 기본은 펼침. 핀 메일 자체가 없으면 트레이는
+  /// 아예 렌더되지 않는다.
+  bool _pinnedTrayExpanded = true;
+
   /// R0001(0022) 실시간 수신 — 받은편지함이 화면에 떠 있는 동안 주기적으로 서버
   /// 동기화(POST /sync)를 끌어와 외부 도착 메일을 자동 반영한다. NR0003 방향 A:
   /// 서버 무변경(백그라운드 워커 부재는 클라 폴링으로 보완).
@@ -103,6 +108,9 @@ class _MailListScreenState extends State<MailListScreen>
     final mail = context.read<MailProvider>();
     // 받은편지함에서만 자동 수신. 보낸편지함/임시보관함은 수신 대상이 아니다.
     if (mail.currentLabel != 'inbox') return;
+    // 검색 중에는 자동 동기화가 검색 결과를 덮어쓰지 않도록 건너뛴다(B0001/0026).
+    // syncInbox→loadInbox는 검색어를 비우고 전체 목록을 다시 싣기 때문.
+    if (mail.isSearchMode) return;
     if (mail.isSyncing || mail.isLoading) return;
     // 목록이 비어 있지 않으면 syncInbox는 전체화면 스피너를 띄우지 않고 조용히 갱신한다.
     mail.syncInbox();
@@ -407,6 +415,14 @@ class _MailListScreenState extends State<MailListScreen>
       );
     }
 
+    // R0001(0027) — 핀은 시간순 목록에 쌓이지 않고 **별도 "ピン留め(고정됨)"
+    // 트레이**에 모인다(사용자 반려 반영). 본 목록을 핀/비핀으로 파티션해
+    // 트레이(상단)와 본문 시간순 리스트(아래·비핀만)를 분리 렌더한다.
+    final pinned = mail.pinnedMails;
+    final rest = mail.unpinnedMails;
+    final hasTray = pinned.isNotEmpty;
+    final trayCount = hasTray ? 1 : 0;
+
     return RefreshIndicator(
       // R0001: 당겨서 새로고침은 받은편지함이면 서버 동기화 후 재로딩(syncRefresh),
       // 그 외 라벨(sent/drafts)은 로컬 재로딩만 수행한다.
@@ -414,16 +430,23 @@ class _MailListScreenState extends State<MailListScreen>
       child: ListView.separated(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: mail.mails.length + (mail.hasMore ? 1 : 0),
-        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemCount: trayCount + rest.length + (mail.hasMore ? 1 : 0),
+        // 트레이는 자체 컨테이너 경계를 가지므로 그 아래엔 구분선을 두지 않는다.
+        separatorBuilder: (_, index) =>
+            (hasTray && index == 0) ? const SizedBox.shrink() : const Divider(height: 1),
         itemBuilder: (context, index) {
-          if (index >= mail.mails.length) {
+          // [트레이?] + 비핀 메일들 + [더보기 스피너?] 의 인덱스 매핑.
+          if (hasTray && index == 0) {
+            return _buildPinnedTray(context, t, pinned);
+          }
+          final i = index - trayCount;
+          if (i >= rest.length) {
             return const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          final summary = mail.mails[index];
+          final summary = rest[i];
           return _MailListTile(
             summary: summary,
             onTap: () => _openMail(summary),
@@ -431,6 +454,90 @@ class _MailListScreenState extends State<MailListScreen>
                 context.read<MailProvider>().togglePin(summary.mailId),
           );
         },
+      ),
+    );
+  }
+
+  /// R0001(0027) — "ピン留め(고정됨)" 트레이. 핀 메일을 시간순 목록과 분리된
+  /// 시각적 컨테이너(틴트 배경·테두리·헤더)에 모아 보여준다. 헤더 탭으로
+  /// 접고 펼 수 있으며(공간이 많아도 핀이 많을 때 부담 없이 접힘), 펼친 상태에선
+  /// 핀 메일 행을 그대로(행 핀 토글 포함) 렌더한다 — 트레이에서 핀을 해제하면
+  /// 그 메일은 즉시 아래 본문 리스트로 내려간다.
+  Widget _buildPinnedTray(
+      BuildContext context, AppLocalizations t, List<MailSummary> pinned) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.30),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // 헤더: 핀 아이콘 + 라벨 + 개수 배지 + 펼침/접힘 셰브론. 전체가 탭 영역.
+          InkWell(
+            onTap: () =>
+                setState(() => _pinnedTrayExpanded = !_pinnedTrayExpanded),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              child: Row(
+                children: [
+                  Icon(Icons.push_pin_rounded,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    t.mailPinnedTray,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: t.mailPinnedTrayCount(pinned.length),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${pinned.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _pinnedTrayExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    semanticLabel: _pinnedTrayExpanded
+                        ? t.mailPinnedTrayCollapse
+                        : t.mailPinnedTrayExpand,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_pinnedTrayExpanded)
+            for (final summary in pinned) ...[
+              const Divider(height: 1),
+              _MailListTile(
+                summary: summary,
+                onTap: () => _openMail(summary),
+                onTogglePin: () =>
+                    context.read<MailProvider>().togglePin(summary.mailId),
+              ),
+            ],
+        ],
       ),
     );
   }
