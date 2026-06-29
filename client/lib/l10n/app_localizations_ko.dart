@@ -123,6 +123,25 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mailUnpin => '고정 해제';
 
   @override
+  String get mailPinnedTray => '고정됨';
+
+  @override
+  String mailPinnedTrayCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '고정 $count개',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mailPinnedTrayExpand => '고정함 펼치기';
+
+  @override
+  String get mailPinnedTrayCollapse => '고정함 접기';
+
+  @override
   String get addLabel => '추가';
 
   @override

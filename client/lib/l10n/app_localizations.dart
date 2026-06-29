@@ -328,6 +328,30 @@ abstract class AppLocalizations {
   /// **'Unpin'**
   String get mailUnpin;
 
+  /// No description provided for @mailPinnedTray.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get mailPinnedTray;
+
+  /// Count shown next to the pinned tray header.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 pinned} other{{count} pinned}}'**
+  String mailPinnedTrayCount(int count);
+
+  /// No description provided for @mailPinnedTrayExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Show pinned'**
+  String get mailPinnedTrayExpand;
+
+  /// No description provided for @mailPinnedTrayCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide pinned'**
+  String get mailPinnedTrayCollapse;
+
   /// No description provided for @addLabel.
   ///
   /// In en, this message translates to:

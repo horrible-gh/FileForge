@@ -123,6 +123,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mailUnpin => 'ピン留め解除';
 
   @override
+  String get mailPinnedTray => 'ピン留め';
+
+  @override
+  String mailPinnedTrayCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ピン留め $count件',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mailPinnedTrayExpand => 'ピン留めを表示';
+
+  @override
+  String get mailPinnedTrayCollapse => 'ピン留めを隠す';
+
+  @override
   String get addLabel => '追加';
 
   @override

@@ -123,6 +123,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailUnpin => 'Unpin';
 
   @override
+  String get mailPinnedTray => 'Pinned';
+
+  @override
+  String mailPinnedTrayCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pinned',
+      one: '1 pinned',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mailPinnedTrayExpand => 'Show pinned';
+
+  @override
+  String get mailPinnedTrayCollapse => 'Hide pinned';
+
+  @override
   String get addLabel => 'Add';
 
   @override

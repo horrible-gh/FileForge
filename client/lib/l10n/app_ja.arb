@@ -44,6 +44,14 @@
   "mailCopied": "クリップボードにコピーしました",
   "mailPin": "ピン留め",
   "mailUnpin": "ピン留め解除",
+  "mailPinnedTray": "ピン留め",
+  "mailPinnedTrayCount": "{count, plural, other{ピン留め {count}件}}",
+  "@mailPinnedTrayCount": {
+    "description": "Count shown next to the pinned tray header.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "mailPinnedTrayExpand": "ピン留めを表示",
+  "mailPinnedTrayCollapse": "ピン留めを隠す",
   "addLabel": "追加",
   "removeLabel": "削除",
 

@@ -45,6 +45,14 @@
   "mailCopied": "Copied to clipboard",
   "mailPin": "Pin",
   "mailUnpin": "Unpin",
+  "mailPinnedTray": "Pinned",
+  "mailPinnedTrayCount": "{count, plural, =1{1 pinned} other{{count} pinned}}",
+  "@mailPinnedTrayCount": {
+    "description": "Count shown next to the pinned tray header.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "mailPinnedTrayExpand": "Show pinned",
+  "mailPinnedTrayCollapse": "Hide pinned",
   "addLabel": "Add",
   "removeLabel": "Remove",
 

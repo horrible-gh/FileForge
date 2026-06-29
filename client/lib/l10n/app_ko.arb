@@ -44,6 +44,14 @@
   "mailCopied": "클립보드에 복사했습니다",
   "mailPin": "고정",
   "mailUnpin": "고정 해제",
+  "mailPinnedTray": "고정됨",
+  "mailPinnedTrayCount": "{count, plural, other{고정 {count}개}}",
+  "@mailPinnedTrayCount": {
+    "description": "Count shown next to the pinned tray header.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "mailPinnedTrayExpand": "고정함 펼치기",
+  "mailPinnedTrayCollapse": "고정함 접기",
   "addLabel": "추가",
   "removeLabel": "삭제",
 

@@ -84,6 +84,13 @@ class _AppState extends State<App> {
     // file Dio (/fileforge origin → /bolt/*). The master hash is derived in the
     // provider from re-entered credentials and never leaves memory.
     _vaultProvider = VaultProvider(_authProvider.dio);
+    // SecureBolt(fileforge.securebolt.0002 / TR0005): 신선 ID/PW 로그인 시 그
+    // 비밀번호로 볼트 마스터 키를 파생해 두어, SecureBolt 진입 시 두 번째
+    // 비밀번호 프롬프트가 뜨지 않도록 한다(요건 2). 토큰 자동로그인에는 비번이
+    // 없어 호출되지 않으며, 그 경우 볼트 화면의 인라인 언락으로 폴백한다.
+    _authProvider.setVaultUnlockCallback(
+      (username, password) => _vaultProvider.unlock(username, password),
+    );
     // T074: logout/session expired text storage·file·mail·account state initialize text
     _authProvider.setProviderResetCallback(() {
       _storageProvider.reset();
