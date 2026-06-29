@@ -103,6 +103,34 @@ function New-Secret {
   return ($bytes | ForEach-Object { $_.ToString('x2') }) -join ''
 }
 
+# B0001 / NR0003: the deployed web client's API base is compiled into the bundle
+# from client\config\prod.json. Normalize a user-entered "domain" answer into a
+# clean scheme://host[:port] origin (default scheme https, no trailing slash, and
+# drop any pasted /fileforge[/mail] tail) so SERVER_URL/MAIL_SERVER_URL can be
+# derived from a single question instead of each defaulting to localhost.
+function Resolve-PublicBase([string]$Value) {
+  $v = "$Value".Trim().TrimEnd('/')
+  if (-not $v) { return '' }
+  if ($v -notmatch '^[a-zA-Z][a-zA-Z0-9+.\-]*://') { $v = "https://$v" }
+  $v = $v -replace '/fileforge(/mail)?/?$', ''
+  return $v.TrimEnd('/')
+}
+
+# Return a human reason when a prod web API base is the B0001 trap, else $null.
+# A deployed https page blocks a localhost/loopback or plaintext-http API base via
+# CSP "connect-src 'self' https: wss:" (cross-origin plaintext http), so the login
+# POST never leaves the browser (status=null) - exactly the B0001 failure.
+function Get-UnsafeProdUrlReason([string]$Url) {
+  if (-not $Url) { return $null }
+  if ($Url -match '://(localhost|127\.0\.0\.1|0\.0\.0\.0|10\.0\.2\.2)([:/]|$)') {
+    return "points at localhost/loopback (each visitor's own machine, not your server)"
+  }
+  if ($Url -match '^http://') {
+    return "uses plaintext http:// (a deployed https page blocks it via CSP connect-src 'self' https: wss:)"
+  }
+  return $null
+}
+
 # Copy an existing config to backups\<timestamp>\<relative-path> so
 # reconfiguration never destroys the previous values or scatters .bak files.
 function Backup-File([string]$Path) {
@@ -247,10 +275,48 @@ function Initialize-Client {
   Push-Location (Join-Path $Root 'client')
   try {
     if (Confirm-Configure 'config\prod.json' 'client\config\prod.json') {
-      Write-Info 'collecting values for client\config\prod.json'
-      $serverUrl = Read-Value 'SERVER_URL'      'FileForge server URL'  'http://localhost:8000/fileforge'
-      $mailUrl   = Read-Value 'MAIL_SERVER_URL' 'Mail subsystem base URL' 'http://localhost:8000/fileforge/mail'
-      $shareUrl  = Read-Value 'SHARE_BASE_URL'  'Public share base URL' 'http://localhost:3000'
+      Write-Info 'collecting values for client\config\prod.json (this is the DEPLOYMENT build config)'
+      if ($script:Interactive) {
+        Write-Host ''
+        Write-Info 'prod.json is compiled into the released web/app bundle, so the browser that'
+        Write-Info 'loads the deployed app must be able to reach these URLs. They must be the'
+        Write-Info 'PUBLIC https origin of your server (e.g. https://files.example.com) - NOT'
+        Write-Info "localhost (that points at each visitor's own machine and is blocked by the"
+        Write-Info "deploy CSP connect-src 'self' https: wss:, which makes login fail). [B0001]"
+      }
+
+      # Existing prod.json values seed the defaults when reconfiguring.
+      $existing = $null
+      if (Test-Path 'config\prod.json') {
+        try { $existing = Get-Content -Raw 'config\prod.json' | ConvertFrom-Json } catch { $existing = $null }
+      }
+
+      # One question for the public origin/domain; SERVER_URL/MAIL_SERVER_URL derive
+      # from it. An explicit $env:SERVER_URL still wins (build automation), as before.
+      $serverUrl = [Environment]::GetEnvironmentVariable('SERVER_URL')
+      $mailUrl   = [Environment]::GetEnvironmentVariable('MAIL_SERVER_URL')
+      if (-not $serverUrl) {
+        $baseDefault = ''
+        if ($existing -and $existing.SERVER_URL) { $baseDefault = Resolve-PublicBase $existing.SERVER_URL }
+        $base = Resolve-PublicBase (Read-Value 'PUBLIC_BASE_URL' 'Public server origin/domain (e.g. https://files.example.com)' $baseDefault)
+        if (-not $base) {
+          # Blank answer (or non-interactive with no preset): keep a working LOCAL-ONLY
+          # build, but make the localhost trap explicit instead of silently baking it in.
+          $base = 'http://localhost:8000'
+          Write-Warn 'no public origin given - defaulting prod.json to http://localhost:8000 (LOCAL-ONLY).'
+          Write-Warn 'A DEPLOYED web build with this value will fail login: the browser blocks'
+          Write-Warn "cross-origin http://localhost via CSP connect-src 'self' https: wss:. [B0001]"
+          Write-Warn 'Re-run setup and enter your public https domain before building for deploy.'
+        }
+        $serverUrl = "$base/fileforge"
+        if (-not $mailUrl) { $mailUrl = "$base/fileforge/mail" }
+      } elseif (-not $mailUrl) {
+        $mailUrl = (Resolve-PublicBase $serverUrl) + '/fileforge/mail'
+      }
+
+      $shareDefault = if ($existing -and $existing.SHARE_BASE_URL) { "$($existing.SHARE_BASE_URL)" } else { 'http://localhost:3000' }
+      $shareUrl  = Read-Value 'SHARE_BASE_URL' 'Public share base URL' $shareDefault
+
       Write-Info 'writing client\config\prod.json'
       @{
         SERVER_URL      = $serverUrl
@@ -261,6 +327,22 @@ function Initialize-Client {
         LOG_FILE        = 'true'
       } | ConvertTo-Json | Set-Content -Path 'config\prod.json' -Encoding ascii
     }
+
+    # Surface the B0001 trap on the EFFECTIVE prod.json - whether we just wrote it or
+    # kept an existing one (the deployed bundle was built from a kept localhost config).
+    if (Test-Path 'config\prod.json') {
+      $eff = $null
+      try { $eff = Get-Content -Raw 'config\prod.json' | ConvertFrom-Json } catch { $eff = $null }
+      if ($eff -and $eff.SERVER_URL) {
+        $reason = Get-UnsafeProdUrlReason "$($eff.SERVER_URL)"
+        if ($reason) {
+          Write-Warn "prod SERVER_URL '$($eff.SERVER_URL)' $reason - a deployed login will fail (B0001)."
+          Write-Warn 'OK only for local same-host testing. For deploy, re-run setup (or set'
+          Write-Warn '$env:PUBLIC_BASE_URL=https://your.domain) and rebuild the client.'
+        }
+      }
+    }
+
     Write-Info 'fetching Flutter packages'
     flutter pub get
   } finally { Pop-Location }

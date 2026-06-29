@@ -94,6 +94,43 @@ gen_secret() {
   else head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; fi
 }
 
+# json_get FILE KEY -> echo the string value of a top-level "KEY": "value" pair.
+# Minimal (no jq dependency); only used to seed defaults from an existing prod.json.
+json_get() {
+  [ -f "$1" ] || { echo ""; return 0; }
+  grep -Eo "\"$2\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$1" | head -n1 \
+    | sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/'
+}
+
+# B0001 / NR0003: the deployed web client's API base is compiled into the bundle
+# from client/config/prod.json. resolve_public_base normalizes a user-entered
+# "domain" answer into a clean scheme://host[:port] origin (default scheme https,
+# no trailing slash, drop any pasted /fileforge[/mail] tail) so SERVER_URL/
+# MAIL_SERVER_URL derive from a single question instead of defaulting to localhost.
+resolve_public_base() {
+  local v="${1:-}"
+  v="${v%/}"
+  [ -n "$v" ] || { echo ""; return 0; }
+  case "$v" in *://*) : ;; *) v="https://$v" ;; esac
+  v="$(printf '%s' "$v" | sed -E 's#/fileforge(/mail)?/?$##')"
+  echo "${v%/}"
+}
+
+# unsafe_prod_url_reason URL -> echo a reason when a prod web API base is the B0001
+# trap (localhost/loopback or plaintext http), else nothing. A deployed https page
+# blocks such a base via CSP "connect-src 'self' https: wss:" so login never sends.
+unsafe_prod_url_reason() {
+  local u="${1:-}"
+  [ -n "$u" ] || { echo ""; return 0; }
+  if printf '%s' "$u" | grep -Eiq '://(localhost|127\.0\.0\.1|0\.0\.0\.0|10\.0\.2\.2)([:/]|$)'; then
+    echo "points at localhost/loopback (each visitor's own machine, not your server)"; return 0
+  fi
+  if printf '%s' "$u" | grep -Eiq '^http://'; then
+    echo "uses plaintext http:// (a deployed https page blocks it via CSP connect-src 'self' https: wss:)"; return 0
+  fi
+  echo ""
+}
+
 # backup_file PATH -> copies PATH to backups/<timestamp>/<relative-path> so
 # reconfiguration never destroys the previous values or scatters .bak files.
 backup_file() {
@@ -245,10 +282,43 @@ setup_client() {
   cd "$ROOT_DIR/client"
 
   if maybe_configure "config/prod.json" "client/config/prod.json"; then
-    info "collecting values for client/config/prod.json"
-    ask SERVER_URL      "FileForge server URL"   "http://localhost:8000/fileforge"
-    ask MAIL_SERVER_URL "Mail subsystem base URL" "http://localhost:8000/fileforge/mail"
-    ask SHARE_BASE_URL  "Public share base URL"  "http://localhost:3000"
+    info "collecting values for client/config/prod.json (this is the DEPLOYMENT build config)"
+    if [ "$INTERACTIVE" -eq 1 ]; then
+      echo
+      info "prod.json is compiled into the released web/app bundle, so the browser that loads"
+      info "the deployed app must reach these URLs. They must be the PUBLIC https origin of your"
+      info "server (e.g. https://files.example.com) — NOT localhost (that points at each visitor's"
+      info "own machine and is blocked by the deploy CSP connect-src 'self' https: wss:). [B0001]"
+    fi
+
+    local existing_server existing_share base base_default
+    existing_server="$(json_get config/prod.json SERVER_URL)"
+    existing_share="$(json_get config/prod.json SHARE_BASE_URL)"
+
+    # One question for the public origin/domain; SERVER_URL/MAIL_SERVER_URL derive
+    # from it. An explicit $SERVER_URL still wins (build automation), as before.
+    if [ -z "${SERVER_URL:-}" ]; then
+      base_default=""
+      [ -n "$existing_server" ] && base_default="$(resolve_public_base "$existing_server")"
+      ask PUBLIC_BASE_URL "Public server origin/domain (e.g. https://files.example.com)" "$base_default"
+      base="$(resolve_public_base "${PUBLIC_BASE_URL:-}")"
+      if [ -z "$base" ]; then
+        # Blank answer (or non-interactive with no preset): keep a working LOCAL-ONLY
+        # build, but make the localhost trap explicit instead of silently baking it in.
+        base="http://localhost:8000"
+        warn "no public origin given — defaulting prod.json to http://localhost:8000 (LOCAL-ONLY)."
+        warn "A DEPLOYED web build with this value will fail login: the browser blocks cross-origin"
+        warn "http://localhost via CSP connect-src 'self' https: wss:. [B0001]"
+        warn "Re-run setup and enter your public https domain before building for deploy."
+      fi
+      SERVER_URL="$base/fileforge"
+      [ -n "${MAIL_SERVER_URL:-}" ] || MAIL_SERVER_URL="$base/fileforge/mail"
+    else
+      [ -n "${MAIL_SERVER_URL:-}" ] || MAIL_SERVER_URL="$(resolve_public_base "$SERVER_URL")/fileforge/mail"
+    fi
+
+    ask SHARE_BASE_URL "Public share base URL" "${existing_share:-http://localhost:3000}"
+
     info "writing client/config/prod.json"
     cat > config/prod.json <<JSON
 {
@@ -260,6 +330,17 @@ setup_client() {
   "LOG_FILE": "true"
 }
 JSON
+  fi
+
+  # Surface the B0001 trap on the EFFECTIVE prod.json — whether we just wrote it or
+  # kept an existing one (the deployed bundle was built from a kept localhost config).
+  local eff_server reason
+  eff_server="$(json_get config/prod.json SERVER_URL)"
+  reason="$(unsafe_prod_url_reason "$eff_server")"
+  if [ -n "$reason" ]; then
+    warn "prod SERVER_URL '$eff_server' $reason — a deployed login will fail (B0001)."
+    warn "OK only for local same-host testing. For deploy, re-run setup (or set"
+    warn "PUBLIC_BASE_URL=https://your.domain) and rebuild the client."
   fi
 
   info "fetching Flutter packages"
