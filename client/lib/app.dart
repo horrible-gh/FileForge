@@ -44,9 +44,6 @@ class _AppState extends State<App> {
   void initState() {
     super.initState();
     _authProvider = AuthProvider();
-    if (widget.initialServerUrl.isNotEmpty) {
-      _authProvider.setServerUrl(widget.initialServerUrl);
-    }
     // AuthProvidertext translated text Dio(Bearer translated text text)text translated text.
     _storageProvider = StorageProvider(_authProvider.dio);
     _fileProvider = FileProvider(
@@ -63,6 +60,14 @@ class _AppState extends State<App> {
         onRefreshToken: _authProvider.refreshAccessToken,
         onSessionExpired: _authProvider.logout,
       );
+    // B0001 / NR0003 §3: 서버 주소 오버라이드가 파일 Dio뿐 아니라 메일 Dio에도
+    // 전파되도록 배선한다. 이 배선이 없으면 설정에서 서버를 바꿔도 메일/계정
+    // 요청만 빌드에 박힌 주소(기본 localhost)로 가서 "구글 연동하라"가 뜬다.
+    _authProvider.setServerUrlChangeCallback(_mailApiClient.setBaseUrl);
+    // 시작 시 저장된 서버 주소를 파일·메일 양쪽 Dio에 한 번에 적용(콜백 배선 이후).
+    if (widget.initialServerUrl.isNotEmpty) {
+      _authProvider.setServerUrl(widget.initialServerUrl);
+    }
     _mailProvider = MailProvider(_mailApiClient.dio);
     // account translated text — MailProvider text text MailApiClient Dio(session token text)text text.
     // account text translated text translated text text translated text screentext text translated text(TR0005 §symptom1).

@@ -37,6 +37,10 @@ class AuthProvider extends ChangeNotifier {
   /// logout/session expired text StorageProvider·FileProvider initialize translated text (T074)
   VoidCallback? _onProviderReset;
 
+  /// 서버 주소 오버라이드 시 메일 Dio도 함께 따라가도록 하는 콜백 (B0001 / NR0003 §3).
+  /// app.dart에서 MailApiClient.setBaseUrl을 등록한다. 등록 전이면 파일 Dio만 갱신.
+  ValueChanged<String>? _onServerUrlChanged;
+
   // read-only
   bool get isAuthenticated => _accessToken != null && _user != null;
   User? get user => _user;
@@ -54,9 +58,20 @@ class AuthProvider extends ChangeNotifier {
     _onProviderReset = callback;
   }
 
+  /// 메일 Dio도 서버 주소 오버라이드를 따라가도록 콜백 등록 (B0001 / NR0003 §3).
+  /// app.dart에서 MailApiClient 생성 직후 1회 배선한다.
+  void setServerUrlChangeCallback(ValueChanged<String> callback) {
+    _onServerUrlChanged = callback;
+  }
+
   /// server translated text translated text changetext. text screentext translated text.
+  ///
+  /// 파일 API Dio뿐 아니라 메일 Dio도 같은 origin으로 따라가게 한다 — 그렇지 않으면
+  /// 메일/계정 요청이 빌드에 박힌 주소(기본 localhost)로 가서 "구글 연동하라"가
+  /// 뜬다(B0001 / NR0003 §3).
   void setServerUrl(String hostPort) {
     _apiClient.setBaseUrl(hostPort);
+    _onServerUrlChanged?.call(hostPort);
     notifyListeners();
   }
 
