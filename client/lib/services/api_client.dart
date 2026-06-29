@@ -1,21 +1,19 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
+import 'auth_refresh_interceptor.dart';
 
-/// Dio text API translated text.
-/// - all translated text Bearer token text text
-/// - 401 text text refresh text → successtext text text retry
-/// - refresh text text 401text translated text text
-/// - refresh failed text onSessionExpired text text
+/// Dio-based API client (storage / files / shares).
+/// - attaches the Bearer token to every request
+/// - on 401 triggers the provider-level coalesced refresh and retries once
+/// - refresh-endpoint 401s are not retried (loop guard)
+/// - a genuine refresh failure (real expiry) routes back to login
+///
+/// NR0003 F2 / L0004 §2.2: the per-Dio `_isRefreshing` mutex + pending queue
+/// that this client used to own were removed. Rotation is now coalesced at the
+/// AuthProvider level (a single in-flight future shared with MailApiClient and
+/// the proactive timer), so the refresh token is never POSTed twice.
 class ApiClient {
   late final Dio _dio;
-
-  String? Function()? _getAccessToken;
-  Future<bool> Function()? _onRefreshToken;
-  Future<void> Function()? _onSessionExpired;
-
-  bool _isRefreshing = false;
-  final List<Completer<String?>> _pendingRequests = [];
 
   ApiClient() {
     _dio = Dio(BaseOptions(
@@ -23,109 +21,31 @@ class ApiClient {
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
     ));
-    _setupInterceptors();
   }
 
-  /// AuthProvidertext translated text registertext.
+  /// Wire the shared auth refresh interceptor. Called once by AuthProvider.
   void configure({
     required String? Function() getAccessToken,
-    required Future<bool> Function() onRefreshToken,
+    required Future<String?> Function() ensureFreshToken,
+    required bool Function() isSessionExpired,
     required Future<void> Function() onSessionExpired,
   }) {
-    _getAccessToken = getAccessToken;
-    _onRefreshToken = onRefreshToken;
-    _onSessionExpired = onSessionExpired;
+    final interceptor = AuthRefreshInterceptor(
+      getAccessToken: getAccessToken,
+      ensureFreshToken: ensureFreshToken,
+      isSessionExpired: isSessionExpired,
+      onSessionExpired: onSessionExpired,
+    )..dio = _dio;
+    _dio.interceptors.add(interceptor);
   }
 
-  void _setupInterceptors() {
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          final token = _getAccessToken?.call();
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-          handler.next(options);
-        },
-        onError: (error, handler) async {
-          if (error.response?.statusCode != 401) {
-            handler.next(error);
-            return;
-          }
-
-          // refresh endpoints translated text 401text retrytext translated text.
-          final isRefreshEndpoint =
-              error.requestOptions.path.contains('/login/refresh');
-          if (isRefreshEndpoint) {
-            handler.next(error);
-            return;
-          }
-
-          // refresh text text 401 → translated text add
-          if (_isRefreshing) {
-            final completer = Completer<String?>();
-            _pendingRequests.add(completer);
-            try {
-              final newToken = await completer.future;
-              if (newToken != null) {
-                final opts = error.requestOptions;
-                opts.headers['Authorization'] = 'Bearer $newToken';
-                final response = await _dio.fetch(opts);
-                handler.resolve(response);
-              } else {
-                handler.next(error);
-              }
-            } catch (_) {
-              handler.next(error);
-            }
-            return;
-          }
-
-          _isRefreshing = true;
-          try {
-            final success =
-                await (_onRefreshToken?.call() ?? Future.value(false));
-            if (success) {
-              final newToken = _getAccessToken?.call();
-              for (final c in _pendingRequests) {
-                c.complete(newToken);
-              }
-              _pendingRequests.clear();
-
-              final opts = error.requestOptions;
-              opts.headers['Authorization'] = 'Bearer $newToken';
-              final response = await _dio.fetch(opts);
-              handler.resolve(response);
-            } else {
-              for (final c in _pendingRequests) {
-                c.complete(null);
-              }
-              _pendingRequests.clear();
-              await _onSessionExpired?.call();
-              handler.next(error);
-            }
-          } catch (e) {
-            for (final c in _pendingRequests) {
-              c.complete(null);
-            }
-            _pendingRequests.clear();
-            await _onSessionExpired?.call();
-            handler.next(error);
-          } finally {
-            _isRefreshing = false;
-          }
-        },
-      ),
-    );
-  }
-
-  /// server text stringtext text baseUrltext translated text translated text.
+  /// Override the API base URL at runtime from a server host:port string.
   ///
-  /// text text:
+  /// Normalization:
   ///   1. trim()
-  ///   2. trailing slash text
-  ///   3. scheme translated text 'http://' add
-  ///   4. text '/fileforge'text translated text as-is, translated text '/fileforge' add
+  ///   2. strip trailing slash
+  ///   3. prepend 'http://' when no scheme is present
+  ///   4. ensure the '/fileforge' path suffix
   void setBaseUrl(String hostPort) {
     final trimmed = hostPort.trim();
     if (trimmed.isEmpty) {
@@ -133,16 +53,13 @@ class ApiClient {
       return;
     }
 
-    // trailing slash text
     String normalized = trimmed.replaceAll(RegExp(r'/+$'), '');
 
-    // scheme translated text http:// add
     if (!normalized.startsWith('http://') &&
         !normalized.startsWith('https://')) {
       normalized = 'http://$normalized';
     }
 
-    // /fileforge path add (text text)
     if (!normalized.endsWith('/fileforge')) {
       normalized = '$normalized/fileforge';
     }

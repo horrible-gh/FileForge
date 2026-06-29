@@ -195,8 +195,14 @@ async def refresh(body: RefreshRequest):
     redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, new_refresh_token)
 
     # Step 6: text access token issue
+    # NR0003 F3 / L0004 §2.8: re-issue with the SAME federated claim set as the
+    # initial login (display_name/email), not a bare {"sub": user_id}. The Go
+    # mail server provisions/refreshes a local user from these claims, so a
+    # rotated access token that dropped them degraded federation after every
+    # refresh. Re-fetch the user; fall back to sub-only if the lookup fails.
+    refreshed_user = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), user_id)
     access_token = create_access_token(
-        data={"sub": user_id},
+        data=_access_claims(user_id, refreshed_user),
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     logger.debug(f"[Refresh] ✅ token text complete - user_id: {user_id}")
