@@ -217,7 +217,9 @@ class _MainScreenState extends State<MainScreen> {
           ],
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'share_links') {
+              if (value == 'vault') {
+                context.push(AppRoutes.vault);
+              } else if (value == 'share_links') {
                 context.push('/share-links');
               } else if (value == 'server_settings') {
                 showDialog(
@@ -232,6 +234,7 @@ class _MainScreenState extends State<MainScreen> {
               }
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'vault', child: Text('SecureBolt Vault')),
               PopupMenuItem(value: 'share_links', child: Text('Manage Share Links')),
               PopupMenuItem(value: 'server_settings', child: Text('Server Settings')),
               PopupMenuItem(value: 'settings', child: Text('Security Settings')),

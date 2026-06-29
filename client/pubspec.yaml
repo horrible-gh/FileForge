@@ -52,6 +52,13 @@ dependencies:
   app_links: ^6.3.2
   flutter_widget_from_html_core: ^0.17.2
 
+  # SecureBolt vault (fileforge.securebolt.0001). crypto = SHA-256/MD5 digests;
+  # pointycastle = AES-256-CBC/PKCS7. Together they reproduce CryptoJS 4.1.1's
+  # OpenSSL passphrase KDF byte-for-byte so existing vault blobs decrypt unchanged
+  # (L0006 §6 — the absorption's #1 compatibility risk).
+  crypto: ^3.0.3
+  pointycastle: ^3.9.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -10,6 +10,7 @@ import '../screens/share/share_links_screen.dart';
 import '../screens/share/share_page.dart';
 import '../screens/settings/security_settings_screen.dart';
 import '../screens/settings/server_settings_screen.dart';
+import '../screens/vault/vault_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -18,6 +19,7 @@ class AppRoutes {
   static const String home = '/';
   static const String settings = '/settings';
   static const String serverSettings = '/settings/server';
+  static const String vault = '/vault';
 
   static GoRouter createRouter(AuthProvider authProvider) {
     return GoRouter(
@@ -111,6 +113,13 @@ class AppRoutes {
         GoRoute(
           path: serverSettings,
           builder: (context, state) => const ServerSettingsScreen(),
+        ),
+        // SecureBolt vault (fileforge.securebolt.0001). Own Scaffold (lock/unlock
+        // flow) so it lives outside the file-oriented MainScreen shell. Auth-gated
+        // by the redirect above (not in the public allowlist).
+        GoRoute(
+          path: vault,
+          builder: (context, state) => const VaultScreen(),
         ),
       ],
     );

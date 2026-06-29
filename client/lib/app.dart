@@ -11,6 +11,7 @@ import 'providers/selection_provider.dart';
 import 'providers/share_link_provider.dart';
 import 'providers/mail_provider.dart';
 import 'providers/account_provider.dart';
+import 'providers/vault_provider.dart';
 import 'services/account_cache.dart';
 import 'services/deep_link_service.dart';
 import 'services/mail_api_client.dart';
@@ -37,6 +38,7 @@ class _AppState extends State<App> {
   late final MailApiClient _mailApiClient;
   late final MailProvider _mailProvider;
   late final AccountProvider _accountProvider;
+  late final VaultProvider _vaultProvider;
   late final DeepLinkService _deepLinkService;
   late final RouterConfig<Object> _routerConfig;
 
@@ -78,12 +80,17 @@ class _AppState extends State<App> {
       _mailApiClient.dio,
       cache: SharedPrefsAccountCache(),
     );
+    // SecureBolt vault (fileforge.securebolt.0001): uses the session-authenticated
+    // file Dio (/fileforge origin → /bolt/*). The master hash is derived in the
+    // provider from re-entered credentials and never leaves memory.
+    _vaultProvider = VaultProvider(_authProvider.dio);
     // T074: logout/session expired text storage·file·mail·account state initialize text
     _authProvider.setProviderResetCallback(() {
       _storageProvider.reset();
       _fileProvider.reset();
       _mailProvider.reset();
       _accountProvider.reset();
+      _vaultProvider.reset(); // wipe in-memory master hash + decrypted vault
     });
     _routerConfig = AppRoutes.createRouter(_authProvider);
 
@@ -121,6 +128,7 @@ class _AppState extends State<App> {
         ChangeNotifierProvider<ShareLinkProvider>.value(value: _shareLinkProvider),
         ChangeNotifierProvider<MailProvider>.value(value: _mailProvider),
         ChangeNotifierProvider<AccountProvider>.value(value: _accountProvider),
+        ChangeNotifierProvider<VaultProvider>.value(value: _vaultProvider),
       ],
       child: MaterialApp.router(
         title: 'FileForge',
