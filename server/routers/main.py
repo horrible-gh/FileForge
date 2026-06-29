@@ -9,6 +9,7 @@ from . import shared_link, public_share, totp
 from .mail import accounts as mail_accounts, mail as mail_core, sync as mail_sync, inbox as mail_inbox, files as mail_files, actions as mail_actions, drafts as mail_drafts, labels as mail_labels
 from .mail import compat as mail_compat
 from .mail.oauth import gmail_auth
+from .bolt import bolt as bolt_vault
 from routers.login.auth import verify_token, token_blacklist
 from config import settings, redis_client
 import LogAssist.log as Logger
@@ -87,6 +88,12 @@ app.include_router(mail_actions.router, prefix=f"{CONTEXT}/mail/actions", tags=[
 app.include_router(mail_drafts.router, prefix=f"{CONTEXT}/mail/drafts", tags=["Mail Drafts"])
 app.include_router(mail_labels.router, prefix=f"{CONTEXT}/mail/labels", tags=["Mail Labels"])
 app.include_router(gmail_auth.router, prefix=f"{CONTEXT}/oauth/gmail", tags=["Gmail OAuth"])
+
+# 🔹 SecureBolt vault subsystem (absorbed — fileforge.securebolt.0001, T0008).
+#    Same :8000/fileforge origin as the rest of the platform. Zero-knowledge:
+#    /bolt/push stores and /bolt/pull returns client-encrypted opaque blobs
+#    keyed on users.user_uuid (current_user_uuid gate). DB0007 bolt_data table.
+app.include_router(bolt_vault.router, prefix=f"{CONTEXT}/bolt", tags=["SecureBolt Vault"])
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,0 +1,4 @@
+{
+  "push": "INSERT INTO bolt_data (user_uuid, data_type, content, version) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE content = VALUES(content), version = VALUES(version), updated_at = CURRENT_TIMESTAMP",
+  "pull": "SELECT data_type, content, version FROM bolt_data WHERE user_uuid = %s"
+}

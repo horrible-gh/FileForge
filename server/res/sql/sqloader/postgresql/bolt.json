@@ -1,0 +1,4 @@
+{
+  "push": "INSERT INTO bolt_data (user_uuid, data_type, content, version) VALUES (%s, %s, %s, %s) ON CONFLICT (user_uuid, data_type) DO UPDATE SET content = EXCLUDED.content, version = EXCLUDED.version, updated_at = now()",
+  "pull": "SELECT data_type, content, version FROM bolt_data WHERE user_uuid = %s"
+}
