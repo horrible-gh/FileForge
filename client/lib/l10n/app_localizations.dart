@@ -316,6 +316,18 @@ abstract class AppLocalizations {
   /// **'Copied to clipboard'**
   String get mailCopied;
 
+  /// No description provided for @mailPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get mailPin;
+
+  /// No description provided for @mailUnpin.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get mailUnpin;
+
   /// No description provided for @addLabel.
   ///
   /// In en, this message translates to:

@@ -149,6 +149,11 @@ class MailSummary {
   final bool hasAttachment;
   final List<String> labels;
 
+  /// R0001(0027) — 핀 고정 여부. 서버 `_summary_to_p0007`이 통합 인박스의
+  /// `m.is_pinned`를 실어 보내며(통합 목록 SQL은 핀 메일을 `ORDER BY m.is_pinned DESC`로
+  /// 최상단에 올린다), 리스트는 이 값으로 핀 배지/토글 상태를 그린다.
+  final bool isPinned;
+
   /// R0001(0013) — 이 메일이 도착한 내 계정. 식별 정보가 없으면 빈 ref.
   final MailAccountRef account;
 
@@ -162,6 +167,7 @@ class MailSummary {
     this.isRead = false,
     this.hasAttachment = false,
     this.labels = const [],
+    this.isPinned = false,
     this.account = const MailAccountRef(),
   });
 
@@ -179,22 +185,29 @@ class MailSummary {
       labels: (json['labels'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(),
+      isPinned: json['is_pinned'] as bool? ?? false,
       account: MailAccountRef.fromJson(
           (json['account'] as Map?)?.cast<String, dynamic>() ?? const {}),
     );
   }
 
   /// text displaytext text text — local translated text refreshtext.
-  MailSummary copyWithRead(bool read) => MailSummary(
+  MailSummary copyWithRead(bool read) => copyWith(isRead: read);
+
+  /// 핀 상태만 바꾼 사본(R0001/0027) — togglePin 낙관적 갱신용.
+  MailSummary copyWithPinned(bool pinned) => copyWith(isPinned: pinned);
+
+  MailSummary copyWith({bool? isRead, bool? isPinned}) => MailSummary(
         mailId: mailId,
         threadId: threadId,
         from: from,
         subject: subject,
         snippet: snippet,
         receivedAt: receivedAt,
-        isRead: read,
+        isRead: isRead ?? this.isRead,
         hasAttachment: hasAttachment,
         labels: labels,
+        isPinned: isPinned ?? this.isPinned,
         account: account,
       );
 }
@@ -209,6 +222,9 @@ class MailDetail {
   final String subject;
   final String receivedAt;
   final bool isRead;
+
+  /// R0001(0027) — 핀 고정 여부(상세 AppBar 핀 토글의 현재 상태).
+  final bool isPinned;
   final MailBody body;
   final List<MailAttachment> attachments;
   final List<String> labels;
@@ -222,6 +238,7 @@ class MailDetail {
     this.subject = '',
     this.receivedAt = '',
     this.isRead = false,
+    this.isPinned = false,
     this.body = const MailBody(),
     this.attachments = const [],
     this.labels = const [],
@@ -243,6 +260,7 @@ class MailDetail {
       subject: json['subject'] as String? ?? '',
       receivedAt: json['received_at'] as String? ?? '',
       isRead: json['is_read'] as bool? ?? false,
+      isPinned: json['is_pinned'] as bool? ?? false,
       body: MailBody.fromJson(
           (json['body'] as Map?)?.cast<String, dynamic>() ?? const {}),
       attachments: (json['attachments'] as List<dynamic>? ?? const [])
@@ -254,6 +272,22 @@ class MailDetail {
           .toList(),
     );
   }
+
+  /// 핀 상태만 바꾼 사본(R0001/0027) — togglePin 낙관적 갱신용.
+  MailDetail copyWithPinned(bool pinned) => MailDetail(
+        mailId: mailId,
+        threadId: threadId,
+        from: from,
+        to: to,
+        cc: cc,
+        subject: subject,
+        receivedAt: receivedAt,
+        isRead: isRead,
+        isPinned: pinned,
+        body: body,
+        attachments: attachments,
+        labels: labels,
+      );
 }
 
 /// P0007 §4 — text translated text text text.

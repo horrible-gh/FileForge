@@ -86,6 +86,17 @@ class MailService {
     unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
   }
 
+  /// PATCH /mails/{mail_id} {is_pinned} — 핀 고정/해제(R0001/0027).
+  /// 서버는 is_read와 동일한 PATCH 엔드포인트에서 is_pinned를 받으며, 소유자
+  /// 스코프(인증 user_uuid)로만 갱신한다(레거시 /actions/pin IDOR 회피).
+  Future<void> setPinned(String mailId, bool isPinned) async {
+    final resp = await _dio.patch(
+      '/mails/$mailId',
+      data: {'is_pinned': isPinned},
+    );
+    unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
+  }
+
   // ── compose/text/Draft (P0007 §6.2/§7.5~§7.10) ───────────────────────────────────
 
   /// POST /mails — text/text/text text. text result(mail_id text)text returntext(§7.5).

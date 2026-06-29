@@ -423,9 +423,12 @@ class _MailListScreenState extends State<MailListScreen>
               child: Center(child: CircularProgressIndicator()),
             );
           }
+          final summary = mail.mails[index];
           return _MailListTile(
-            summary: mail.mails[index],
-            onTap: () => _openMail(mail.mails[index]),
+            summary: summary,
+            onTap: () => _openMail(summary),
+            onTogglePin: () =>
+                context.read<MailProvider>().togglePin(summary.mailId),
           );
         },
       ),
@@ -556,7 +559,14 @@ class _MailListTile extends StatelessWidget {
   final MailSummary summary;
   final VoidCallback onTap;
 
-  const _MailListTile({required this.summary, required this.onTap});
+  /// R0001(0027) — 행의 핀 토글. 핀=상단 고정 UX의 진입점(트레일링 핀 아이콘).
+  final VoidCallback onTogglePin;
+
+  const _MailListTile({
+    required this.summary,
+    required this.onTap,
+    required this.onTogglePin,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -566,8 +576,20 @@ class _MailListTile extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final acct = summary.account;
     final acctColor = _accountColor(acct);
+    final pinned = summary.isPinned;
     return ListTile(
       onTap: onTap,
+      // 트레일링 핀 토글 — 채워진 핀=고정됨, 외곽선=미고정. 행 본문 탭(상세 열기)과
+      // 독립적으로 동작한다(IconButton이 자체 탭을 가로챈다).
+      trailing: IconButton(
+        icon: Icon(
+          pinned ? Icons.push_pin : Icons.push_pin_outlined,
+          size: 20,
+          color: pinned ? theme.colorScheme.primary : null,
+        ),
+        tooltip: pinned ? t.mailUnpin : t.mailPin,
+        onPressed: onTogglePin,
+      ),
       // 좌측 색상 바 + 아바타 — 바 색은 계정별로 달라 어느 계정인지 한눈에 보인다.
       leading: Row(
         mainAxisSize: MainAxisSize.min,

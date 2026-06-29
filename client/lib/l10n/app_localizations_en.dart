@@ -117,6 +117,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailCopied => 'Copied to clipboard';
 
   @override
+  String get mailPin => 'Pin';
+
+  @override
+  String get mailUnpin => 'Unpin';
+
+  @override
   String get addLabel => 'Add';
 
   @override

@@ -43,6 +43,8 @@
   "mailCopyBody": "Copy body",
   "mailCopyFrom": "Copy sender address",
   "mailCopied": "Copied to clipboard",
+  "mailPin": "Pin",
+  "mailUnpin": "Unpin",
   "addLabel": "Add",
   "removeLabel": "Remove",
 

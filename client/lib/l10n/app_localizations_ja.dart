@@ -117,6 +117,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mailCopied => 'クリップボードにコピーしました';
 
   @override
+  String get mailPin => 'ピン留め';
+
+  @override
+  String get mailUnpin => 'ピン留め解除';
+
+  @override
   String get addLabel => '追加';
 
   @override

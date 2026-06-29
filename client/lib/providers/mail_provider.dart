@@ -203,6 +203,56 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
+  /// 핀 고정/해제(R0001/0027) — 낙관적 갱신. 토글이 즉시 UI에 반영되도록 먼저
+  /// 로컬 상태를 바꾸고(핀은 목록 최상단으로 부상), 서버 PATCH 실패 시 되돌린다.
+  /// 열려 있는 상세(detail)가 같은 메일이면 그 상태도 함께 맞춘다. 서버 통합 목록은
+  /// `ORDER BY m.is_pinned DESC, m.sent_date DESC`라, 다음 재로딩에서도 같은 정렬이 유지된다.
+  Future<void> togglePin(String mailId, {bool? pinned}) async {
+    final idx = _mails.indexWhere((m) => m.mailId == mailId);
+    final current = idx >= 0
+        ? _mails[idx].isPinned
+        : (_detail?.mailId == mailId ? (_detail?.isPinned ?? false) : false);
+    final next = pinned ?? !current;
+    if (next == current && idx < 0 && _detail?.mailId != mailId) return;
+
+    // 실패 시 정확히 되돌릴 수 있도록 순서/상세 상태를 스냅샷한다(되돌리기는 단순
+    // 플래그 복원만으로는 부족 — _resortPinned가 이미 순서를 바꿔놨기 때문).
+    final prevOrder = List<MailSummary>.from(_mails);
+    final prevDetail = _detail;
+
+    // 낙관적 적용
+    if (idx >= 0) _mails[idx] = _mails[idx].copyWithPinned(next);
+    if (_detail?.mailId == mailId) _detail = _detail!.copyWithPinned(next);
+    _resortPinned();
+    notifyListeners();
+
+    try {
+      await _service.setPinned(mailId, next);
+    } catch (_) {
+      // 실패 시 토글 이전 상태(플래그+순서)를 그대로 복원한다(서버 미반영).
+      _mails
+        ..clear()
+        ..addAll(prevOrder);
+      _detail = prevDetail;
+      notifyListeners();
+    }
+  }
+
+  /// 핀 메일을 목록 최상단으로 올리되 그룹 내 상대 순서(수신 시각순)는 보존하는
+  /// 안정 정렬 — 서버의 `ORDER BY m.is_pinned DESC, m.sent_date DESC`와 동일한 시각 결과.
+  void _resortPinned() {
+    if (_mails.isEmpty) return;
+    final pinned = <MailSummary>[];
+    final rest = <MailSummary>[];
+    for (final m in _mails) {
+      (m.isPinned ? pinned : rest).add(m);
+    }
+    _mails
+      ..clear()
+      ..addAll(pinned)
+      ..addAll(rest);
+  }
+
   // ── compose/text/Draft (P0007 §7.5~§7.10) ───────────────────────────────────────
 
   /// text. success text null, failed text minutestext exampletext returntext(compose screentext branch).

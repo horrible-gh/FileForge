@@ -117,6 +117,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mailCopied => '클립보드에 복사했습니다';
 
   @override
+  String get mailPin => '고정';
+
+  @override
+  String get mailUnpin => '고정 해제';
+
+  @override
   String get addLabel => '추가';
 
   @override

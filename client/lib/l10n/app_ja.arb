@@ -42,6 +42,8 @@
   "mailCopyBody": "本文をコピー",
   "mailCopyFrom": "差出人アドレスをコピー",
   "mailCopied": "クリップボードにコピーしました",
+  "mailPin": "ピン留め",
+  "mailUnpin": "ピン留め解除",
   "addLabel": "追加",
   "removeLabel": "削除",
 

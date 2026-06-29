@@ -52,6 +52,17 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
+          // R0001(0027) — 핀 토글. 채워진 핀=고정됨. 상세에서 바로 고정/해제하면
+          // 목록도 같은 상태로 갱신된다(MailProvider.togglePin이 양쪽을 맞춤).
+          if (detail != null)
+            IconButton(
+              icon: Icon(detail.isPinned
+                  ? Icons.push_pin
+                  : Icons.push_pin_outlined),
+              tooltip: detail.isPinned ? t.mailUnpin : t.mailPin,
+              onPressed: () =>
+                  context.read<MailProvider>().togglePin(detail.mailId),
+            ),
           // Copy actions live behind a single overflow icon (R0001 — the user
           // asked for copy of subject/body/address but explicitly did NOT want
           // buttons scattered across the screen). The body is also drag-

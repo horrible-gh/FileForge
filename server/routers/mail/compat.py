@@ -182,6 +182,13 @@ def _summary_to_p0007(row: dict) -> dict:
         "snippet": snippet,
         "received_at": _iso(row.get("sent_date")),
         "is_read": bool(row.get("is_read")),
+        # R0001 (0027 mail pin): the integrated-mail SQL already SELECTs m.is_pinned
+        # (and m.is_starred), but this mapper used to drop both — so the client never
+        # received the pin state and could neither show it nor float pinned mail to the
+        # top. Surface is_pinned (and the sibling is_starred) here. (is_starred is free
+        # to expose and harmless to clients that ignore it.)
+        "is_pinned": bool(row.get("is_pinned")),
+        "is_starred": bool(row.get("is_starred")),
         "has_attachment": bool(row.get("has_attachments")),
         "labels": _labels_for(row),
         "account": {
@@ -575,6 +582,9 @@ def _detail_to_p0007(row: dict, attachments: list,
         "subject": row.get("subject") or "",
         "received_at": _iso(row.get("sent_date")),
         "is_read": bool(row.get("is_read")),
+        # R0001 (0027 mail pin) — get_mail SELECTs m.* so is_pinned is present; expose
+        # it so the detail screen's pin toggle reflects the current state on open.
+        "is_pinned": bool(row.get("is_pinned")),
         "body": {"format": body_format, "content": body_content},
         "attachments": attachments,
         "labels": _labels_for(row),
@@ -829,13 +839,28 @@ async def image_proxy(u: str, sig: str):
 
 
 @router.patch("/mails/{mail_id}")
-async def set_mail_read(mail_id: str, payload: dict = Body(default={}),
-                        user_uuid: str = Depends(current_user_uuid)):
-    """PATCH /mail/mails/{id} {is_read} — read/unread state."""
-    is_read = 1 if payload.get("is_read") else 0
-    sql = sqloader.load_sql(MAIL_JSON, "update_message_read")
-    db_instance.execute_query(sql, (is_read, mail_id))
-    return _ok({"mail_id": mail_id, "is_read": bool(is_read)})
+async def set_mail_flags(mail_id: str, payload: dict = Body(default={}),
+                         user_uuid: str = Depends(current_user_uuid)):
+    """PATCH /mail/mails/{id} {is_read?, is_pinned?} — read/unread & pin state.
+
+    Each flag is applied only when present in the payload, so a pin toggle never
+    clobbers the read state (and vice-versa). The pin UPDATE is scoped to the
+    caller's own mailboxes (ownership subquery on mail_accounts.user_uuid) — unlike
+    the legacy /mail/actions/pin route (R0001 / 0027.0003-NR defect A: IDOR), a user
+    can only pin/unpin messages that belong to one of their own accounts.
+    """
+    result = {"mail_id": mail_id}
+    if "is_read" in payload:
+        is_read = 1 if payload.get("is_read") else 0
+        sql = sqloader.load_sql(MAIL_JSON, "update_message_read")
+        db_instance.execute_query(sql, (is_read, mail_id))
+        result["is_read"] = bool(is_read)
+    if "is_pinned" in payload:
+        is_pinned = 1 if payload.get("is_pinned") else 0
+        sql = sqloader.load_sql(MAIL_JSON, "update_message_pinned")
+        db_instance.execute_query(sql, (is_pinned, mail_id, user_uuid))
+        result["is_pinned"] = bool(is_pinned)
+    return _ok(result)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
