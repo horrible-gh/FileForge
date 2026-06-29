@@ -122,6 +122,49 @@ void main() {
       expect(provider.mails.map((m) => m.mailId).toList(), ['m3', 'm1', 'm2']);
     });
 
+    test(
+        'partitions into pinned tray / chronological rest (R0001/0027 tray UX)',
+        () async {
+      final adapter = _StubAdapter({
+        'GET /mails': (
+          200,
+          {
+            'ok': true,
+            'data': [
+              _row('m1', pinned: true),
+              _row('m2'),
+              _row('m3', pinned: true),
+              _row('m4'),
+            ],
+            'meta': {'has_more': false}
+          }
+        ),
+        'PATCH /mails/m2': (200, {'ok': true, 'data': {'mail_id': 'm2', 'is_pinned': true}}),
+        'PATCH /mails/m1': (200, {'ok': true, 'data': {'mail_id': 'm1', 'is_pinned': false}}),
+      });
+      final provider = MailProvider(_dioWith(adapter));
+      await provider.loadInbox();
+
+      // Initial partition: pinned go to the tray, the rest to the body list —
+      // pinned are NOT duplicated into the chronological list.
+      expect(provider.pinnedMails.map((m) => m.mailId).toList(), ['m1', 'm3']);
+      expect(provider.unpinnedMails.map((m) => m.mailId).toList(), ['m2', 'm4']);
+
+      // Pinning m2 moves it from the body list into the tray immediately.
+      // The tray keeps the stable original position order (m2 sits between the
+      // already-pinned m1 and m3, matching the server's is_pinned-first sort).
+      await provider.togglePin('m2');
+      expect(provider.pinnedMails.map((m) => m.mailId).toList(),
+          ['m1', 'm2', 'm3']);
+      expect(provider.unpinnedMails.map((m) => m.mailId).toList(), ['m4']);
+
+      // Unpinning m1 drops it back out of the tray into the body list.
+      await provider.togglePin('m1');
+      expect(provider.pinnedMails.any((m) => m.mailId == 'm1'), false);
+      expect(provider.unpinnedMails.map((m) => m.mailId).toList(),
+          contains('m1'));
+    });
+
     test('reverts optimistic pin when the server PATCH fails', () async {
       final adapter = _StubAdapter({
         'GET /mails': (
