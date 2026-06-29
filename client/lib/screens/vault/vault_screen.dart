@@ -20,7 +20,20 @@ class VaultScreen extends StatelessWidget {
     final vault = context.watch<VaultProvider>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SecureBolt'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('SecureBolt'),
+            if (vault.isLocalMode) ...[
+              const SizedBox(width: 8),
+              const Chip(
+                label: Text('오프라인', style: TextStyle(fontSize: 11)),
+                visualDensity: VisualDensity.compact,
+                avatar: Icon(Icons.cloud_off, size: 14),
+              ),
+            ],
+          ],
+        ),
         actions: [
           if (vault.isUnlocked) ...[
             if (vault.isSyncing)
@@ -51,7 +64,9 @@ class VaultScreen extends StatelessWidget {
       body: vault.isUnlocked
           ? _VaultBody(vault: vault)
           : const _UnlockView(),
-      floatingActionButton: vault.isUnlocked
+      // Hide add while the vault is in a decrypt-failure state — saving would
+      // clobber the real (undecryptable) server vault (L0006 §5-B).
+      floatingActionButton: (vault.isUnlocked && !vault.hasDecryptError)
           ? FloatingActionButton(
               onPressed: () => _openEditor(context, vault, null),
               child: const Icon(Icons.add),
@@ -188,10 +203,40 @@ class _VaultBody extends StatelessWidget {
           ),
         ),
         if (vault.error != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(vault.error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: vault.hasDecryptError
+                  ? Theme.of(context).colorScheme.errorContainer
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  vault.hasDecryptError
+                      ? Icons.lock_reset
+                      : Icons.info_outline,
+                  size: 18,
+                  color: vault.hasDecryptError
+                      ? Theme.of(context).colorScheme.onErrorContainer
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    vault.error!,
+                    style: TextStyle(
+                      color: vault.hasDecryptError
+                          ? Theme.of(context).colorScheme.onErrorContainer
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         Expanded(
           child: entries.isEmpty

@@ -37,6 +37,16 @@ class VaultCrypto {
     return crypto.sha256.convert(utf8.encode(username + password)).toString();
   }
 
+  /// VAULT_KEY = `"vault_" + SHA256(MASTER_HASH).hex` (L0006 §1.2). The local
+  /// device-storage record key for the locked password bundle; the category
+  /// bundle uses this key plus the `"_categories"` suffix. Note the master hash
+  /// is hashed **once more** (SHA-256 of the 64-char hex string) before keying —
+  /// matching the legacy web client's `generateVaultKey(masterPassword)`
+  /// (database.js:19), so blobs round-trip across clients.
+  static String deviceVaultKey(String masterHash) {
+    return 'vault_${crypto.sha256.convert(utf8.encode(masterHash))}';
+  }
+
   /// EVP_BytesToKey (OpenSSL, MD5, iter=1) — L0006 §6.1.
   /// D1=MD5(pass‖salt), Dn=MD5(Dn-1‖pass‖salt); key=D1‖D2, iv=D3.
   static (Uint8List key, Uint8List iv) _evpBytesToKey(
