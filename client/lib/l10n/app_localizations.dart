@@ -316,6 +316,30 @@ abstract class AppLocalizations {
   /// **'Copied to clipboard'**
   String get mailCopied;
 
+  /// No description provided for @mailLinkOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get mailLinkOpenTitle;
+
+  /// No description provided for @mailLinkOpenConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this link in your external browser?'**
+  String get mailLinkOpenConfirm;
+
+  /// No description provided for @mailLinkOpenAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get mailLinkOpenAction;
+
+  /// No description provided for @mailLinkOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the link'**
+  String get mailLinkOpenFailed;
+
   /// No description provided for @mailPin.
   ///
   /// In en, this message translates to:

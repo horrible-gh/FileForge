@@ -27,6 +27,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 
+import '../utils/mail_link_launcher.dart';
+
 /// Renders an HTML mail body. Two invariants keep image loading from tripping
 /// the framework's debug assertions (R0001 / NR0003, and the 0005-TR rev0
 /// regression):
@@ -67,6 +69,13 @@ class MailHtmlBody extends StatelessWidget {
     return HtmlWidget(
       html,
       factoryBuilder: () => MailImageFactory(),
+      // R0001 / 0031 (NR0003 root cause A): fwfh-core only *styles* `<a href>`;
+      // it opens nothing unless the caller handles the tap. Route every anchor
+      // through the guarded launcher (scheme allow-list + confirm dialog). The
+      // tap is always treated as handled, so a refused/cancelled link never
+      // falls through to fwfh's no-op default. mailto:/tel: etc. are handled by
+      // the launcher's allow-list, not opened blindly.
+      onTapUrl: (url) => confirmAndOpenMailLink(context, url),
       // Per-element style overrides:
       //  - `<img>`: force block-level. An inline image becomes a WidgetSpan
       //    whose baseline the RenderParagraph computes via getDryBaseline,
