@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, Body, Request, UploadFile, File
 from fastapi.responses import JSONResponse, Response
 from typing import Optional, Tuple
 from datetime import datetime, timezone
-from util.mail_time import iso_utc
+from util.mail_time import iso_utc, now_utc_naive
 from email.utils import parseaddr, getaddresses
 from email.header import decode_header, make_header
 from urllib.parse import urlparse, urlencode
@@ -48,7 +48,7 @@ import httpx
 
 from config import settings, db, mail_storage_base, DBType
 from routers.login.auth import current_user_uuid
-from .sync import strip_html_to_text
+from .sync import strip_html_to_text, make_preview
 
 # A genuine HTML tag (``<div>``, ``<html lang=…>``, ``<br/>``, ``</p>``) — the tag
 # name must be followed by whitespace, ``>`` or ``/>``. This deliberately does NOT
@@ -147,7 +147,20 @@ def _account_to_p0007(row: dict) -> dict:
     }
 
 
+# System folders the P0007 client surfaces as fixed label tabs (mail_list_screen
+# kMailSystemLabels). Their identity is the `folder_type` enum value, NOT the
+# display name: a Sent folder is `folder_type='sent'` regardless of whether its
+# `folder_name` is "Sent", "보낸편지함" or "[Gmail]/Sent Mail". (B0001 / 0038)
+_SYSTEM_FOLDER_TYPES = ("inbox", "sent", "drafts", "trash", "spam")
+
+
 def _labels_for(row: dict) -> list:
+    # Prefer the canonical folder_type so the Sent tab (label 'sent') matches a
+    # sent folder no matter its localized display name (B0001 / 0038). Fall back to
+    # the display name for custom folders and to "inbox" when no folder is joined.
+    ftype = (row.get("folder_type") or "").strip().lower()
+    if ftype in _SYSTEM_FOLDER_TYPES:
+        return [ftype]
     folder = (row.get("folder_name") or "").strip().lower()
     return [folder] if folder else ["inbox"]
 
@@ -576,6 +589,9 @@ def _detail_to_p0007(row: dict, attachments: list,
     return {
         "mail_id": row.get("message_uuid", "") or "",
         "thread_id": "",
+        # R0001 (0035) — the *receiving* account this mail arrived at, so a reply/forward
+        # can default its sender to the same account instead of the arbitrary first one.
+        "account_id": row.get("account_uuid", "") or "",
         "from": {"name": row.get("from_name") or "", "address": row.get("from_email") or ""},
         "to": _addr_list(row.get("to_emails")),
         "cc": _addr_list(row.get("cc_emails")),
@@ -758,15 +774,32 @@ async def list_mails(
         )
         params.extend([pattern, pattern, pattern, pattern])
 
+    # B0001 / 0038: scope the list to the requested label *in SQL*, by the canonical
+    # folder_type. This makes the Sent tab (label 'sent') surface sent folders no
+    # matter their localized folder_name ("보낸편지함"/"[Gmail]/Sent Mail"), and — now
+    # that sent copies are persisted — keeps them from leaking into the Inbox tab.
+    # Filtering before pagination also avoids the current-page-only defect that the
+    # old post-fetch Python filter had. (Drafts are served from the JSON store above.)
+    lab = (label or "").strip().lower()
+    if lab and lab != "all":
+        ph = "?" if settings.DB_TYPE in (DBType.SQLITE, DBType.SQLITE3) else "%s"
+        if lab == "inbox":
+            # Inbox = inbox-type mail (plus folder-less orphans); never sent/trash/spam.
+            extra += " AND (f.folder_type = 'inbox' OR f.folder_type IS NULL) "
+        elif lab in _SYSTEM_FOLDER_TYPES:
+            extra += f" AND f.folder_type = {ph} "
+            params.append(lab)
+        else:
+            # Custom folder label — match the display name (legacy behavior).
+            extra += f" AND LOWER(f.folder_name) = {ph} "
+            params.append(lab)
+
     sql = mail1 + extra + mail2
     params.extend([lim + 1, offset])
     # fetch one extra row to compute has_more without a second COUNT query
     rows = db_instance.fetch_all(sql, tuple(params)) or []
     has_more = len(rows) > lim
     rows = rows[:lim]
-
-    if label and label.lower() not in ("inbox", "all", ""):
-        rows = [r for r in rows if (r.get("folder_name") or "").lower() == label.lower()]
 
     items = [_summary_to_p0007(r) for r in rows]
     meta = {
@@ -930,6 +963,95 @@ def _addrs_to_strings(items) -> list:
     return out
 
 
+def _persist_sent_message(user_uuid: str, account: dict, *, to_list, cc_list,
+                          bcc_list, subject, body_text, body_html) -> str:
+    """Store a copy of a just-sent message in the account's Sent folder (B0001 / 0038).
+
+    The previous compat send transmitted over SMTP/Gmail and returned a throwaway
+    uuid without writing anything to `mail_messages`, so the Sent tab — which reads
+    that table — was permanently empty. This mirrors the legacy
+    routers/mail/mail.py::send_mail save path (sent folder lookup/create + .eml +
+    row) but with dialect-portable sqloader SQL.
+
+    Best-effort by design: any storage failure is logged and swallowed so a hiccup
+    never turns an already-delivered message into an error. Returns the message_uuid
+    the row was (attempted to be) written under.
+    """
+    import time
+
+    message_uuid = str(uuid_lib.uuid4())
+    account_uuid = account.get("account_uuid")
+    try:
+        # 1) Resolve (or lazily create) the Sent folder by canonical folder_type.
+        folder_uuid = None
+        try:
+            row = db_instance.fetch_one(
+                sqloader.load_sql(MAIL_JSON, "inbox.get_sent_folder"), (account_uuid,))
+            if row:
+                folder_uuid = row.get("folder_uuid")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(f"[compat send/store] sent-folder lookup: {exc}")
+        if not folder_uuid:
+            folder_uuid = str(uuid_lib.uuid4())
+            db_instance.execute_query(
+                sqloader.load_sql(MAIL_JSON, "inbox.create_sent_folder"),
+                (folder_uuid, account_uuid, "Sent", "[Gmail]/Sent Mail"))
+
+        # 2) Build the RFC822 message. uid is negative so it never collides with a
+        #    positive IMAP UID a future Sent-folder sync might assign.
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        timestamp = int(time.time() * 1000000)  # microseconds
+        email_addr = account.get("email") or ""
+        domain = email_addr.split("@")[-1] if "@" in email_addr else "localhost"
+        message_id = f"<{message_uuid}.{timestamp}@{domain}>"
+        uid = -timestamp
+
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f"{account.get('account_name', email_addr)} <{email_addr}>"
+        msg["To"] = ", ".join(to_list)
+        if cc_list:
+            msg["Cc"] = ", ".join(cc_list)
+        msg["Subject"] = subject
+        if body_text:
+            msg.attach(MIMEText(body_text, "plain", "utf-8"))
+        if body_html:
+            msg.attach(MIMEText(body_html, "html", "utf-8"))
+        eml_str = msg.as_string()
+        size_bytes = len(eml_str.encode("utf-8"))
+
+        # 3) Persist the .eml beside received mail (best-effort — the DB row is what
+        #    the list actually reads; a write failure must not lose the Sent entry).
+        body_file_path = None
+        try:
+            eml_dir = os.path.join(
+                mail_storage_base(account_uuid=account_uuid), account_uuid, "messages")
+            os.makedirs(eml_dir, exist_ok=True)
+            path = os.path.join(eml_dir, f"{message_uuid}.eml")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(eml_str)
+            body_file_path = path
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"[compat send/store] eml write failed: {exc}")
+
+        # 4) Insert the Sent row (is_read=1 — the user authored it; naive-UTC per 0025).
+        sent_at = now_utc_naive()
+        db_instance.execute_query(
+            sqloader.load_sql(MAIL_JSON, "inbox.insert_sent_message"),
+            (
+                message_uuid, account_uuid, folder_uuid, message_id, uid,
+                email_addr, account.get("account_name", "") or "",
+                ", ".join(to_list), ", ".join(cc_list or []), ", ".join(bcc_list or []),
+                subject, make_preview(body_text, body_html, 200), sent_at, sent_at,
+                1, 0, 0, 0, body_file_path, size_bytes,
+            ))
+        logger.info(f"[compat send/store] sent copy stored: {message_uuid}")
+    except Exception as exc:  # noqa: BLE001 — never fail an already-sent message
+        logger.error(f"[compat send/store] failed to store sent copy: {exc}")
+    return message_uuid
+
+
 @router.post("/mails")
 def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current_user_uuid)):
     """POST /mail/mails — send a message from the user's primary account."""
@@ -947,7 +1069,23 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
     accounts = _resolve_accounts(user_uuid)
     if not accounts:
         return _err("VALIDATION_FAILED", "no connected account to send from", 400)
-    account = accounts[0]
+
+    # R0001 (0035) — sender selection. With multiple linked accounts the client may
+    # name which one to send from via `from_account_id` (P0007 SendPayload). When
+    # provided it MUST match one of *this user's* active accounts (ownership is
+    # already scoped by user_uuid in _resolve_accounts) — an unknown id is a
+    # validation error rather than a silent fallback that would leak the wrong From.
+    # When omitted, the default is the first account, now deterministic thanks to the
+    # `display_order, created_at, account_uuid` tiebreaker in get_user_accounts.
+    requested = (payload.get("from_account_id") or payload.get("account_id") or "").strip()
+    if requested:
+        account = next(
+            (a for a in accounts if str(a.get("account_uuid") or "") == requested), None)
+        if account is None:
+            return _err("VALIDATION_FAILED", "from_account_id is not a connected account",
+                        400, {"field": "from_account_id"})
+    else:
+        account = accounts[0]
 
     try:
         if account.get("account_type") == "gmail":
@@ -990,7 +1128,10 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
                 smtp.connection.sendmail(account["email"], all_recipients, msg.as_string())
             finally:
                 smtp.disconnect()
-            return _ok({"mail_id": str(uuid_lib.uuid4()), "status": "sent"})
+            mid = _persist_sent_message(
+                user_uuid, account, to_list=to_list, cc_list=cc_list, bcc_list=bcc_list,
+                subject=subject, body_text=body_text, body_html=body_html)
+            return _ok({"mail_id": mid, "status": "sent"})
         from services.smtp_service import SMTPService
         smtp_password = decrypt_password(
             settings.SECRET_KEY, user_uuid, account["smtp_password_encrypted"])
@@ -1023,7 +1164,10 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
         logger.error(f"[compat send] {exc}")
         return _err("SEND_FAILED", str(exc), 502)
 
-    return _ok({"mail_id": str(uuid_lib.uuid4()), "status": "sent"})
+    mid = _persist_sent_message(
+        user_uuid, account, to_list=to_list, cc_list=cc_list, bcc_list=bcc_list,
+        subject=subject, body_text=body_text, body_html=body_html)
+    return _ok({"mail_id": mid, "status": "sent"})
 
 
 # ──────────────────────────────────────────────────────────────────────────────

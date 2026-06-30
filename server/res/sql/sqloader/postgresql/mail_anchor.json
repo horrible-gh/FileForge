@@ -1,5 +1,5 @@
 {
-  "get_user_accounts": "SELECT * FROM mail_accounts WHERE user_uuid = %s AND status = 'active' ORDER BY display_order",
+  "get_user_accounts": "SELECT * FROM mail_accounts WHERE user_uuid = %s AND status = 'active' ORDER BY display_order, created_at, account_uuid",
   "get_account": "SELECT * FROM mail_accounts WHERE account_uuid = %s",
   "get_account_folders": "SELECT * FROM mail_folders WHERE account_uuid = %s ORDER BY display_order, folder_name",
   "insert_folder": "INSERT INTO mail_folders (account_uuid, folder_name, folder_path, folder_type) VALUES (%s, %s, %s, %s)",
@@ -26,7 +26,10 @@
     "get_integrated_count": "inbox/get_integrated_count.sql",
     "get_mail": "inbox/get_mail.sql",
     "get_attachment": "SELECT attachment_uuid, filename, content_type, size_bytes, file_path FROM mail_attachments WHERE message_uuid = %s ORDER BY created_at",
-    "get_attachment_for_download": "SELECT a.attachment_uuid, a.filename, a.content_type, a.size_bytes, a.file_path FROM mail_attachments a JOIN mail_messages m ON a.message_uuid = m.message_uuid JOIN mail_accounts ac ON m.account_uuid = ac.account_uuid WHERE a.attachment_uuid = %s AND a.message_uuid = %s AND ac.user_uuid = %s"
+    "get_attachment_for_download": "SELECT a.attachment_uuid, a.filename, a.content_type, a.size_bytes, a.file_path FROM mail_attachments a JOIN mail_messages m ON a.message_uuid = m.message_uuid JOIN mail_accounts ac ON m.account_uuid = ac.account_uuid WHERE a.attachment_uuid = %s AND a.message_uuid = %s AND ac.user_uuid = %s",
+    "get_sent_folder": "SELECT folder_uuid FROM mail_folders WHERE account_uuid = %s AND folder_type = 'sent' LIMIT 1",
+    "create_sent_folder": "INSERT INTO mail_folders (folder_uuid, account_uuid, folder_name, folder_path, folder_type) VALUES (%s, %s, %s, %s, 'sent')",
+    "insert_sent_message": "INSERT INTO mail_messages (message_uuid, account_uuid, folder_uuid, message_id, uid, from_email, from_name, to_emails, cc_emails, bcc_emails, subject, preview, sent_date, received_date, is_read, is_starred, is_deleted, has_attachments, body_file_path, size_bytes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
   },
   "labels": {
     "assign_label": "labels/assign_label.sql",
