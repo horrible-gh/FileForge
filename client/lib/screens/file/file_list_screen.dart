@@ -24,6 +24,7 @@ import '../../widgets/note_card_grid.dart';
 import '../../widgets/upload_panel.dart';
 import '../../widgets/share_link_bottom_sheet.dart';
 import '../../utils/file_type_helper.dart';
+import '../../l10n/app_localizations.dart';
 import '../preview/file_preview_screen.dart';
 
 // text text import — kIsWeb guard translated text text
@@ -120,6 +121,7 @@ class _FileListScreenState extends State<FileListScreen> {
   }
 
   void _navigateToFolder(BuildContext context, String? nodeUuid) {
+    final t = AppLocalizations.of(context);
     final storageProvider = context.read<StorageProvider>();
     final storageUuid =
         widget.storageUuid ?? storageProvider.currentStorage?.storageUuid;
@@ -127,7 +129,7 @@ class _FileListScreenState extends State<FileListScreen> {
       final messenger = ScaffoldMessenger.of(context);
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Storage not found.')),
+        SnackBar(content: Text(t.storageNotFound)),
       );
       return;
     }
@@ -232,6 +234,7 @@ class _FileListScreenState extends State<FileListScreen> {
 
   /// download — text file/folder
   Future<void> _handleDownload(Node node) async {
+    final t = AppLocalizations.of(context);
     try {
       final response = await _storageService.download(
         storageUuid: _storageUuid,
@@ -241,7 +244,7 @@ class _FileListScreenState extends State<FileListScreen> {
       );
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
-        if (mounted) AppToast.error(context, 'Download failed');
+        if (mounted) AppToast.error(context, t.fileDownloadFailed);
         return;
       }
 
@@ -250,16 +253,17 @@ class _FileListScreenState extends State<FileListScreen> {
           ?? (node.isFolder ? '${node.name}.zip' : node.name);
       await DownloadSaveService.saveBytes(bytes: bytes, filename: filename);
 
-      if (mounted) AppToast.success(context, 'Download complete');
+      if (mounted) AppToast.success(context, t.fileDownloadComplete);
       AppLogger.info('FileListScreen', 'Download complete: $filename');
     } on DioException catch (e) {
       AppLogger.error('FileListScreen', 'Download failed: ${e.response?.statusCode}');
-      if (mounted) AppToast.error(context, 'Download failed');
+      if (mounted) AppToast.error(context, t.fileDownloadFailed);
     }
   }
 
   /// name change
   Future<void> _handleRename(Node node) async {
+    final t = AppLocalizations.of(context);
     final newName = await FileOperationDialogs.showRenameDialog(
       context,
       currentName: node.name,
@@ -274,21 +278,22 @@ class _FileListScreenState extends State<FileListScreen> {
         nodeUuid: node.nodeUuid!,
         newName: newName,
       );
-      if (mounted) AppToast.success(context, 'Renamed');
+      if (mounted) AppToast.success(context, t.fileRenamed);
       _refreshAfterOperation(node.isFolder);
     } on DioException catch (e) {
       if (e.response?.statusCode == 409) {
-        if (mounted) AppToast.error(context, 'A file with this name already exists');
+        if (mounted) AppToast.error(context, t.fileNameExists);
         // translated text translated text
         if (mounted) _handleRename(node);
       } else {
-        if (mounted) AppToast.error(context, 'Failed to rename');
+        if (mounted) AppToast.error(context, t.fileRenameFailed);
       }
     }
   }
 
   /// delete
   Future<void> _handleDelete(Node node) async {
+    final t = AppLocalizations.of(context);
     final confirmed = await FileOperationDialogs.showDeleteConfirmDialog(
       context,
       name: node.name,
@@ -302,14 +307,14 @@ class _FileListScreenState extends State<FileListScreen> {
         groupUuid: _groupUuid,
         nodeUuid: node.nodeUuid!,
       );
-      if (mounted) AppToast.success(context, 'Deleted');
+      if (mounted) AppToast.success(context, t.fileDeleted);
       _refreshAfterOperation(node.isFolder);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        if (mounted) AppToast.error(context, 'Item not found');
+        if (mounted) AppToast.error(context, t.itemNotFound);
         _refreshAfterOperation(true);
       } else {
-        if (mounted) AppToast.error(context, 'Failed to delete');
+        if (mounted) AppToast.error(context, t.fileDeleteFailed);
       }
     }
   }
@@ -321,6 +326,7 @@ class _FileListScreenState extends State<FileListScreen> {
 
   /// note create translated text → empty .md upload → FilePreviewScreen text text (T046)
   Future<void> _handleNoteCreate() async {
+    final t = AppLocalizations.of(context);
     final nameController = TextEditingController(text: 'New Note');
     bool isUploading = false;
 
@@ -384,12 +390,12 @@ class _FileListScreenState extends State<FileListScreen> {
                 setDialogState(() => isUploading = false);
                 if (e.response?.statusCode == 409) {
                   if (mounted) {
-                    AppToast.error(context, 'A note with this name already exists');
+                    AppToast.error(context, t.noteNameExists);
                   }
                   // 409: translated text keep — poptext text
                 } else {
                   if (mounted) {
-                    AppToast.error(context, 'Failed to create note');
+                    AppToast.error(context, t.noteCreateFailed);
                   }
                   Navigator.pop(dialogContext);
                 }
@@ -397,14 +403,14 @@ class _FileListScreenState extends State<FileListScreen> {
             }
 
             return AlertDialog(
-              title: const Text('New Note'),
+              title: Text(t.noteNew),
               content: TextField(
                 controller: nameController,
                 autofocus: true,
                 enabled: !isUploading,
                 onChanged: (_) => setDialogState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Note name',
+                  hintText: t.noteName,
                   errorText: isInvalid
                       ? r'File names cannot contain these characters: (/ \ : * ? " < > |)'
                       : null,
@@ -413,7 +419,7 @@ class _FileListScreenState extends State<FileListScreen> {
               actions: [
                 TextButton(
                   onPressed: isUploading ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
+                  child: Text(t.cancel),
                 ),
                 TextButton(
                   onPressed: canConfirm ? onConfirm : null,
@@ -423,7 +429,7 @@ class _FileListScreenState extends State<FileListScreen> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Create'),
+                      : Text(t.commonCreate),
                 ),
               ],
             );
@@ -443,6 +449,7 @@ class _FileListScreenState extends State<FileListScreen> {
       return;
     }
 
+    final t = AppLocalizations.of(context);
     // text translated text text — translated text text filetext empty string
     final dotIndex = node.name.lastIndexOf('.');
     final ext = dotIndex > 0 ? node.name.substring(dotIndex) : '';
@@ -488,28 +495,28 @@ class _FileListScreenState extends State<FileListScreen> {
                 );
                 if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext);
-                if (mounted) AppToast.success(context, 'Renamed');
+                if (mounted) AppToast.success(context, t.fileRenamed);
                 _refreshAfterOperation(false);
               } on DioException catch (e) {
                 if (!dialogContext.mounted) return;
                 if (e.response?.statusCode == 409) {
-                  if (mounted) AppToast.error(context, 'A note with this name already exists');
+                  if (mounted) AppToast.error(context, t.noteNameExists);
                   // 409: translated text keep
                 } else {
-                  if (mounted) AppToast.error(context, 'Failed to rename');
+                  if (mounted) AppToast.error(context, t.fileRenameFailed);
                   Navigator.pop(dialogContext);
                 }
               }
             }
 
             return AlertDialog(
-              title: const Text('Rename'),
+              title: Text(t.commonRename),
               content: TextField(
                 controller: nameController,
                 autofocus: true,
                 onChanged: (_) => setDialogState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Note name',
+                  hintText: t.noteName,
                   errorText: isInvalid
                       ? r'File names cannot contain these characters: (/ \ : * ? " < > |)'
                       : null,
@@ -518,11 +525,11 @@ class _FileListScreenState extends State<FileListScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
+                  child: Text(t.cancel),
                 ),
                 TextButton(
                   onPressed: canConfirm ? onConfirm : null,
-                  child: const Text('Confirm'),
+                  child: Text(t.commonConfirm),
                 ),
               ],
             );
@@ -642,6 +649,7 @@ class _FileListScreenState extends State<FileListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final fileProvider = context.watch<FileProvider>();
     final storageProvider = context.watch<StorageProvider>();
     final selectionProvider = context.watch<SelectionProvider>();
@@ -651,15 +659,15 @@ class _FileListScreenState extends State<FileListScreen> {
     }
 
     if (storageProvider.storages.isEmpty) {
-      return const EmptyState(
-        message: 'No storages',
+      return EmptyState(
+        message: t.listEmptyNoStorages,
         icon: Icons.storage_rounded,
       );
     }
 
     if (fileProvider.error != null && !fileProvider.isLoading) {
       return ErrorRetry(
-        message: 'Failed to load list',
+        message: t.listLoadFailed,
         onRetry: _refresh,
       );
     }
@@ -708,8 +716,8 @@ class _FileListScreenState extends State<FileListScreen> {
               SliverFillRemaining(
                 child: EmptyState(
                   message: fileProvider.isSearchMode
-                      ? 'No search results'
-                      : 'No files',
+                      ? t.searchNoResults
+                      : t.filesEmpty,
                 ),
               )
             else
@@ -853,7 +861,7 @@ class _FileListScreenState extends State<FileListScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Drop files here',
+                                t.uploadDropHere,
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleMedium

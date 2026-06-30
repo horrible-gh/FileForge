@@ -21,8 +21,8 @@ class BoltBlob {
 ///
 /// [decryptFailed] is `true` when at least one **non-empty** blob existed but
 /// could not be decrypted with the current master hash — the strong signal of a
-/// wrong login password. The caller must surface this (L0006 §5-B: "사용자에
-/// 복호화 실패 안내") and must NOT treat the (possibly empty) [data] as a clean
+/// wrong login password. The caller must surface this (L0006 §5-B: "notify the
+/// user of the decryption failure") and must NOT treat the (possibly empty) [data] as a clean
 /// vault to push over, or it would clobber the real server blob with a
 /// wrong-key / empty re-lock.
 class VaultPullResult {
@@ -131,7 +131,7 @@ class VaultService {
     );
   }
 
-  /// load_local_vault (L0006 §3.1, P0005 시나리오 7). Opens the vault from the
+  /// load_local_vault (L0006 §3.1, P0005 scenario 7). Opens the vault from the
   /// device-stored locked blobs **without any server call**. Returns an empty
   /// vault if nothing is stored locally, and flags [VaultPullResult.decryptFailed]
   /// if a stored blob cannot be decrypted with [masterHash].

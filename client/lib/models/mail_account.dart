@@ -44,7 +44,7 @@ class MailAccount {
 
   bool get isConnected => status == 'connected';
 
-  /// 서버가 OAuth credential 유실 시 부여하는 상태(0018.0009-TR). 이 계정은
-  /// 메일 송수신 전에 사용자가 다시 OAuth 연결(재인증)해야 한다.
+  /// State the server assigns when OAuth credentials are lost (0018.0009-TR). This
+  /// account must be re-connected (re-authenticated) via OAuth before sending/receiving mail.
   bool get needsReauth => status == 'reauth_required';
 }

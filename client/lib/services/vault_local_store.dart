@@ -1,11 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Device-local store for the SecureBolt vault's *locked* blobs (L0006 §1.2,
-/// D0004 "로컬 보관소" component).
+/// D0004 "local store" component).
 ///
 /// The vault mirrors each pushed/pulled blob to local storage keyed by
 /// [VaultCrypto.deviceVaultKey] so the vault can be opened **without the server**
-/// (LOCAL_MODE — P0005 시나리오 7 / L0006 §3.1). Only the opaque `Salted__…`
+/// (LOCAL_MODE — P0005 scenario 7 / L0006 §3.1). Only the opaque `Salted__…`
 /// ciphertext is ever stored here — never plaintext and never the master hash —
 /// so the zero-knowledge property holds on the device too.
 abstract class VaultLocalStore {

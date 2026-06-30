@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/node.dart';
 import '../providers/selection_provider.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/empty_state.dart';
 import 'note_card.dart';
 
@@ -30,6 +31,7 @@ class NoteCardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cardAspectRatio =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android
             ? 1.39
@@ -39,14 +41,14 @@ class NoteCardGrid extends StatelessWidget {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const EmptyState(
-            message: 'No notes',
+          EmptyState(
+            message: t.notesEmpty,
             icon: Icons.note_outlined,
           ),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: onAddNote,
-            child: const Text('Create New Note'),
+            child: Text(t.noteCreateNew),
           ),
         ],
       );
@@ -111,6 +113,7 @@ class _AddNoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -122,7 +125,7 @@ class _AddNoteCard extends StatelessWidget {
             Icon(Icons.add, size: 32, color: colorScheme.primary),
             const SizedBox(height: 8),
             Text(
-              'New Note',
+              t.noteNew,
               style: TextStyle(
                 fontSize: 13,
                 color: colorScheme.primary,

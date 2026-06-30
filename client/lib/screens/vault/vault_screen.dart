@@ -2,10 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/vault.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vault_provider.dart';
 import '../../widgets/app_toast.dart';
+
+/// Maps the provider's locale-independent [VaultMessage] code to a localized
+/// status/error string (i18n, fileforge.default.0003). [VaultMessage.none]
+/// falls back to the provider's raw [VaultProvider.error] (e.g. an unexpected
+/// exception or a server-supplied message that has no fixed translation).
+String? localizedVaultMessage(AppLocalizations t, VaultProvider vault) {
+  switch (vault.messageCode) {
+    case VaultMessage.decryptBanner:
+      return t.vaultMsgDecryptBanner;
+    case VaultMessage.decryptBlockedSave:
+      return t.vaultMsgDecryptBlockedSave;
+    case VaultMessage.offlineMode:
+      return t.vaultMsgOfflineMode;
+    case VaultMessage.offlineSaved:
+      return t.vaultMsgOfflineSaved;
+    case VaultMessage.sessionExpired:
+      return t.vaultMsgSessionExpired;
+    case VaultMessage.syncFailed:
+      return t.vaultMsgSyncFailed;
+    case VaultMessage.none:
+      return vault.error;
+  }
+}
+
+/// Localized display name for a vault category. The three default categories
+/// have fixed ids ({work, personal, entertainment}, L0006 §1.3) and are
+/// translated; custom (user-created) categories keep their stored name.
+String vaultCategoryName(AppLocalizations t, VaultCategory c) {
+  switch (c.id) {
+    case 'work':
+      return t.vaultCategoryWork;
+    case 'personal':
+      return t.vaultCategoryPersonal;
+    case 'entertainment':
+      return t.vaultCategoryEntertainment;
+    default:
+      return c.name;
+  }
+}
 
 /// SecureBolt vault screen (fileforge.securebolt.0001 / D0004 §6).
 ///
@@ -17,6 +57,7 @@ class VaultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final vault = context.watch<VaultProvider>();
     return Scaffold(
       appBar: AppBar(
@@ -26,10 +67,10 @@ class VaultScreen extends StatelessWidget {
             const Text('SecureBolt'),
             if (vault.isLocalMode) ...[
               const SizedBox(width: 8),
-              const Chip(
-                label: Text('오프라인', style: TextStyle(fontSize: 11)),
+              Chip(
+                label: Text(t.vaultOffline, style: const TextStyle(fontSize: 11)),
                 visualDensity: VisualDensity.compact,
-                avatar: Icon(Icons.cloud_off, size: 14),
+                avatar: const Icon(Icons.cloud_off, size: 14),
               ),
             ],
           ],
@@ -50,12 +91,12 @@ class VaultScreen extends StatelessWidget {
             else
               IconButton(
                 icon: const Icon(Icons.refresh),
-                tooltip: 'Sync',
+                tooltip: t.vaultSync,
                 onPressed: () => vault.refresh(),
               ),
             IconButton(
               icon: const Icon(Icons.lock_outline),
-              tooltip: 'Lock',
+              tooltip: t.vaultLock,
               onPressed: () => vault.lock(),
             ),
           ],
@@ -121,6 +162,7 @@ class _VaultToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
       child: Row(
@@ -131,10 +173,10 @@ class _VaultToolbar extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold)),
           if (vault.isLocalMode) ...[
             const SizedBox(width: 8),
-            const Chip(
-              label: Text('오프라인', style: TextStyle(fontSize: 11)),
+            Chip(
+              label: Text(t.vaultOffline, style: const TextStyle(fontSize: 11)),
               visualDensity: VisualDensity.compact,
-              avatar: Icon(Icons.cloud_off, size: 14),
+              avatar: const Icon(Icons.cloud_off, size: 14),
             ),
           ],
           const Spacer(),
@@ -150,12 +192,12 @@ class _VaultToolbar extends StatelessWidget {
           else
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Sync',
+              tooltip: t.vaultSync,
               onPressed: () => vault.refresh(),
             ),
           IconButton(
             icon: const Icon(Icons.lock_outline),
-            tooltip: 'Lock',
+            tooltip: t.vaultLock,
             onPressed: () => vault.lock(),
           ),
         ],
@@ -169,6 +211,7 @@ Future<void> _openEditor(
   VaultProvider vault,
   VaultPasswordEntry? existing,
 ) async {
+  final t = AppLocalizations.of(context);
   final entry = await showDialog<VaultPasswordEntry>(
     context: context,
     builder: (_) => _EntryEditorDialog(
@@ -180,9 +223,9 @@ Future<void> _openEditor(
   final ok = await vault.savePassword(entry);
   if (!context.mounted) return;
   if (ok) {
-    AppToast.success(context, '저장되었습니다');
+    AppToast.success(context, t.vaultSaved);
   } else {
-    AppToast.error(context, vault.error ?? '저장에 실패했습니다');
+    AppToast.error(context, localizedVaultMessage(t, vault) ?? t.vaultSaveFailed);
   }
 }
 
@@ -215,6 +258,7 @@ class _UnlockViewState extends State<_UnlockView> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
@@ -225,13 +269,13 @@ class _UnlockViewState extends State<_UnlockView> {
             children: [
               const Icon(Icons.shield_outlined, size: 64),
               const SizedBox(height: 16),
-              const Text(
-                '볼트 잠금 해제',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                t.vaultUnlockTitle,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '로그인 비밀번호로 볼트를 엽니다. 비밀번호는 기기 밖으로 나가지 않습니다.',
+              Text(
+                t.vaultUnlockDesc,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -239,9 +283,9 @@ class _UnlockViewState extends State<_UnlockView> {
                 controller: _controller,
                 obscureText: true,
                 autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: '비밀번호',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.commonPassword,
+                  border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _unlock(),
               ),
@@ -256,7 +300,7 @@ class _UnlockViewState extends State<_UnlockView> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('잠금 해제'),
+                      : Text(t.vaultUnlock),
                 ),
               ),
             ],
@@ -274,6 +318,7 @@ class _VaultBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final entries = vault.passwords;
     final catById = {for (final c in vault.categories) c.id: c};
     return Column(
@@ -281,10 +326,10 @@ class _VaultBody extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(12),
           child: TextField(
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: '검색',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: t.commonSearch,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
             onChanged: vault.setQuery,
@@ -315,7 +360,7 @@ class _VaultBody extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    vault.error!,
+                    localizedVaultMessage(t, vault) ?? '',
                     style: TextStyle(
                       color: vault.hasDecryptError
                           ? Theme.of(context).colorScheme.onErrorContainer
@@ -328,7 +373,7 @@ class _VaultBody extends StatelessWidget {
           ),
         Expanded(
           child: entries.isEmpty
-              ? const Center(child: Text('저장된 항목이 없습니다'))
+              ? Center(child: Text(t.vaultEmpty))
               : ListView.separated(
                   itemCount: entries.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
@@ -347,18 +392,18 @@ class _VaultBody extends StatelessWidget {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.copy, size: 18),
-                            tooltip: '비밀번호 복사',
+                            tooltip: t.vaultCopyPassword,
                             onPressed: () async {
                               await Clipboard.setData(
                                   ClipboardData(text: e.password));
                               if (context.mounted) {
-                                AppToast.success(context, '비밀번호를 복사했습니다');
+                                AppToast.success(context, t.vaultPasswordCopied);
                               }
                             },
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 18),
-                            tooltip: '삭제',
+                            tooltip: t.commonDelete,
                             onPressed: () => _confirmDelete(context, vault, e),
                           ),
                         ],
@@ -377,19 +422,20 @@ class _VaultBody extends StatelessWidget {
     VaultProvider vault,
     VaultPasswordEntry e,
   ) async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('삭제'),
-        content: Text("'${e.title}' 항목을 삭제할까요?"),
+        title: Text(t.commonDelete),
+        content: Text(t.vaultDeleteConfirm(e.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text(t.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -398,9 +444,10 @@ class _VaultBody extends StatelessWidget {
     final done = await vault.deletePassword(e.id);
     if (!context.mounted) return;
     if (done) {
-      AppToast.success(context, '삭제되었습니다');
+      AppToast.success(context, t.vaultDeleted);
     } else {
-      AppToast.error(context, vault.error ?? '삭제에 실패했습니다');
+      AppToast.error(
+          context, localizedVaultMessage(t, vault) ?? t.vaultDeleteFailed);
     }
   }
 }
@@ -467,44 +514,47 @@ class _EntryEditorDialogState extends State<_EntryEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cats = widget.categories.isNotEmpty
         ? widget.categories
         : kDefaultVaultCategories;
     return AlertDialog(
-      title: Text(widget.existing == null ? '새 항목' : '항목 편집'),
+      title: Text(widget.existing == null ? t.vaultEntryNew : t.vaultEntryEdit),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _field(_title, '제목'),
-            _field(_username, '사용자명'),
-            _field(_password, '비밀번호', obscure: true),
+            _field(_title, t.vaultFieldTitle),
+            _field(_username, t.commonUsername),
+            _field(_password, t.commonPassword, obscure: true),
             _field(_url, 'URL'),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue:
                   cats.any((c) => c.id == _category) ? _category : cats.first.id,
-              decoration: const InputDecoration(
-                labelText: '분류',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: t.vaultFieldCategory,
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
               items: [
                 for (final c in cats)
-                  DropdownMenuItem(value: c.id, child: Text('${c.icon} ${c.name}')),
+                  DropdownMenuItem(
+                      value: c.id,
+                      child: Text('${c.icon} ${vaultCategoryName(t, c)}')),
               ],
               onChanged: (v) => setState(() => _category = v ?? _category),
             ),
-            _field(_notes, '메모'),
+            _field(_notes, t.vaultFieldNotes),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('취소'),
+          child: Text(t.cancel),
         ),
-        FilledButton(onPressed: _save, child: const Text('저장')),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
       ],
     );
   }

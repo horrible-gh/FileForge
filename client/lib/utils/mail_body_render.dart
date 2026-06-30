@@ -1,4 +1,4 @@
-/// Mail body rendering helpers (R0001 / 0007 — "이미지 표시가 되지 않음").
+/// Mail body rendering helpers (R0001 / 0007 — "images were not displaying").
 ///
 /// The mail detail body used to be rendered by stripping **every** HTML tag,
 /// which removed `<img>` too — so no picture ever showed. This splits an HTML

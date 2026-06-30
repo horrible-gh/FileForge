@@ -3,9 +3,10 @@ import '../models/mail.dart';
 import 'mail_compose.dart';
 import 'mail_envelope.dart';
 
-/// POST /sync 결과(F) — 기본 계정의 동기화 종료 상태.
-/// [applied]는 이번 동기화로 로컬에 병합된 변경 건수, [reauthRequired]는 서버가 계정을
-/// reauth_required로 떨어뜨렸는지 여부(재인증 필요).
+/// POST /sync result (F) — the sync end state for the primary account.
+/// [applied] is the number of changes merged into local storage by this sync;
+/// [reauthRequired] is whether the server dropped the account to reauth_required
+/// (re-authentication needed).
 class SyncResult {
   final String state;
   final int applied;
@@ -55,10 +56,11 @@ class MailService {
     );
   }
 
-  /// POST /sync — 사용자의 연결된 계정에 대해 받은편지함 동기화를 트리거(F, P0007 §7.15).
-  /// 서버는 백그라운드 워커 없이 IMAP fetch를 인라인으로 수행하므로, 이 호출이 반환될
-  /// 때면 신규 수신 메일이 이미 로컬 store에 병합되어 있다. 수신(inbound)은 송신과 달리
-  /// 이 트리거가 있어야 채워진다(R0001: 수신이 되지 않던 근본원인 = 동기화 미트리거).
+  /// POST /sync — triggers an inbox sync for the user's connected accounts (F, P0007 §7.15).
+  /// The server performs the IMAP fetch inline (no background worker), so by the
+  /// time this call returns, newly received mail is already merged into the local
+  /// store. Unlike sending, inbound mail is only populated when this trigger fires
+  /// (R0001: the root cause of mail not being received = the sync was never triggered).
   Future<SyncResult> triggerSync() async {
     final resp = await _dio.post('/sync');
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
@@ -86,9 +88,10 @@ class MailService {
     unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
   }
 
-  /// PATCH /mails/{mail_id} {is_pinned} — 핀 고정/해제(R0001/0027).
-  /// 서버는 is_read와 동일한 PATCH 엔드포인트에서 is_pinned를 받으며, 소유자
-  /// 스코프(인증 user_uuid)로만 갱신한다(레거시 /actions/pin IDOR 회피).
+  /// PATCH /mails/{mail_id} {is_pinned} — pin/unpin (R0001/0027).
+  /// The server accepts is_pinned on the same PATCH endpoint as is_read and
+  /// updates only within the owner scope (authenticated user_uuid), avoiding the
+  /// legacy /actions/pin IDOR.
   Future<void> setPinned(String mailId, bool isPinned) async {
     final resp = await _dio.patch(
       '/mails/$mailId',
@@ -137,7 +140,7 @@ class MailService {
   /// DELETE /drafts/{draft_id} — Draft delete.
   Future<void> deleteDraft(String draftId) async {
     final resp = await _dio.delete('/drafts/$draftId');
-    // 204(Body None)text translated text text text text — text text text.
+    // 204 (Body None) has no envelope to unwrap — return early.
     if (resp.statusCode == 204 || resp.data == null) return;
     unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
   }
@@ -167,11 +170,12 @@ class MailService {
     return MailAttachment.fromJson(expectMapData(data, httpStatus: resp.statusCode));
   }
 
-  /// GET /files/attachment/{mailId}/{attachmentId} — 첨부파일 다운로드(NR0003 §4).
+  /// GET /files/attachment/{mailId}/{attachmentId} — attachment download (NR0003 §4).
   ///
-  /// 서버는 인증 토큰에서 user_uuid를 도출해 소유자 스코프로 첨부를 반환한다
-  /// (verbose `/mail/files/*` 엔드포인트 재사용). 응답 바이트와 Content-Disposition
-  /// 헤더는 호출부가 [DownloadSaveService.saveBytes]로 위임해 저장한다.
+  /// The server derives user_uuid from the auth token and returns the attachment
+  /// within the owner scope (reusing the verbose `/mail/files/*` endpoint). The
+  /// caller delegates the response bytes and Content-Disposition header to
+  /// [DownloadSaveService.saveBytes] for saving.
   Future<Response<List<int>>> downloadAttachment({
     required String mailId,
     required String attachmentId,

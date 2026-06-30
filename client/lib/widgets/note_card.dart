@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/node.dart';
 
 /// file nametext translated text translated text text translated text returntext.
@@ -10,12 +11,12 @@ String getNoteName(String name) {
 
 /// [T043] modifiedAt text text text string return.
 /// null text empty string return.
-String formatRelativeDate(DateTime? modifiedAt) {
+String formatRelativeDate(DateTime? modifiedAt, AppLocalizations t) {
   if (modifiedAt == null) return '';
   final diff = DateTime.now().difference(modifiedAt);
-  if (diff.inMinutes < 1) return 'Just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
-  if (diff.inHours < 24) return '${diff.inHours} hours ago';
+  if (diff.inMinutes < 1) return t.relativeJustNow;
+  if (diff.inMinutes < 60) return t.relativeMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return t.relativeHoursAgo(diff.inHours);
   return '${modifiedAt.month}/${modifiedAt.day}';
 }
 
@@ -60,6 +61,7 @@ class NoteCard extends StatelessWidget {
   }
 
   Widget _buildFileContent(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +106,7 @@ class NoteCard extends StatelessWidget {
         const SizedBox(height: 4),
         // text: text text
         Text(
-          formatRelativeDate(node.modifiedAt),
+          formatRelativeDate(node.modifiedAt, t),
           style: TextStyle(
             fontSize: 11,
             color: colorScheme.outline,
@@ -115,6 +117,7 @@ class NoteCard extends StatelessWidget {
   }
 
   Widget _buildFolderContent(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +145,7 @@ class NoteCard extends StatelessWidget {
         const Spacer(),
         // text: updatetext
         Text(
-          formatRelativeDate(node.modifiedAt),
+          formatRelativeDate(node.modifiedAt, t),
           style: TextStyle(
             fontSize: 11,
             color: colorScheme.outline,
@@ -183,6 +186,7 @@ class _KebabMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return PopupMenuButton<String>(
       padding: EdgeInsets.zero,
       icon: const Icon(Icons.more_vert, size: 18),
@@ -190,9 +194,9 @@ class _KebabMenu extends StatelessWidget {
         if (value == 'rename') onRename?.call();
         if (value == 'delete') onDelete?.call();
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(value: 'rename', child: Text('Rename')),
-        PopupMenuItem(value: 'delete', child: Text('Delete')),
+      itemBuilder: (_) => [
+        PopupMenuItem(value: 'rename', child: Text(t.commonRename)),
+        PopupMenuItem(value: 'delete', child: Text(t.commonDelete)),
       ],
     );
   }

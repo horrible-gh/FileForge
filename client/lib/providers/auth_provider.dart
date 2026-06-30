@@ -71,21 +71,23 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// logout/session expired text StorageProvider·FileProvider initialize translated text (T074)
   VoidCallback? _onProviderReset;
 
-  /// 서버 주소 오버라이드 시 메일 Dio도 함께 따라가도록 하는 콜백 (B0001 / NR0003 §3).
-  /// app.dart에서 MailApiClient.setBaseUrl을 등록한다. 등록 전이면 파일 Dio만 갱신.
+  /// Callback so the mail Dio follows along on a server-address override (B0001 / NR0003 §3).
+  /// app.dart registers MailApiClient.setBaseUrl. Before registration, only the file Dio is updated.
   ValueChanged<String>? _onServerUrlChanged;
 
-  /// SecureBolt(fileforge.securebolt.0002 / TR0005): 신선 ID/PW 로그인 직후
-  /// 그 평문 비밀번호로 볼트 마스터 키를 파생해 두기 위한 콜백.
-  /// app.dart에서 VaultProvider.unlock(username, password)를 등록한다.
+  /// SecureBolt(fileforge.securebolt.0002 / TR0005): callback to derive the vault
+  /// master key from the plaintext password right after a fresh ID/PW login.
+  /// app.dart registers VaultProvider.unlock(username, password).
   ///
-  /// 토큰 자동로그인(앱 재시작)에는 평문 비번이 없어 호출되지 않는다 — 그 경우
-  /// 볼트는 잠금 상태로 남고, SecureBolt 첫 진입 시 1회 인라인 언락으로 폴백한다
-  /// (제로지식: 마스터 해시/비번은 절대 영속하지 않는다).
+  /// Token auto-login (app restart) has no plaintext password so this is not
+  /// called — in that case the vault stays locked and falls back to a one-time
+  /// inline unlock on the first SecureBolt entry
+  /// (zero-knowledge: the master hash/password is never persisted).
   Future<void> Function(String username, String password)? _onVaultUnlock;
 
-  /// TOTP 사용자는 비밀번호가 login()에서, 세션 확정은 verifyTotp()에서 일어난다.
-  /// 그 사이에만 평문 비번을 잠시 보관했다가 verifyTotp() 성공 시 소비·즉시 폐기한다.
+  /// For TOTP users the password arrives in login() while the session is confirmed
+  /// in verifyTotp(). Only in between is the plaintext password briefly held, then
+  /// consumed and immediately discarded on verifyTotp() success.
   String? _pendingVaultPassword;
 
   // read-only
@@ -111,39 +113,39 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
     _onProviderReset = callback;
   }
 
-  /// SecureBolt(TR0005): 신선 로그인 시 볼트 마스터 키를 파생할 콜백 등록.
-  /// app.dart에서 VaultProvider.unlock을 1회 배선한다.
+  /// SecureBolt(TR0005): register a callback to derive the vault master key on a fresh login.
+  /// app.dart wires VaultProvider.unlock once.
   void setVaultUnlockCallback(
     Future<void> Function(String username, String password) callback,
   ) {
     _onVaultUnlock = callback;
   }
 
-  /// 신선 로그인 직후 볼트 키 파생을 트리거한다(있을 때만). 로그인 결과를
-  /// 막지 않도록 await 하지 않으며, 실패해도 로그인 흐름에는 영향이 없다
-  /// (SecureBolt 첫 진입 시 인라인 언락으로 폴백). 마스터 키 파생에는
-  /// _UnlockView와 동일하게 **확정된 user.username**을 사용한다.
+  /// Trigger vault key derivation right after a fresh login (only when wired). It
+  /// is not awaited so it never blocks the login result, and a failure does not
+  /// affect the login flow (falls back to an inline unlock on the first SecureBolt
+  /// entry). Master key derivation uses the **confirmed user.username**, just like _UnlockView.
   void _primeVaultFromLogin(String password) {
     final cb = _onVaultUnlock;
     final username = _user?.username;
     if (cb == null || username == null || username.isEmpty || password.isEmpty) {
       return;
     }
-    // fire-and-forget: 볼트 풀(pull) 실패/오프라인은 볼트 화면에서 처리한다.
+    // fire-and-forget: vault pull failure/offline is handled on the vault screen.
     cb(username, password).catchError((_) {});
   }
 
-  /// 메일 Dio도 서버 주소 오버라이드를 따라가도록 콜백 등록 (B0001 / NR0003 §3).
-  /// app.dart에서 MailApiClient 생성 직후 1회 배선한다.
+  /// Register a callback so the mail Dio also follows the server-address override (B0001 / NR0003 §3).
+  /// app.dart wires it once right after creating MailApiClient.
   void setServerUrlChangeCallback(ValueChanged<String> callback) {
     _onServerUrlChanged = callback;
   }
 
   /// server translated text translated text changetext. text screentext translated text.
   ///
-  /// 파일 API Dio뿐 아니라 메일 Dio도 같은 origin으로 따라가게 한다 — 그렇지 않으면
-  /// 메일/계정 요청이 빌드에 박힌 주소(기본 localhost)로 가서 "구글 연동하라"가
-  /// 뜬다(B0001 / NR0003 §3).
+  /// Makes not only the file API Dio but also the mail Dio follow the same origin —
+  /// otherwise mail/account requests go to the build-baked address (localhost by
+  /// default), surfacing "connect Google" (B0001 / NR0003 §3).
   void setServerUrl(String hostPort) {
     _apiClient.setBaseUrl(hostPort);
     _onServerUrlChanged?.call(hostPort);
@@ -428,8 +430,8 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
       final data = await _authService.login(username, password);
       if (data['totp_required'] == true) {
         _tempToken = data['temp_token'] as String?;
-        // SecureBolt(TR0005): 세션은 verifyTotp()에서 확정되므로 그때까지만
-        // 평문 비번을 보관했다가 소비·폐기한다.
+        // SecureBolt(TR0005): the session is confirmed in verifyTotp(), so the
+        // plaintext password is held only until then, then consumed and discarded.
         _pendingVaultPassword = password;
         _isLoading = false;
         notifyListeners();
@@ -437,8 +439,8 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
       }
       final resp = AuthLoginResponse.fromJson(data);
       await _saveSession(resp);
-      // SecureBolt(TR0005): 신선 로그인 — 이 비번으로 볼트 키를 파생해 둔다
-      // (두 번째 비밀번호 프롬프트 제거). _saveSession 뒤라 _user 가 확정돼 있다.
+      // SecureBolt(TR0005): fresh login — derive the vault key from this password
+      // (removes the second password prompt). After _saveSession, _user is confirmed.
       _primeVaultFromLogin(password);
       _isLoading = false;
       notifyListeners();
@@ -480,7 +482,7 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
       final resp = await _authService.verifyTotp(tempToken, code);
       _tempToken = null;
       await _saveSession(resp);
-      // SecureBolt(TR0005): TOTP 확정 후 보관해 둔 비번으로 볼트 키 파생, 즉시 폐기.
+      // SecureBolt(TR0005): after TOTP confirmation, derive the vault key from the held password, then discard immediately.
       final pendingPw = _pendingVaultPassword;
       _pendingVaultPassword = null;
       if (pendingPw != null) {

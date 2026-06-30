@@ -18,6 +18,7 @@ import '../../services/download_save_service.dart';
 import '../../services/logger.dart';
 import '../../services/storage_service.dart';
 import '../../utils/file_type_helper.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/error_retry.dart';
 import 'preview_web_interop.dart'
@@ -202,12 +203,13 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           'FilePreviewScreen', 'file text complete: ${widget.node.name}');
     } on DioException catch (e) {
       if (!mounted) return;
+      final t = AppLocalizations.of(context);
       final statusCode = e.response?.statusCode;
       final message = statusCode == 404
-          ? 'File not found'
+          ? t.previewFileNotFound
           : statusCode == 403
-              ? 'Access denied'
-              : 'Unable to load file';
+              ? t.previewAccessDenied
+              : t.previewLoadFailed;
       AppLogger.error(
           'FilePreviewScreen', 'file text failed: $statusCode ${e.message}');
       setState(() {
@@ -216,10 +218,11 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final t = AppLocalizations.of(context);
       AppLogger.error('FilePreviewScreen', 'file text failed(text): $e');
       setState(() {
         _isLoading = false;
-        _error = 'Unable to load file';
+        _error = t.previewLoadFailed;
       });
     }
   }
@@ -229,6 +232,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// AppBar download text translated text.
   /// text translated text _fileBytestext translated text translated text, translated text API translated text (unsupported text text).
   Future<void> _handleDownload() async {
+    final t = AppLocalizations.of(context);
     try {
       List<int> bytes;
       String filename;
@@ -245,7 +249,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         );
         final data = response.data;
         if (data == null || data.isEmpty) {
-          if (mounted) AppToast.error(context, 'Download failed');
+          if (mounted) AppToast.error(context, t.fileDownloadFailed);
           return;
         }
         bytes = data;
@@ -256,11 +260,11 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
 
       await DownloadSaveService.saveBytes(bytes: bytes, filename: filename);
       AppLogger.info('FilePreviewScreen', 'download complete: $filename');
-      if (mounted) AppToast.success(context, 'Download complete');
+      if (mounted) AppToast.success(context, t.fileDownloadComplete);
     } on DioException catch (e) {
       AppLogger.error(
           'FilePreviewScreen', 'download failed: ${e.response?.statusCode}');
-      if (mounted) AppToast.error(context, 'Download failed');
+      if (mounted) AppToast.error(context, t.fileDownloadFailed);
     }
   }
 
@@ -290,6 +294,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// failed: error toast + text text keep (update content preserved)
   Future<void> _saveFile() async {
     if (_editedContent == null) return;
+    final t = AppLocalizations.of(context);
     setState(() => _isSaving = true);
     try {
       await _dio.put(
@@ -309,46 +314,47 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         _fileSizeChanged = true;
       });
       AppLogger.info('FilePreviewScreen', 'translated text save complete: ${widget.node.name}');
-      AppToast.success(context, 'Saved');
+      AppToast.success(context, t.commonSaved);
     } on DioException catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
       final statusCode = e.response?.statusCode;
       final message = statusCode == 404
-          ? 'File not found'
+          ? t.previewFileNotFound
           : statusCode == 403
-              ? 'No permission to save'
-              : 'Save failed';
+              ? t.previewSaveNoPermission
+              : t.previewSaveFailed;
       AppLogger.error('FilePreviewScreen', 'translated text save failed: $statusCode');
       AppToast.error(context, message);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
       AppLogger.error('FilePreviewScreen', 'translated text save failed(text): $e');
-      AppToast.error(context, 'Save failed');
+      AppToast.error(context, t.previewSaveFailed);
     }
   }
 
   /// textsave changetext text translated text — P007 §4, L006 §5
   /// choices: save / save text text / cancel
   Future<void> _showUnsavedChangesDialog() async {
+    final t = AppLocalizations.of(context);
     final result = await showDialog<_UnsavedAction>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        content: const Text('You have unsaved changes.'),
+        content: Text(t.previewUnsavedChanges),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(_UnsavedAction.cancel),
-            child: const Text('Cancel'),
+            child: Text(t.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(_UnsavedAction.discard),
-            child: const Text('Don\'t Save'),
+            child: Text(t.previewDontSave),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(_UnsavedAction.save),
-            child: const Text('Save'),
+            child: Text(t.commonSave),
           ),
         ],
       ),
@@ -391,6 +397,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
 
   /// state/previewTypetext text AppBar actionstext returntext (D006 §4, L006 ST-L6-02).
   List<Widget> _buildAppBarActions() {
+    final t = AppLocalizations.of(context);
     // loading translated text error statetranslated text text textdisplay (L006 ST-L6-01 #4)
     if (_isLoading || _error != null) return const [];
 
@@ -406,11 +413,11 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : Text(t.commonSave),
           ),
           TextButton(
             onPressed: _isSaving ? null : _cancelEdit,
-            child: const Text('Cancel'),
+            child: Text(t.cancel),
           ),
         ];
       }
@@ -418,12 +425,12 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       return [
         IconButton(
           icon: const Icon(Icons.edit_rounded),
-          tooltip: 'Edit',
+          tooltip: t.commonEdit,
           onPressed: _enterEditMode,
         ),
         IconButton(
           icon: const Icon(Icons.download_rounded),
-          tooltip: 'Download',
+          tooltip: t.commonDownload,
           onPressed: _handleDownload,
         ),
       ];
@@ -433,7 +440,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     return [
       IconButton(
         icon: const Icon(Icons.download_rounded),
-        tooltip: 'Download',
+        tooltip: t.commonDownload,
         onPressed: _handleDownload,
       ),
     ];
@@ -478,6 +485,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
 
   /// error text — PDF/video translated text ErrorRetry + download text, translated text ErrorRetrytext.
   Widget _buildErrorView() {
+    final t = AppLocalizations.of(context);
     if (_previewType == PreviewType.pdf || _previewType == PreviewType.video || _previewType == PreviewType.audio) {
       return Center(
         child: Padding(
@@ -493,7 +501,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
               FilledButton.icon(
                 onPressed: _handleDownload,
                 icon: const Icon(Icons.download_rounded),
-                label: const Text('Download'),
+                label: Text(t.commonDownload),
               ),
             ],
           ),
@@ -529,6 +537,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// `InteractiveViewer` + `Image.memory` — text text/text text.
   /// translated text failed text post-frame callbacktext `_error` text → ErrorRetry text.
   Widget _buildImagePreview() {
+    final t = AppLocalizations.of(context);
     return InteractiveViewer(
       minScale: 0.5,
       maxScale: 5.0,
@@ -540,7 +549,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
             // setStatetext post-frame callbacktext exampletranslated text.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                setState(() => _error = 'Unable to display image');
+                setState(() => _error = t.previewImageFailed);
               }
             });
             return const SizedBox.shrink();
@@ -584,6 +593,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// text: text filetext save text PdfDocument.openFile() text.
   /// failed text _error = "PDFtext displaytext text translated text" text text.
   Future<void> _initPdfController(Uint8List bytes) async {
+    final t = AppLocalizations.of(context);
     try {
       if (kIsWeb) {
         // text: dart:io File / getTemporaryDirectory() translated text → openDatatext text (T035)
@@ -618,7 +628,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     } catch (e) {
       AppLogger.error('FilePreviewScreen', 'PDF initialize failed: $e');
       if (mounted) {
-        setState(() => _error = 'Cannot display PDF');
+        setState(() => _error = t.previewPdfFailed);
       }
     }
   }
@@ -626,6 +636,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// PdfControllerPinchtext translated text PdfViewPinch translated text.
   /// text translated text loading translated text, initialize failed text error+download text.
   Widget _buildPdfPreview() {
+    final t = AppLocalizations.of(context);
     if (_pdfController == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -635,7 +646,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         AppLogger.error('FilePreviewScreen', 'PDF translated text Error: $error');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            setState(() => _error = 'Unable to display PDF');
+            setState(() => _error = t.previewPdfFailed);
           }
         });
       },
@@ -649,6 +660,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// text: text file save text VideoPlayerController.file() path.
   /// failed text _error = "translated text translated text text translated text"text text.
   Future<void> _initVideoController(Uint8List bytes) async {
+    final t = AppLocalizations.of(context);
     if (kIsWeb) {
       String? blobUrl;
       try {
@@ -715,7 +727,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           'FilePreviewScreen',
           'translated text initialize failed(text) stack: $st',
         );
-        if (mounted) setState(() => _error = 'Unable to play video');
+        if (mounted) setState(() => _error = t.previewVideoFailed);
       }
       return;
     }
@@ -750,7 +762,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
     } catch (e) {
       AppLogger.error('FilePreviewScreen', 'translated text initialize failed: $e');
       if (mounted) {
-        setState(() => _error = 'Cannot play video');
+        setState(() => _error = t.previewVideoFailed);
       }
     }
   }
@@ -769,6 +781,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// bytes → text file save → AudioPlayer initialize → text.
   /// failed text _error = "translated text translated text text translated text"text text.
   Future<void> _initAudioController(Uint8List bytes) async {
+    final t = AppLocalizations.of(context);
     if (kIsWeb) {
       try {
         final ext = widget.node.name.contains('.')
@@ -814,7 +827,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
         });
       } catch (e) {
         AppLogger.error('FilePreviewScreen', 'Audio init failed (web): $e');
-        if (mounted) setState(() => _error = 'Unable to play audio');
+        if (mounted) setState(() => _error = t.previewAudioFailed);
       }
       return;
     }
@@ -860,13 +873,14 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       });
     } catch (e) {
       AppLogger.error('FilePreviewScreen', 'Audio init failed: $e');
-      if (mounted) setState(() => _error = 'Unable to play audio');
+      if (mounted) setState(() => _error = t.previewAudioFailed);
     }
   }
 
   /// AudioPlayertext translated text translated text translated text UI translated text.
   /// text translated text loading translated text.
   Widget _buildAudioPreview() {
+    final t = AppLocalizations.of(context);
     if (_audioPlayer == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -921,7 +935,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
                 IconButton(
                   iconSize: 36,
                   icon: const Icon(Icons.replay_10_rounded),
-                  tooltip: 'Rewind 10s',
+                  tooltip: t.previewRewind10,
                   onPressed: () {
                     final pos = _audioPosition - const Duration(seconds: 10);
                     _audioPlayer?.seek(
@@ -934,7 +948,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
                   icon: Icon(_audioIsPlaying
                       ? Icons.pause_rounded
                       : Icons.play_arrow_rounded),
-                  tooltip: _audioIsPlaying ? 'Pause' : 'Play',
+                  tooltip: _audioIsPlaying ? t.previewPause : t.previewPlay,
                   onPressed: () {
                     if (_audioIsPlaying) {
                       _audioPlayer?.pause();
@@ -947,7 +961,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
                 IconButton(
                   iconSize: 36,
                   icon: const Icon(Icons.forward_10_rounded),
-                  tooltip: 'Forward 10s',
+                  tooltip: t.previewForward10,
                   onPressed: () {
                     final pos = _audioPosition + const Duration(seconds: 10);
                     _audioPlayer?.seek(
@@ -975,6 +989,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// file translated text + text message + download text.
   /// `_loadFile()` translated text state (L006 ST-L6-01 #3).
   Widget _buildUnsupportedPreview() {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -988,7 +1003,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'This file type is not supported for preview',
+              t.previewUnsupported,
               style: TextStyle(
                 fontSize: 15,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -999,7 +1014,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
             FilledButton.icon(
               onPressed: _handleDownload,
               icon: const Icon(Icons.download_rounded),
-              label: const Text('Download'),
+              label: Text(t.commonDownload),
             ),
           ],
         ),

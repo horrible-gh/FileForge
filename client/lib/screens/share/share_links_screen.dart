@@ -5,6 +5,7 @@ import '../../providers/share_link_provider.dart';
 import '../../models/share_link.dart';
 import '../../config/env.dart';
 import '../../widgets/app_toast.dart';
+import '../../l10n/app_localizations.dart';
 
 /// D004 §2-2 — text text text screen
 /// - text text ShareLinkProvider.fetchList() text
@@ -47,19 +48,20 @@ class _ShareLinksScreenState extends State<ShareLinksScreen> {
   }
 
   Future<void> _deleteLink(ShareLink link) async {
+    final t = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Share Link'),
-        content: Text('Delete link for ${link.nodeName}?'),
+        title: Text(t.shareDeleteLinkTitle),
+        content: Text(t.shareDeleteLinkBody(link.nodeName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(t.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(t.commonDelete),
           ),
         ],
       ),
@@ -69,7 +71,7 @@ class _ShareLinksScreenState extends State<ShareLinksScreen> {
     await provider.deleteLink(link.token);
     if (!mounted) return;
     if (provider.error != null) {
-      AppToast.error(context, 'Failed to delete link');
+      AppToast.error(context, t.shareDeleteLinkFailed);
     }
   }
 
@@ -80,6 +82,7 @@ class _ShareLinksScreenState extends State<ShareLinksScreen> {
   }
 
   Widget _buildBody(ShareLinkProvider provider) {
+    final t = AppLocalizations.of(context);
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -87,7 +90,7 @@ class _ShareLinksScreenState extends State<ShareLinksScreen> {
       return Center(child: Text(provider.error!));
     }
     if (provider.links.isEmpty) {
-      return const Center(child: Text('No shared links'));
+      return Center(child: Text(t.shareNoLinks));
     }
     return ListView.separated(
       itemCount: provider.links.length,
@@ -120,6 +123,7 @@ class _ShareLinkTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final icon = link.nodeType == 'folder'
         ? Icons.folder_rounded
         : Icons.insert_drive_file_rounded;
@@ -150,12 +154,12 @@ class _ShareLinkTile extends StatelessWidget {
               isCopied ? Icons.check_rounded : Icons.copy_rounded,
               size: 20,
             ),
-            tooltip: 'Copy',
+            tooltip: t.commonCopy,
             onPressed: onCopy,
           ),
           IconButton(
             icon: const Icon(Icons.delete_rounded, size: 20),
-            tooltip: 'Delete',
+            tooltip: t.commonDelete,
             onPressed: onDelete,
           ),
         ],

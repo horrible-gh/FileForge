@@ -38,20 +38,21 @@ class MailApiClient {
     _dio.interceptors.add(interceptor);
   }
 
-  /// 런타임 서버 주소 오버라이드를 메일 Dio에 반영한다 (B0001 / NR0003 §3·§6).
+  /// Applies the runtime server-address override to the mail Dio (B0001 / NR0003 §3·§6).
   ///
-  /// 기존 결함: 사용자가 설정 화면에서 서버 주소를 바꾸면 파일 API Dio
-  /// (`ApiClient.setBaseUrl`)만 따라가고, 메일 Dio는 빌드에 박힌
-  /// `AppConfig.mailBaseUrl`(기본 localhost)에 영구히 고정돼 메일/계정 요청이
-  /// 엉뚱한 서버로 가서 "구글 연동하라"가 떴다. 이 메서드로 메일 base도 파일
-  /// base와 **같은 origin**(`.../fileforge/mail`)을 따라가게 한다.
+  /// Prior defect: when the user changed the server address on the settings
+  /// screen, only the file API Dio (`ApiClient.setBaseUrl`) followed it, while the
+  /// mail Dio stayed permanently pinned to the build-baked
+  /// `AppConfig.mailBaseUrl` (default localhost), so mail/account requests went to
+  /// the wrong server and "connect Google" appeared. This method makes the mail
+  /// base follow the **same origin** as the file base (`.../fileforge/mail`).
   ///
-  /// 정규화(파일 [ApiClient.setBaseUrl]와 동일 입력 규약):
-  ///   1. trim() — 빈 값이면 빌드 기본값으로 복귀
-  ///   2. trailing slash 제거
-  ///   3. scheme 없으면 'http://' 추가
-  ///   4. 끝이 `/fileforge/mail`이면 그대로, `/fileforge`면 `/mail` 추가,
-  ///      그 외(host:port)면 `/fileforge/mail` 추가
+  /// Normalization (same input contract as the file [ApiClient.setBaseUrl]):
+  ///   1. trim() — an empty value reverts to the build default
+  ///   2. strip trailing slashes
+  ///   3. add 'http://' if no scheme
+  ///   4. if it ends with `/fileforge/mail` keep as-is; if `/fileforge` append `/mail`;
+  ///      otherwise (host:port) append `/fileforge/mail`
   void setBaseUrl(String hostPort) {
     final trimmed = hostPort.trim();
     if (trimmed.isEmpty) {
@@ -67,7 +68,7 @@ class MailApiClient {
     }
 
     if (normalized.endsWith('/fileforge/mail')) {
-      // 이미 메일 경로 — 그대로 사용.
+      // Already a mail path — use as-is.
     } else if (normalized.endsWith('/fileforge')) {
       normalized = '$normalized/mail';
     } else {

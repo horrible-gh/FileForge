@@ -65,11 +65,12 @@ class _AppState extends State<App> {
         isSessionExpired: () => _authProvider.lastRefreshWasExpired,
         onSessionExpired: _authProvider.handleSessionExpired,
       );
-    // B0001 / NR0003 §3: 서버 주소 오버라이드가 파일 Dio뿐 아니라 메일 Dio에도
-    // 전파되도록 배선한다. 이 배선이 없으면 설정에서 서버를 바꿔도 메일/계정
-    // 요청만 빌드에 박힌 주소(기본 localhost)로 가서 "구글 연동하라"가 뜬다.
+    // B0001 / NR0003 §3: wire the server-address override so it propagates not
+    // only to the file Dio but to the mail Dio too. Without this, changing the
+    // server in settings still routes only mail/account requests to the
+    // build-baked address (localhost by default), surfacing "connect Google".
     _authProvider.setServerUrlChangeCallback(_mailApiClient.setBaseUrl);
-    // 시작 시 저장된 서버 주소를 파일·메일 양쪽 Dio에 한 번에 적용(콜백 배선 이후).
+    // Apply the stored server address to both file and mail Dios at once on startup (after the callback is wired).
     if (widget.initialServerUrl.isNotEmpty) {
       _authProvider.setServerUrl(widget.initialServerUrl);
     }
@@ -84,10 +85,10 @@ class _AppState extends State<App> {
     // file Dio (/fileforge origin → /bolt/*). The master hash is derived in the
     // provider from re-entered credentials and never leaves memory.
     _vaultProvider = VaultProvider(_authProvider.dio);
-    // SecureBolt(fileforge.securebolt.0002 / TR0005): 신선 ID/PW 로그인 시 그
-    // 비밀번호로 볼트 마스터 키를 파생해 두어, SecureBolt 진입 시 두 번째
-    // 비밀번호 프롬프트가 뜨지 않도록 한다(요건 2). 토큰 자동로그인에는 비번이
-    // 없어 호출되지 않으며, 그 경우 볼트 화면의 인라인 언락으로 폴백한다.
+    // SecureBolt(fileforge.securebolt.0002 / TR0005): on a fresh ID/PW login,
+    // derive the vault master key from that password so entering SecureBolt does
+    // not show a second password prompt (requirement 2). Token auto-login has no
+    // password so this is not called; in that case it falls back to an inline unlock on the vault screen.
     _authProvider.setVaultUnlockCallback(
       (username, password) => _vaultProvider.unlock(username, password),
     );
@@ -103,12 +104,13 @@ class _AppState extends State<App> {
 
     // R0001/NR0003/L0004 §2.5-2.6: start 3rd-gen session keep-alive — proactive
     // pre-expiry rotation + lifecycle-resume re-check — so a long-running app no
-    // longer falls back to the login screen ("팅김").
+    // longer falls back to the login screen (the "bounce-out").
     _authProvider.startSessionKeepAlive();
 
-    // R0001/NR0003/T0004 §Option C: OAuth 성공 페이지의 fileforge:// 딥링크를 수신하면
-    // 앱이 foreground 로 복귀하고, 계정 목록을 재로딩해 연결을 즉시 감지한다.
-    // (account_connect_screen 의 lifecycle 기반 수동 복귀 감지는 폴백으로 유지된다.)
+    // R0001/NR0003/T0004 §Option C: when the fileforge:// deep link from the OAuth
+    // success page is received, the app returns to the foreground and reloads the
+    // account list to detect the connection immediately.
+    // (account_connect_screen's lifecycle-based manual return detection is kept as a fallback.)
     _deepLinkService = DeepLinkService()
       ..onOAuthSuccess = () {
         _accountProvider.load();
@@ -141,8 +143,9 @@ class _AppState extends State<App> {
         title: 'FileForge',
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
-        // i18n(mailanchor.ui.0002) — text translated text translated text ko/ja/en text translated text.
-        // translated text text translated text supportedLocales text text text(en)text translated text.
+        // i18n (fileforge.default.0003) — gen-l10n delegates drive ko/ja/en.
+        // The device locale is followed; unsupported locales fall back to the
+        // first supportedLocales entry (en).
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: _routerConfig,

@@ -12,6 +12,20 @@ import '../services/vault_service.dart';
 /// a transient flag rather than a distinct state.
 enum VaultState { locked, unlocked, localMode }
 
+/// Stable, locale-independent code for the status/error message the vault wants
+/// to surface. The UI layer maps each code to a localized string (i18n,
+/// fileforge.default.0003); [VaultProvider.error] still carries the raw text for
+/// backward compatibility and for unexpected exceptions ([VaultMessage.none]).
+enum VaultMessage {
+  none,
+  decryptBanner,
+  decryptBlockedSave,
+  offlineMode,
+  offlineSaved,
+  sessionExpired,
+  syncFailed,
+}
+
 /// SecureBolt vault state management (L0006 §3).
 ///
 /// Holds the in-memory MASTER_HASH (never persisted), the decrypted vault, and
@@ -39,6 +53,9 @@ class VaultProvider extends ChangeNotifier {
       '오프라인 모드: 기기에 저장된 볼트를 표시합니다. 온라인이 되면 동기화됩니다.';
   static const String offlineSavedMessage =
       '오프라인: 변경 사항을 기기에만 저장했습니다. 온라인이 되면 서버와 동기화됩니다.';
+  static const String sessionExpiredMessage =
+      '세션이 만료되었습니다. 다시 로그인해 주세요.';
+  static const String syncFailedMessage = '볼트 동기화에 실패했습니다.';
 
   // master hash lives ONLY in memory (L0006 §2.1) — cleared on lock/reset.
   String? _masterHash;
@@ -48,6 +65,7 @@ class VaultProvider extends ChangeNotifier {
   bool _localMode = false;
   bool _decryptError = false;
   String? _error;
+  VaultMessage _messageCode = VaultMessage.none;
   String _query = '';
 
   VaultState get state => _state;
@@ -59,6 +77,10 @@ class VaultProvider extends ChangeNotifier {
   bool get hasDecryptError => _decryptError;
   bool get isSyncing => _isSyncing;
   String? get error => _error;
+
+  /// Locale-independent code for the current status/error message; the UI maps
+  /// it to a localized string. [VaultMessage.none] means "use [error] verbatim".
+  VaultMessage get messageCode => _messageCode;
   String get query => _query;
 
   List<VaultCategory> get categories => List.unmodifiable(_data.categories);
@@ -89,19 +111,21 @@ class VaultProvider extends ChangeNotifier {
     _localMode = false;
     _decryptError = false;
     _error = null;
+    _messageCode = VaultMessage.none;
     notifyListeners();
     await refresh();
     return !_decryptError;
   }
 
   /// Open the vault from device-stored blobs only — LOCAL_MODE, no server call
-  /// (P0005 시나리오 7 / L0006 §3.1). Returns `false` on decrypt failure.
+  /// (P0005 scenario 7 / L0006 §3.1). Returns `false` on decrypt failure.
   Future<bool> unlockLocal(String username, String password) async {
     _masterHash = VaultCrypto.deriveMasterHash(username, password);
     _state = VaultState.localMode;
     _localMode = true;
     _decryptError = false;
     _error = null;
+    _messageCode = VaultMessage.none;
     notifyListeners();
     await _loadLocal(_masterHash!);
     return !_decryptError;
@@ -116,6 +140,7 @@ class VaultProvider extends ChangeNotifier {
     _localMode = false;
     _decryptError = false;
     _error = null;
+    _messageCode = VaultMessage.none;
     notifyListeners();
   }
 
@@ -124,12 +149,13 @@ class VaultProvider extends ChangeNotifier {
 
   /// pull_vault (L0006 §2.5): re-download and decrypt. On a wrong-key blob the
   /// vault is flagged (anti-clobber, §5-B); if the server is unreachable it
-  /// falls back to the device-stored vault (LOCAL_MODE, P0005 시나리오 7).
+  /// falls back to the device-stored vault (LOCAL_MODE, P0005 scenario 7).
   Future<void> refresh() async {
     final hash = _masterHash;
     if (hash == null) return;
     _isSyncing = true;
     _error = null;
+    _messageCode = VaultMessage.none;
     notifyListeners();
     try {
       final res = await _service.pullVault(hash);
@@ -138,6 +164,8 @@ class VaultProvider extends ChangeNotifier {
       _localMode = false;
       _state = VaultState.unlocked;
       _error = _decryptError ? decryptBannerMessage : null;
+      _messageCode =
+          _decryptError ? VaultMessage.decryptBanner : VaultMessage.none;
     } on DioException catch (e) {
       if (_isConnectionError(e)) {
         await _loadLocal(hash, offline: true); // server down → LOCAL_MODE
@@ -146,6 +174,7 @@ class VaultProvider extends ChangeNotifier {
       }
     } catch (e) {
       _error = '$e';
+      _messageCode = VaultMessage.none;
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -165,8 +194,12 @@ class VaultProvider extends ChangeNotifier {
       _error = _decryptError
           ? decryptBannerMessage
           : (offline ? offlineModeMessage : null);
+      _messageCode = _decryptError
+          ? VaultMessage.decryptBanner
+          : (offline ? VaultMessage.offlineMode : VaultMessage.none);
     } catch (e) {
       _error = '$e';
+      _messageCode = VaultMessage.none;
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -212,6 +245,7 @@ class VaultProvider extends ChangeNotifier {
     // re-lock. Require a successful re-unlock first.
     if (_decryptError) {
       _error = decryptBlockedSaveMessage;
+      _messageCode = VaultMessage.decryptBlockedSave;
       notifyListeners();
       return false;
     }
@@ -219,10 +253,11 @@ class VaultProvider extends ChangeNotifier {
     _data = next;
     _isSyncing = true;
     _error = null;
+    _messageCode = VaultMessage.none;
     notifyListeners();
     try {
       // Always attempt the server push; a success also reconciles a prior
-      // LOCAL_MODE session back online (P0005 시나리오 7: 이후 온라인 시 push).
+      // LOCAL_MODE session back online (P0005 scenario 7: push later when back online).
       await _service.pushVault(next, hash);
       _localMode = false;
       _state = VaultState.unlocked;
@@ -230,11 +265,12 @@ class VaultProvider extends ChangeNotifier {
     } on DioException catch (e) {
       if (_isConnectionError(e)) {
         // server unreachable → keep the change on-device, enter LOCAL_MODE
-        // (P0005 시나리오 7: 변경분은 로컬에 보관, 이후 온라인 시 push).
+        // (P0005 scenario 7: keep the change on-device, push later when back online).
         await _service.saveLocal(next, hash);
         _localMode = true;
         _state = VaultState.localMode;
         _error = offlineSavedMessage;
+        _messageCode = VaultMessage.offlineSaved;
         return true;
       }
       _data = previous; // L0006 §5-G: push failed → don't keep local change
@@ -243,6 +279,7 @@ class VaultProvider extends ChangeNotifier {
     } catch (e) {
       _data = previous;
       _error = '$e';
+      _messageCode = VaultMessage.none;
       return false;
     } finally {
       _isSyncing = false;
@@ -267,8 +304,17 @@ class VaultProvider extends ChangeNotifier {
 
   String _humanError(DioException e) {
     final code = e.response?.statusCode;
-    if (code == 401) return '세션이 만료되었습니다. 다시 로그인해 주세요.';
+    if (code == 401) {
+      _messageCode = VaultMessage.sessionExpired;
+      return sessionExpiredMessage;
+    }
     final msg = e.response?.data is Map ? e.response?.data['message'] : null;
-    return msg?.toString() ?? '볼트 동기화에 실패했습니다.';
+    if (msg != null) {
+      // Server supplied a specific message — surface it verbatim (no l10n code).
+      _messageCode = VaultMessage.none;
+      return msg.toString();
+    }
+    _messageCode = VaultMessage.syncFailed;
+    return syncFailedMessage;
   }
 }

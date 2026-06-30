@@ -52,8 +52,9 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          // R0001(0027) — 핀 토글. 채워진 핀=고정됨. 상세에서 바로 고정/해제하면
-          // 목록도 같은 상태로 갱신된다(MailProvider.togglePin이 양쪽을 맞춤).
+          // R0001(0027) — pin toggle. Filled pin = pinned. Pinning/unpinning right
+          // from the detail view updates the list to the same state too
+          // (MailProvider.togglePin keeps both in sync).
           if (detail != null)
             IconButton(
               icon: Icon(detail.isPinned
@@ -158,8 +159,8 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
 
     final theme = Theme.of(context);
     // Wrap the whole detail in a SelectionArea so the subject, address rows and
-    // (plain-text) body become drag-selectable — the root of R0001's "본문 선택이
-    // 잘 안 될 때가 있다": plain `Text`/`SelectableText` selection was
+    // (plain-text) body become drag-selectable — the root of R0001's "the body
+    // sometimes can't be selected": plain `Text`/`SelectableText` selection was
     // inconsistent and HTML bodies were not selectable at all. The AppBar copy
     // menu remains the guaranteed path for HTML bodies that HtmlWidget renders
     // as non-selectable RichText.
@@ -192,7 +193,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
                 title: Text(a.filename),
                 subtitle: Text(_humanSize(a.sizeBytes)),
                 trailing: const Icon(Icons.download_rounded),
-                // 탭하면 서버에서 바이트를 받아 DownloadSaveService로 저장(NR0003 §4).
+                // On tap, fetch the bytes from the server and save via DownloadSaveService (NR0003 §4).
                 onTap: () => _handleAttachmentDownload(a),
               )),
         ],
@@ -201,7 +202,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     );
   }
 
-  /// 첨부 다운로드: 서버에서 바이트 수신 → 플랫폼별 저장 → 성공/실패 토스트.
+  /// Attachment download: receive bytes from the server → platform-specific save → success/failure toast.
   Future<void> _handleAttachmentDownload(MailAttachment attachment) async {
     final t = AppLocalizations.of(context);
     try {

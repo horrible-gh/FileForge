@@ -93,20 +93,21 @@ class MailBody {
   bool get isHtml => format == 'html';
 }
 
-/// R0001(0013) — 메일이 도착한 *내 계정*의 식별 정보(MailSummary에 부착).
+/// R0001(0013) — identity of the *receiving account* a mail arrived at (attached to MailSummary).
 ///
-/// 다계정 연동 시 리스트에서 "이 메일이 내 어느 메일함(계정)으로 왔는가"를
-/// 한눈에 알려면 행마다 계정 단서가 필요하다. 서버 `_summary_to_p0007`이
-/// 통합 인박스 JOIN의 계정 컬럼(account_uuid/name/email/display_color)을
-/// `account` 객체로 실어 보내며, 이 모델이 그것을 받는다. 송신자(from)와는
-/// 별개의 *수신 계정* 정보다.
+/// With multiple accounts linked, the list needs a per-row account cue to show
+/// at a glance "which of my mailboxes (accounts) this mail came to". The server
+/// `_summary_to_p0007` ships the unified-inbox JOIN's account columns
+/// (account_uuid/name/email/display_color) as an `account` object, and this
+/// model receives it. This is *receiving account* info, separate from the
+/// sender (from).
 class MailAccountRef {
   final String accountId;
   final String email;
   final String name;
 
-  /// 서버 display_color(예: `#EA4335`). 비어 있거나 계정마다 동일할 수 있어,
-  /// 리스트 색 구분은 이 값에 의존하지 않고 계정 식별자 해시로 파생한다(아래 hasIdentity 라벨이 1차 단서).
+  /// Server display_color (e.g. `#EA4335`). It may be empty or identical across
+  /// accounts, so list color distinction does not rely on this value but is derived from a hash of the account identifier (the hasIdentity label below is the primary cue).
   final String color;
 
   const MailAccountRef({
@@ -125,11 +126,11 @@ class MailAccountRef {
     );
   }
 
-  /// 리스트에 표시할 계정 라벨 — 이름이 있으면 이름, 없으면 이메일.
-  /// (이름/이메일은 계정마다 본질적으로 다르므로 색이 같아도 구분된다.)
+  /// Account label to show in the list — the name if present, otherwise the email.
+  /// (Name/email are inherently different per account, so accounts stay distinct even with the same color.)
   String get label => name.isNotEmpty ? name : email;
 
-  /// 식별자(색 파생용) — id > email > name 순.
+  /// Identifier (for color derivation) — in order id > email > name.
   String get key => accountId.isNotEmpty
       ? accountId
       : (email.isNotEmpty ? email : name);
@@ -149,12 +150,13 @@ class MailSummary {
   final bool hasAttachment;
   final List<String> labels;
 
-  /// R0001(0027) — 핀 고정 여부. 서버 `_summary_to_p0007`이 통합 인박스의
-  /// `m.is_pinned`를 실어 보내며(통합 목록 SQL은 핀 메일을 `ORDER BY m.is_pinned DESC`로
-  /// 최상단에 올린다), 리스트는 이 값으로 핀 배지/토글 상태를 그린다.
+  /// R0001(0027) — whether the mail is pinned. The server `_summary_to_p0007`
+  /// ships the unified inbox's `m.is_pinned` (the unified-list SQL raises pinned
+  /// mails to the top via `ORDER BY m.is_pinned DESC`), and the list draws the
+  /// pin badge/toggle state from this value.
   final bool isPinned;
 
-  /// R0001(0013) — 이 메일이 도착한 내 계정. 식별 정보가 없으면 빈 ref.
+  /// R0001(0013) — the account this mail arrived at. An empty ref if no identity info.
   final MailAccountRef account;
 
   const MailSummary({
@@ -194,7 +196,7 @@ class MailSummary {
   /// text displaytext text text — local translated text refreshtext.
   MailSummary copyWithRead(bool read) => copyWith(isRead: read);
 
-  /// 핀 상태만 바꾼 사본(R0001/0027) — togglePin 낙관적 갱신용.
+  /// A copy with only the pin state changed (R0001/0027) — for togglePin optimistic updates.
   MailSummary copyWithPinned(bool pinned) => copyWith(isPinned: pinned);
 
   MailSummary copyWith({bool? isRead, bool? isPinned}) => MailSummary(
@@ -223,7 +225,7 @@ class MailDetail {
   final String receivedAt;
   final bool isRead;
 
-  /// R0001(0027) — 핀 고정 여부(상세 AppBar 핀 토글의 현재 상태).
+  /// R0001(0027) — whether pinned (current state of the detail AppBar pin toggle).
   final bool isPinned;
   final MailBody body;
   final List<MailAttachment> attachments;
@@ -273,7 +275,7 @@ class MailDetail {
     );
   }
 
-  /// 핀 상태만 바꾼 사본(R0001/0027) — togglePin 낙관적 갱신용.
+  /// A copy with only the pin state changed (R0001/0027) — for togglePin optimistic updates.
   MailDetail copyWithPinned(bool pinned) => MailDetail(
         mailId: mailId,
         threadId: threadId,

@@ -21,6 +21,7 @@ import '../../widgets/server_settings_dialog.dart';
 import '../../services/download_save_service.dart';
 import '../../services/storage_service.dart';
 import '../preview/file_preview_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 /// authentication text translated text text Scaffold — Drawer + AppBar + Body(child)
 /// GoRouter ShellRoutetext shell translated text text.
@@ -72,19 +73,20 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  /// 검색 제출 — storage 종류에 따라 분기(B0001/0026).
+  /// Search submit — branches by storage type (B0001/0026).
   ///
-  /// 공용 AppBar 검색창은 모든 storage에서 같은 UI를 쓰지만, 메일 storage에서는
-  /// 검색을 [FileProvider](파일 노드 API)가 아니라 [MailProvider](`GET /mails?q=`)로
-  /// 라우팅해야 한다. MailListScreen이 MailProvider만 watch하므로, 메일 검색을
-  /// FileProvider로 보내면(기존 동작) 결과가 화면에 전혀 반영되지 않았다(= 무반응).
+  /// The shared AppBar search box uses the same UI across all storages, but for
+  /// mail storage the search must be routed to [MailProvider] (`GET /mails?q=`),
+  /// not [FileProvider] (the file-node API). Since MailListScreen only watches
+  /// MailProvider, sending mail searches to FileProvider (the old behavior) meant
+  /// the results never appeared on screen (= no response).
   void _onSearchSubmitted(String query, BuildContext context) {
     final storageProvider = context.read<StorageProvider>();
     final storageType = storageProvider.currentStorage?.storageType ?? 'file';
     if (storageType == 'mail') {
       final mailProvider = context.read<MailProvider>();
       if (query.trim().isEmpty) {
-        // 빈 검색어 = 검색 종료. AppBar 토글(FileProvider)만 닫고 목록을 복귀시킨다.
+        // Empty query = end search. Close only the AppBar toggle (FileProvider) and restore the list.
         context.read<FileProvider>().exitSearchModeUiOnly();
         mailProvider.clearSearch();
       } else {
@@ -106,7 +108,7 @@ class _MainScreenState extends State<MainScreen> {
     _searchController.clear();
     final storageType = storageProvider.currentStorage?.storageType ?? 'file';
     if (storageType == 'mail') {
-      // 메일 검색 종료 — UI 토글만 닫고(파일 API 재호출 금지) 메일 목록을 복귀.
+      // End mail search — close only the UI toggle (no file-API re-call) and restore the mail list.
       fileProvider.exitSearchModeUiOnly();
       context.read<MailProvider>().clearSearch();
       return;
@@ -121,6 +123,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final fileProvider = context.watch<FileProvider>();
     final authProvider = context.watch<AuthProvider>();
     final storageProvider = context.watch<StorageProvider>();
@@ -131,7 +134,7 @@ class _MainScreenState extends State<MainScreen> {
                 !fileProvider.isSearchMode
             ? (storageProvider.currentStorage?.storageName ?? 'FileForge')
             : fileProvider.isSearchMode
-                ? 'Search'
+                ? t.navSearch
                 : fileProvider.currentNode.name;
 
     final storageType = storageProvider.currentStorage?.storageType ?? 'file';
@@ -151,11 +154,11 @@ class _MainScreenState extends State<MainScreen> {
               icon: const Icon(Icons.close),
               onPressed: () => selectionProvider.exitSelectionMode(),
             ),
-            title: Text('${selectionProvider.selectedCount} selected'),
+            title: Text(t.selectedCount(selectionProvider.selectedCount)),
             actions: [
               IconButton(
                 icon: const Icon(Icons.select_all),
-                tooltip: 'Select all',
+                tooltip: t.navSelectAll,
                 onPressed: () {
                   final allUuids = fileProvider.children
                       .where((n) => n.nodeUuid != null)
@@ -167,14 +170,14 @@ class _MainScreenState extends State<MainScreen> {
               if (storageType == 'file')
                 IconButton(
                   icon: const Icon(Icons.download_rounded),
-                  tooltip: 'Download',
+                  tooltip: t.commonDownload,
                   onPressed: selectionProvider.hasSelection
                       ? () => _triggerBulkDownload(context)
                       : null,
                 ),
               IconButton(
                 icon: const Icon(Icons.delete_rounded),
-                tooltip: 'Delete',
+                tooltip: t.commonDelete,
                 onPressed: selectionProvider.hasSelection
                     ? () => _triggerBulkDelete(context)
                     : null,
@@ -189,15 +192,15 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       appBar: AppBar(
         title: isShareLinks
-            ? const Text('Manage Share Links')
+            ? Text(t.navManageShareLinks)
           : isSettings
-            ? const Text('Security Settings')
+            ? Text(t.navSecuritySettings)
             : fileProvider.isSearchMode
                 ? TextField(
                     controller: _searchController,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search...',
+                    decoration: InputDecoration(
+                      hintText: t.navSearchHint,
                       border: InputBorder.none,
                     ),
                     onSubmitted: (q) => _onSearchSubmitted(q, context),
@@ -209,7 +212,7 @@ class _MainScreenState extends State<MainScreen> {
             if (fileProvider.isSearchMode)
               IconButton(
                 icon: const Icon(Icons.close),
-                tooltip: 'Exit search',
+                tooltip: t.navExitSearch,
                 onPressed: () => _exitSearchMode(context),
               )
             // A 'password' (SecureBolt) storage drives its own search/lock/add
@@ -218,7 +221,7 @@ class _MainScreenState extends State<MainScreen> {
             else if (storageType != 'password') ...[
               IconButton(
                 icon: const Icon(Icons.add),
-                tooltip: 'Add',
+                tooltip: t.addLabel,
                 onPressed: () => _showFabMenu(context, storageType),
               ),
               if (storageType == 'file')
@@ -229,18 +232,18 @@ class _MainScreenState extends State<MainScreen> {
                         : Icons.view_list_rounded,
                   ),
                   tooltip: fileProvider.fileViewMode == FileViewMode.list
-                      ? 'Grid view'
-                      : 'List view',
+                      ? t.viewGrid
+                      : t.viewList,
                   onPressed: () => fileProvider.toggleFileViewMode(),
                 ),
               IconButton(
                 icon: const Icon(Icons.checklist_rounded),
-                tooltip: 'Selection mode',
+                tooltip: t.navSelectionMode,
                 onPressed: () => selectionProvider.enterSelectionMode(),
               ),
               IconButton(
                 icon: const Icon(Icons.search),
-                tooltip: 'Search',
+                tooltip: t.navSearch,
                 onPressed: () {
                   fileProvider.enterSearchMode();
                 },
@@ -263,11 +266,11 @@ class _MainScreenState extends State<MainScreen> {
                 if (context.mounted) context.go(AppRoutes.login);
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'share_links', child: Text('Manage Share Links')),
-              PopupMenuItem(value: 'server_settings', child: Text('Server Settings')),
-              PopupMenuItem(value: 'settings', child: Text('Security Settings')),
-              PopupMenuItem(value: 'logout', child: Text('Logout')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'share_links', child: Text(t.navManageShareLinks)),
+              PopupMenuItem(value: 'server_settings', child: Text(t.navServerSettings)),
+              PopupMenuItem(value: 'settings', child: Text(t.navSecuritySettings)),
+              PopupMenuItem(value: 'logout', child: Text(t.navLogout)),
             ],
           ),
         ],
@@ -278,6 +281,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _showFabMenu(BuildContext context, String storageType) {
+    final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -288,7 +292,7 @@ class _MainScreenState extends State<MainScreen> {
             if (storageType == 'note')
               ListTile(
                 leading: const Icon(Icons.note_add_rounded),
-                title: const Text('New Note'),
+                title: Text(t.noteNew),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _createNote(context);
@@ -298,7 +302,7 @@ class _MainScreenState extends State<MainScreen> {
             if (storageType == 'file')
               ListTile(
                 leading: const Icon(Icons.upload_file_rounded),
-                title: const Text('Upload File'),
+                title: Text(t.navUploadFile),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _pickAndUploadFiles(context);
@@ -307,7 +311,7 @@ class _MainScreenState extends State<MainScreen> {
             // text folder — file, note storage
             ListTile(
               leading: const Icon(Icons.create_new_folder_rounded),
-              title: const Text('New Folder'),
+              title: Text(t.folderNew),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _createFolder(context);
@@ -322,6 +326,7 @@ class _MainScreenState extends State<MainScreen> {
   /// note create — _createFolder text text
   /// dialog close text upload: _handleNoteCreate Body translated text text text text text (T048 §3 priority-3)
   Future<void> _createNote(BuildContext context) async {
+    final t = AppLocalizations.of(context);
     final input = await FileOperationDialogs.showRenameDialog(
       context,
       currentName: 'New Note',
@@ -380,9 +385,9 @@ class _MainScreenState extends State<MainScreen> {
       AppLogger.error('MainScreen', 'Failed to create note: ${e.response?.statusCode}');
       if (!context.mounted) return;
       if (e.response?.statusCode == 409) {
-        AppToast.error(context, 'A note with this name already exists');
+        AppToast.error(context, t.noteNameExists);
       } else {
-        AppToast.error(context, 'Failed to create note');
+        AppToast.error(context, t.noteCreateFailed);
       }
     }
   }
@@ -427,6 +432,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _createFolder(BuildContext context) async {
+    final t = AppLocalizations.of(context);
     final folderName =
         await FileOperationDialogs.showCreateFolderDialog(context);
     if (folderName == null || !context.mounted) return;
@@ -446,13 +452,13 @@ class _MainScreenState extends State<MainScreen> {
         nodeUuid: parentUuid,
         folderName: folderName,
       );
-      if (context.mounted) AppToast.success(context, 'Folder created');
+      if (context.mounted) AppToast.success(context, t.folderCreated);
       fileProvider.loadChildren(storageUuid, userUuid,
           nodeUuid: fileProvider.currentNode.nodeUuid);
       fileProvider.loadFolderTree(storageUuid, userUuid);
     } catch (e) {
       AppLogger.error('MainScreen', 'Failed to create folder: $e');
-      if (context.mounted) AppToast.error(context, 'Failed to create folder');
+      if (context.mounted) AppToast.error(context, t.folderCreateFailed);
     }
   }
 
@@ -472,6 +478,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _doBulkDownload(BuildContext ctx, Set<String> nodeUuids) async {
+    final t = AppLocalizations.of(ctx);
     try {
       final authProvider = ctx.read<AuthProvider>();
       final service = StorageService(authProvider.dio);
@@ -480,7 +487,7 @@ class _MainScreenState extends State<MainScreen> {
       );
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
-        if (ctx.mounted) AppToast.error(ctx, 'Download failed');
+        if (ctx.mounted) AppToast.error(ctx, t.fileDownloadFailed);
         return;
       }
       final cdHeader = response.headers.value('content-disposition');
@@ -491,7 +498,7 @@ class _MainScreenState extends State<MainScreen> {
       if (ctx.mounted) ctx.read<SelectionProvider>().exitSelectionMode();
     } catch (e) {
       AppLogger.error('MainScreen', 'Bulk download failed: $e');
-      if (ctx.mounted) AppToast.error(ctx, 'Download failed');
+      if (ctx.mounted) AppToast.error(ctx, t.fileDownloadFailed);
     }
   }
 
@@ -503,6 +510,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _doBulkDelete(BuildContext ctx, Set<String> nodeUuids) async {
+    final t = AppLocalizations.of(ctx);
     final confirmed = await FileOperationDialogs.showBulkDeleteConfirmDialog(
       ctx,
       count: nodeUuids.length,
@@ -521,10 +529,15 @@ class _MainScreenState extends State<MainScreen> {
 
       if (errors != null && (errors as List).isNotEmpty) {
         if (ctx.mounted) {
-          AppToast.warning(ctx, 'Some items failed to delete ($deletedCount/$totalCount)');
+          AppToast.warning(
+              ctx,
+              t.bulkDeletePartial(
+                  (deletedCount as num).toInt(), (totalCount as num).toInt()));
         }
       } else {
-        if (ctx.mounted) AppToast.success(ctx, '$deletedCount items deleted');
+        if (ctx.mounted) {
+          AppToast.success(ctx, t.bulkDeleted((deletedCount as num).toInt()));
+        }
       }
       if (!ctx.mounted) return;
       ctx.read<SelectionProvider>().exitSelectionMode();
@@ -538,7 +551,7 @@ class _MainScreenState extends State<MainScreen> {
       fileProvider.loadFolderTree(storageUuid, userUuid);
     } catch (e) {
       AppLogger.error('MainScreen', 'Bulk delete failed: $e');
-      if (ctx.mounted) AppToast.error(ctx, 'Delete failed');
+      if (ctx.mounted) AppToast.error(ctx, t.fileDeleteFailed);
     }
   }
 
@@ -548,6 +561,7 @@ class _MainScreenState extends State<MainScreen> {
     StorageProvider storageProvider,
     FileProvider fileProvider,
   ) {
+    final t = AppLocalizations.of(context);
     return Drawer(
       child: SafeArea(
         child: ListView(
@@ -590,11 +604,11 @@ class _MainScreenState extends State<MainScreen> {
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               )
             else if (fileProvider.folderTree.isNotEmpty) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Text(
-                  'Folders',
-                  style: TextStyle(
+                  t.navFoldersHeader,
+                  style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2),

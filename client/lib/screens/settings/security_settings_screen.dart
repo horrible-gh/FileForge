@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/download_save_service.dart';
 import '../../services/totp_service.dart';
 import '../../widgets/app_toast.dart';
+import '../../l10n/app_localizations.dart';
 
 enum _SetupPhase { idle, loading, qr }
 enum _DisablePhase { idle, confirm }
@@ -60,6 +61,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Future<void> _loadStatus() async {
+    final t = AppLocalizations.of(context);
     setState(() => _isLoadingStatus = true);
     try {
       final enabled = await _totpService.getStatus();
@@ -71,11 +73,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoadingStatus = false);
-      AppToast.error(context, 'Failed to retrieve TOTP status');
+      AppToast.error(context, t.securityTotpStatusFailed);
     }
   }
 
   Future<void> _startSetup() async {
+    final t = AppLocalizations.of(context);
     setState(() {
       _setupPhase = _SetupPhase.loading;
       _setupError = null;
@@ -92,11 +95,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     } on AuthException {
       if (!mounted) return;
       setState(() => _setupPhase = _SetupPhase.idle);
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     } catch (_) {
       if (!mounted) return;
       setState(() => _setupPhase = _SetupPhase.idle);
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     }
   }
 
@@ -110,9 +113,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Future<void> _activateSetup() async {
+    final t = AppLocalizations.of(context);
     final code = _setupCodeController.text.trim();
     if (code.length != 6) {
-      setState(() => _setupError = 'Enter 6-digit code');
+      setState(() => _setupError = t.totpEnterCodeError);
       return;
     }
 
@@ -127,20 +131,20 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         _setupCodeController.clear();
         _setupError = null;
       });
-      AppToast.success(context, 'Two-step authentication has been enabled');
+      AppToast.success(context, t.security2faEnabled);
     } on AuthException catch (e) {
       if (!mounted) return;
       if (e.detail == 'invalid_code') {
         setState(() {
-          _setupError = 'Invalid code';
+          _setupError = t.securityInvalidCode;
           _setupCodeController.clear();
         });
         return;
       }
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     }
   }
 
@@ -161,9 +165,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Future<void> _confirmDisable() async {
+    final t = AppLocalizations.of(context);
     final code = _disableCodeController.text.trim();
     if (code.length != 6) {
-      setState(() => _disableError = 'Enter 6-digit code');
+      setState(() => _disableError = t.totpEnterCodeError);
       return;
     }
 
@@ -181,20 +186,20 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         _disableCodeController.clear();
         _regenCodeController.clear();
       });
-      AppToast.success(context, 'Two-step authentication has been disabled');
+      AppToast.success(context, t.security2faDisabled);
     } on AuthException catch (e) {
       if (!mounted) return;
       if (e.detail == 'invalid_code') {
         setState(() {
-          _disableError = 'Invalid code';
+          _disableError = t.securityInvalidCode;
           _disableCodeController.clear();
         });
         return;
       }
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     }
   }
 
@@ -215,9 +220,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Future<void> _confirmRegenerate() async {
+    final t = AppLocalizations.of(context);
     final code = _regenCodeController.text.trim();
     if (code.length != 6) {
-      setState(() => _regenError = 'Enter 6-digit code');
+      setState(() => _regenError = t.totpEnterCodeError);
       return;
     }
 
@@ -230,20 +236,20 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         _regenPhase = _RegenPhase.done;
         _regenCodeController.clear();
       });
-      AppToast.success(context, 'Recovery codes have been regenerated');
+      AppToast.success(context, t.securityRecoveryRegenerated);
     } on AuthException catch (e) {
       if (!mounted) return;
       if (e.detail == 'invalid_code') {
         setState(() {
-          _regenError = 'Invalid code';
+          _regenError = t.securityInvalidCode;
           _regenCodeController.clear();
         });
         return;
       }
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, 'Setup failed. Please try again');
+      AppToast.error(context, t.securitySetupFailed);
     }
   }
 
@@ -261,6 +267,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     if (_isLoadingStatus) {
       return const Center(child: CircularProgressIndicator());
     }
+    final t = AppLocalizations.of(context);
 
     return RefreshIndicator(
       onRefresh: _loadStatus,
@@ -277,10 +284,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     children: [
                       const Icon(Icons.key_rounded),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Two-Step Authentication (TOTP)',
-                          style: TextStyle(
+                          t.securitySectionTitle,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
@@ -291,7 +298,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Extra security using authenticator apps like Google Authenticator',
+                    t.securitySectionDesc,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -313,6 +320,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Widget _buildStatusChip(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final enabled = _totpEnabled;
     final bgColor = enabled
@@ -329,7 +337,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        enabled ? 'Enabled' : 'Disabled',
+        enabled ? t.securityStatusEnabled : t.securityStatusDisabled,
         style: TextStyle(
           color: fgColor,
           fontSize: 12,
@@ -340,6 +348,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Widget _buildSetupSection(BuildContext context) {
+    final t = AppLocalizations.of(context);
     if (_setupPhase == _SetupPhase.loading) {
       return const Center(
         child: Padding(
@@ -354,7 +363,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         alignment: Alignment.centerLeft,
         child: FilledButton(
           onPressed: _startSetup,
-          child: const Text('Enable Two-Step Authentication'),
+          child: Text(t.securityEnable2fa),
         ),
       );
     }
@@ -363,12 +372,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Step 1. Scan QR Code',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          t.securityStep1,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        const Text('Scan the QR code below with your authenticator app.'),
+        Text(t.securityScanQr),
         const SizedBox(height: 12),
         Center(
           child: ClipRRect(
@@ -383,24 +392,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 height: 220,
                 color: Colors.black12,
                 alignment: Alignment.center,
-                child: const Text('Unable to display QR image'),
+                child: Text(t.securityQrUnavailable),
               ),
             ),
           ),
         ),
         const SizedBox(height: 20),
-        const Text(
-          'Step 2. Save Recovery Codes',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          t.securityStep2,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        const Text('If you lose access, recovery codes can help you regain account access.'),
+        Text(t.securityRecoveryInfo),
         const SizedBox(height: 10),
         _buildCodeGrid(setup.recoveryCodes),
         const SizedBox(height: 20),
-        const Text(
-          'Step 3. Enter Authentication Code',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          t.securityStep3,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -412,9 +421,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             LengthLimitingTextInputFormatter(6),
           ],
           onSubmitted: (_) => _activateSetup(),
-          decoration: const InputDecoration(
-            labelText: 'Authentication Code',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: t.securityAuthCode,
+            border: const OutlineInputBorder(),
             counterText: '',
           ),
         ),
@@ -432,11 +441,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           children: [
             FilledButton(
               onPressed: _activateSetup,
-              child: const Text('Enable'),
+              child: Text(t.securityEnable),
             ),
             OutlinedButton(
               onPressed: _cancelSetup,
-              child: const Text('Cancel'),
+              child: Text(t.cancel),
             ),
           ],
         ),
@@ -445,20 +454,21 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Widget _buildDisableSection(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(),
         const SizedBox(height: 8),
-        const Text(
-          'Disable Two-Step Authentication',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        Text(
+          t.securityDisable2fa,
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         if (_disablePhase == _DisablePhase.idle)
           FilledButton.tonal(
             onPressed: _startDisable,
-            child: const Text('Disable Two-Step Authentication'),
+            child: Text(t.securityDisable2fa),
           )
         else
           Column(
@@ -473,9 +483,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   LengthLimitingTextInputFormatter(6),
                 ],
                 onSubmitted: (_) => _confirmDisable(),
-                decoration: const InputDecoration(
-                  labelText: 'Current Code',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.securityCurrentCode,
+                  border: const OutlineInputBorder(),
                   counterText: '',
                 ),
               ),
@@ -493,11 +503,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 children: [
                   FilledButton.tonal(
                     onPressed: _confirmDisable,
-                    child: const Text('Disable'),
+                    child: Text(t.securityDisable),
                   ),
                   OutlinedButton(
                     onPressed: _cancelDisable,
-                    child: const Text('Cancel'),
+                    child: Text(t.cancel),
                   ),
                 ],
               ),
@@ -508,20 +518,21 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Widget _buildRegenerateSection(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(),
         const SizedBox(height: 8),
-        const Text(
-          'Regenerate Recovery Codes',
-          style: TextStyle(fontWeight: FontWeight.w700),
+        Text(
+          t.securityRegenRecovery,
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
         if (_regenPhase == _RegenPhase.idle)
           FilledButton.tonal(
             onPressed: _startRegenerate,
-            child: const Text('Regenerate Recovery Codes'),
+            child: Text(t.securityRegenRecovery),
           ),
         if (_regenPhase == _RegenPhase.confirm)
           Column(
@@ -536,9 +547,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   LengthLimitingTextInputFormatter(6),
                 ],
                 onSubmitted: (_) => _confirmRegenerate(),
-                decoration: const InputDecoration(
-                  labelText: 'Current Code',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.securityCurrentCode,
+                  border: const OutlineInputBorder(),
                   counterText: '',
                 ),
               ),
@@ -556,24 +567,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 children: [
                   FilledButton.tonal(
                     onPressed: _confirmRegenerate,
-                    child: const Text('Regenerate'),
+                    child: Text(t.securityRegenerate),
                   ),
                   OutlinedButton(
                     onPressed: _cancelRegenerate,
-                    child: const Text('Cancel'),
+                    child: Text(t.cancel),
                   ),
                 ],
               ),
             ],
           ),
         if (_regenPhase == _RegenPhase.done) ...[
-          const Text('New recovery codes. Store them in a safe place.'),
+          Text(t.securityNewRecoveryInfo),
           const SizedBox(height: 10),
           _buildCodeGrid(_regeneratedCodes),
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: _closeRegeneratedCodes,
-            child: const Text('Close'),
+            child: Text(t.commonClose),
           ),
         ],
       ],
@@ -581,10 +592,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Future<void> _copyRecoveryCodes(List<String> codes) async {
+    final t = AppLocalizations.of(context);
     await Clipboard.setData(ClipboardData(text: codes.join('\n')));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Recovery codes copied')),
+      SnackBar(content: Text(t.securityRecoveryCopied)),
     );
   }
 
@@ -596,6 +608,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Widget _buildCodeGrid(List<String> codes) {
+    final t = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -629,13 +642,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             OutlinedButton.icon(
               onPressed: () => _copyRecoveryCodes(codes),
               icon: const Icon(Icons.copy_rounded, size: 18),
-              label: const Text('Copy'),
+              label: Text(t.commonCopy),
             ),
             const SizedBox(width: 8),
             OutlinedButton.icon(
               onPressed: () => _downloadRecoveryCodes(codes),
               icon: const Icon(Icons.download_rounded, size: 18),
-              label: const Text('Download'),
+              label: Text(t.commonDownload),
             ),
           ],
         ),

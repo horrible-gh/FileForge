@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/auth_exception.dart';
 import '../../config/routes.dart';
+import '../../l10n/app_localizations.dart';
 
 class TotpVerifyScreen extends StatefulWidget {
   final String tempToken;
@@ -35,10 +36,11 @@ class _TotpVerifyScreenState extends State<TotpVerifyScreen> {
   }
 
   Future<void> _submit() async {
+    final t = AppLocalizations.of(context);
     final code = _codeController.text.trim();
     final expectedLength = _useRecovery ? 8 : 6;
     if (code.length != expectedLength) {
-      setState(() => _errorMessage = _useRecovery ? 'Enter 8-character recovery code' : 'Enter 6-digit code');
+      setState(() => _errorMessage = _useRecovery ? t.totpEnterRecoveryCodeError : t.totpEnterCodeError);
       return;
     }
 
@@ -59,20 +61,21 @@ class _TotpVerifyScreenState extends State<TotpVerifyScreen> {
       } else {
         // L002 ST-01 Row 9: invalid_code → screen keep, translated text allowed
         setState(() {
-          _errorMessage = 'Invalid authentication code';
+          _errorMessage = t.totpInvalidCode;
           _codeController.clear();
         });
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Authentication error occurred');
+      setState(() => _errorMessage = t.totpAuthError);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Two-Factor Authentication')),
+      appBar: AppBar(title: Text(t.totpTitle)),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -81,16 +84,16 @@ class _TotpVerifyScreenState extends State<TotpVerifyScreen> {
             children: [
               const SizedBox(height: 32),
               Text(
-                _useRecovery ? 'Enter your recovery code' : 'Enter 6-digit code from your authenticator app',
+                _useRecovery ? t.totpRecoveryPrompt : t.totpCodePrompt,
                 style: const TextStyle(fontSize: 16),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _codeController,
-                decoration: const InputDecoration(
-                  labelText: 'Authentication code',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: t.totpCodeLabel,
+                  border: const OutlineInputBorder(),
                   counterText: '',
                 ),
                 keyboardType:
@@ -130,14 +133,14 @@ class _TotpVerifyScreenState extends State<TotpVerifyScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Verify'),
+                      : Text(t.totpVerify),
                 ),
               ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: _toggleMode,
                 child: Text(
-                  _useRecovery ? 'Use authentication code' : 'Use recovery code',
+                  _useRecovery ? t.totpUseAuthCode : t.totpUseRecovery,
                 ),
               ),
             ],

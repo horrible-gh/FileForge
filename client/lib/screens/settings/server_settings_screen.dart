@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/auth_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class ServerSettingsScreen extends StatefulWidget {
   const ServerSettingsScreen({super.key});
@@ -44,6 +45,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
 
   /// translated text verify. null return text text.
   String? _validate(String value) {
+    final t = AppLocalizations.of(context);
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
 
@@ -56,18 +58,18 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
 
     // text text text
     if (hostPort.startsWith('http://') || hostPort.startsWith('https://')) {
-      return 'Invalid format';
+      return t.serverInvalidFormat;
     }
 
     final colonIndex = hostPort.lastIndexOf(':');
     if (colonIndex == -1) {
-      return 'Port number is required (e.g., 192.168.1.10:8000)';
+      return t.serverPortRequired;
     }
 
     final portStr = hostPort.substring(colonIndex + 1);
     final port = int.tryParse(portStr);
-    if (port == null) return 'Port number must be numeric';
-    if (port < 1 || port > 65535) return 'Port must be between 1 and 65535';
+    if (port == null) return t.serverPortNumeric;
+    if (port < 1 || port > 65535) return t.serverPortRange;
 
     return null;
   }
@@ -124,6 +126,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
   }
 
   Future<void> _save() async {
+    final t = AppLocalizations.of(context);
     final trimmed = _controller.text.trim();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('server_url', trimmed);
@@ -131,18 +134,19 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
     context.read<AuthProvider>().setServerUrl(trimmed);
     setState(() => _savedValue = trimmed);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Saved')),
+      SnackBar(content: Text(t.commonSaved)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final validationError = _validate(_controller.text);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Server Settings'),
+        title: Text(t.navServerSettings),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -168,9 +172,9 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                     children: [
                       const Icon(Icons.dns_rounded),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Server Address',
-                        style: TextStyle(
+                      Text(
+                        t.serverAddress,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                         ),
@@ -179,7 +183,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Enter the host and port of the server to connect to.',
+                    t.serverAddressDesc,
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
@@ -188,8 +192,8 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                     keyboardType: TextInputType.url,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
-                      labelText: 'Server Address',
-                      hintText: 'e.g., 192.168.1.10:8000',
+                      labelText: t.serverAddress,
+                      hintText: t.serverAddressHint,
                       border: const OutlineInputBorder(),
                       errorText: validationError,
                     ),
@@ -233,7 +237,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2),
                                 )
-                              : const Text('Test Connection'),
+                              : Text(t.serverTestConnection),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -241,7 +245,7 @@ class _ServerSettingsScreenState extends State<ServerSettingsScreen> {
                         child: FilledButton(
                           onPressed:
                               (_isTesting || _isSaveDisabled) ? null : _save,
-                          child: const Text('Save'),
+                          child: Text(t.commonSave),
                         ),
                       ),
                     ],

@@ -45,26 +45,31 @@ class _MailListScreenState extends State<MailListScreen>
     with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
 
-  /// R0001(0027) — "ピン留め(고정됨)" 트레이 펼침/접힘 상태. 핀이 많아도 공간을
-  /// 차지하지 않도록 접을 수 있고, 기본은 펼침. 핀 메일 자체가 없으면 트레이는
-  /// 아예 렌더되지 않는다.
+  /// R0001(0027) — expanded/collapsed state of the "ピン留め(pinned)" tray. It can
+  /// be collapsed so it takes no space even with many pins, and defaults to
+  /// expanded. If there are no pinned mails at all, the tray is not rendered.
   bool _pinnedTrayExpanded = true;
 
-  /// R0001(0022) 실시간 수신 — 받은편지함이 화면에 떠 있는 동안 주기적으로 서버
-  /// 동기화(POST /sync)를 끌어와 외부 도착 메일을 자동 반영한다. NR0003 방향 A:
-  /// 서버 무변경(백그라운드 워커 부재는 클라 폴링으로 보완).
+  /// R0001(0022) realtime receive — while the inbox is on screen, periodically
+  /// pull a server sync (POST /sync) to auto-reflect externally arriving mail.
+  /// NR0003 direction A: server unchanged (the absence of a background worker is
+  /// compensated by client polling).
   ///
-  /// 간격 = 10초(T0007, 이전 15초에서 단축). "부하 심하나?"에 대한 근거:
-  /// 새 메일이 없는 폴은 IMAP SEARCH가 빈 결과를 돌려주고 즉시 끝나므로 **본문
-  /// 다운로드가 전혀 없다**(sync.go doSyncLocked: 적용할 변경 0건이면 FetchChanges
-  /// 1페이지에서 종료). 따라서 빈 폴 1회의 실비용은 단발성 TLS+IMAP 로그인
-  /// 왕복뿐이고 트래픽은 수십 KB 미만이다. 게다가 폴링은 (a) 받은편지함이
-  /// **포그라운드 최상위**일 때만 돌고(작성/상세 push·앱 백그라운드 시 정지),
-  /// (b) 서버 `acquireSyncLock`(sync.go:53)이 중복 동시 sync를 멱등 차단하며,
-  /// (c) 한 번에 연결 1개를 직렬로 열고 즉시 닫으므로 동시 연결이 누적되지 않는다.
-  /// 10초 = 계정 1개 기준 활성 화면에서 분당 6회로, 받은편지함 포그라운드 동안만
-  /// 도는 임시 수신 보완책이다. 더 줄이려면(예: <10초) 폴마다 TLS
-  /// 재접속 오버헤드가 지배적이 되어 연결 재사용/IMAP IDLE(방향 C)이 필요하다.
+  /// Interval = 10s (T0007, shortened from the previous 15s). Rationale for "is
+  /// the load heavy?": a poll with no new mail has IMAP SEARCH return an empty
+  /// result and finish immediately, so there is **no body download at all**
+  /// (sync.go doSyncLocked: if 0 changes to apply it ends at the first
+  /// FetchChanges page). So the real cost of one empty poll is just a single
+  /// TLS+IMAP login round-trip and traffic is under a few tens of KB. Moreover
+  /// polling (a) runs only when the inbox is the **foreground top route** (stops
+  /// on compose/detail push and when the app is backgrounded), (b) is idempotently
+  /// blocked against duplicate concurrent syncs by the server `acquireSyncLock`
+  /// (sync.go:53), and (c) opens one connection serially at a time and closes it
+  /// immediately so concurrent connections do not accumulate. 10s = 6 times per
+  /// minute on an active screen for one account, a temporary receive supplement
+  /// that runs only while the inbox is in the foreground. Going lower (e.g. <10s)
+  /// makes the per-poll TLS reconnect overhead dominant, requiring connection
+  /// reuse / IMAP IDLE (direction C).
   static const Duration _pollInterval = Duration(seconds: 10);
   Timer? _pollTimer;
 
@@ -77,15 +82,16 @@ class _MailListScreenState extends State<MailListScreen>
     _startPolling();
   }
 
-  // ── 주기 폴링(실시간 수신) ─────────────────────────────────────────────────
+  // ── periodic polling (realtime receive) ───────────────────────────────────
   //
-  // ★T0004 제약(반드시 준수): "메일을 작성하는 중에 리프레시가 작성을 방해해서는
-  // 안 된다." 이를 두 겹으로 보장한다.
-  //   (1) 작성/상세 화면이 받은편지함 위로 push되어 있으면(= 이 라우트가 최상위가
-  //       아니면) 폴링 tick은 아무 동작도 하지 않는다(_pollTick의 isCurrent 가드).
-  //   (2) 설령 tick이 돌더라도 동기화는 받은편지함 *목록* 상태만 갱신하며,
-  //       MailComposeScreen은 자체 로컬 상태(TextEditingController 등)만 쓰고
-  //       MailProvider를 watch하지 않으므로 입력 중인 본문이 사라지지 않는다.
+  // ★T0004 constraint (must obey): "while composing a mail, a refresh must not
+  // disturb the composition." This is guaranteed in two layers.
+  //   (1) If a compose/detail screen is pushed over the inbox (= this route is not
+  //       the top), the polling tick does nothing (_pollTick's isCurrent guard).
+  //   (2) Even if the tick runs, the sync only updates the inbox *list* state, and
+  //       MailComposeScreen uses only its own local state (TextEditingController,
+  //       etc.) and does not watch MailProvider, so the body being typed never
+  //       disappears.
 
   void _startPolling() {
     _pollTimer?.cancel();
@@ -97,29 +103,30 @@ class _MailListScreenState extends State<MailListScreen>
     _pollTimer = null;
   }
 
-  /// 주기 동기화 1회. 작성/상세 등 다른 화면이 위에 올라와 있거나, 계정이 없거나,
-  /// 받은편지함이 아닌 라벨이거나, 이미 동기화/로딩 중이면 건너뛴다.
+  /// One periodic sync. Skips if another screen (compose/detail, etc.) is on top,
+  /// if there are no accounts, if the label is not the inbox, or if a sync/load
+  /// is already in progress.
   void _pollTick() {
     if (!mounted) return;
-    // (1) 메일 작성 중 방해 금지 — 받은편지함이 최상위 라우트가 아니면 절대 sync 안 함.
+    // (1) Do not disturb mail composition — never sync unless the inbox is the top route.
     final route = ModalRoute.of(context);
     if (route != null && !route.isCurrent) return;
     if (!context.read<AccountProvider>().hasAccounts) return;
     final mail = context.read<MailProvider>();
-    // 받은편지함에서만 자동 수신. 보낸편지함/임시보관함은 수신 대상이 아니다.
+    // Auto-receive only on the inbox. Sent/drafts are not receive targets.
     if (mail.currentLabel != 'inbox') return;
-    // 검색 중에는 자동 동기화가 검색 결과를 덮어쓰지 않도록 건너뛴다(B0001/0026).
-    // syncInbox→loadInbox는 검색어를 비우고 전체 목록을 다시 싣기 때문.
+    // While searching, skip so the auto-sync does not overwrite search results (B0001/0026).
+    // Because syncInbox→loadInbox clears the query and reloads the full list.
     if (mail.isSearchMode) return;
     if (mail.isSyncing || mail.isLoading) return;
-    // 목록이 비어 있지 않으면 syncInbox는 전체화면 스피너를 띄우지 않고 조용히 갱신한다.
+    // If the list is not empty, syncInbox refreshes quietly without a full-screen spinner.
     mail.syncInbox();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 백그라운드에선 폴링을 멈추고(네트워크/배터리 절약), 포그라운드 복귀 시 즉시
-    // 1회 동기화 후 폴링을 재개한다 — 복귀 직후 한발짝 늦지 않도록.
+    // In the background, stop polling (save network/battery); on foreground resume,
+    // sync once immediately then restart polling — so it isn't a step behind right after resuming.
     switch (state) {
       case AppLifecycleState.resumed:
         _startPolling();
@@ -143,9 +150,9 @@ class _MailListScreenState extends State<MailListScreen>
     final primed = await accounts.primeFromCache();
     if (!mounted) return;
     if (primed && accounts.hasAccounts) {
-      // R0001: 받은편지함 진입 시 서버 동기화(POST /sync)를 먼저 끌어온 뒤 재로딩한다.
-      // 이 트리거가 없으면 수신 메일이 영영 로컬에 들어오지 않는다(syncInbox 내부에서
-      // 동기화 실패는 best-effort로 무시하고 로컬 목록을 보여준다).
+      // R0001: on entering the inbox, pull a server sync (POST /sync) first, then reload.
+      // Without this trigger, received mail never makes it into local storage (inside
+      // syncInbox a sync failure is ignored best-effort and the local list is shown).
       context.read<MailProvider>().syncInbox();
     }
     // translated text translated text(text ready text translated text translated text text).
@@ -166,7 +173,7 @@ class _MailListScreenState extends State<MailListScreen>
     if (!mounted) return;
     final mail = context.read<MailProvider>();
     if (context.read<AccountProvider>().hasAccounts && mail.mails.isEmpty) {
-      // 막 계정을 연결/재연결했으므로 동기화로 수신함을 끌어온다(R0001).
+      // An account was just connected/reconnected, so pull the inbox via sync (R0001).
       mail.syncInbox();
     }
   }
@@ -268,9 +275,10 @@ class _MailListScreenState extends State<MailListScreen>
       ),
       body: Column(
         children: [
-          // 라벨 스위처 우측에 상시 계정 관리 진입점(R0001) — 계정이 이미
-          // 있을 때는 온보딩 CTA가 뜨지 않으므로, 여기서 AccountConnectScreen으로
-          // 가는 유일한 동선을 보장한다(추가·재연결·해제).
+          // A persistent account-management entry point to the right of the label
+          // switcher (R0001) — when accounts already exist the onboarding CTA does
+          // not appear, so this guarantees the only path to AccountConnectScreen
+          // (add/reconnect/disconnect).
           Row(
             children: [
               Expanded(
@@ -287,8 +295,9 @@ class _MailListScreenState extends State<MailListScreen>
               const SizedBox(width: 4),
             ],
           ),
-          // 재인증 필요(status=reauth_required) 배너 — 0018.0009-TR가 OAuth
-          // credential 유실 시 부여하는 상태를 표면화하고 재연결 동선을 연다.
+          // Re-auth required (status=reauth_required) banner — surfaces the state
+          // that 0018.0009-TR assigns when the OAuth credential is lost, and opens
+          // the reconnect path.
           if (accounts.hasReauthRequired)
             _ReauthBanner(
               email: accounts.reauthAccounts.first.email,
@@ -415,27 +424,28 @@ class _MailListScreenState extends State<MailListScreen>
       );
     }
 
-    // R0001(0027) — 핀은 시간순 목록에 쌓이지 않고 **별도 "ピン留め(고정됨)"
-    // 트레이**에 모인다(사용자 반려 반영). 본 목록을 핀/비핀으로 파티션해
-    // 트레이(상단)와 본문 시간순 리스트(아래·비핀만)를 분리 렌더한다.
+    // R0001(0027) — pins do not pile up in the chronological list; they gather in
+    // a **separate "ピン留め(pinned)" tray** (reflecting the user's rejection). The
+    // list is partitioned into pinned/unpinned to render the tray (top) and the
+    // chronological body list (below, unpinned only) separately.
     final pinned = mail.pinnedMails;
     final rest = mail.unpinnedMails;
     final hasTray = pinned.isNotEmpty;
     final trayCount = hasTray ? 1 : 0;
 
     return RefreshIndicator(
-      // R0001: 당겨서 새로고침은 받은편지함이면 서버 동기화 후 재로딩(syncRefresh),
-      // 그 외 라벨(sent/drafts)은 로컬 재로딩만 수행한다.
+      // R0001: pull-to-refresh on the inbox syncs the server then reloads (syncRefresh);
+      // on other labels (sent/drafts) it only reloads locally.
       onRefresh: () => context.read<MailProvider>().syncRefresh(),
       child: ListView.separated(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: trayCount + rest.length + (mail.hasMore ? 1 : 0),
-        // 트레이는 자체 컨테이너 경계를 가지므로 그 아래엔 구분선을 두지 않는다.
+        // The tray has its own container border, so no divider is placed below it.
         separatorBuilder: (_, index) =>
             (hasTray && index == 0) ? const SizedBox.shrink() : const Divider(height: 1),
         itemBuilder: (context, index) {
-          // [트레이?] + 비핀 메일들 + [더보기 스피너?] 의 인덱스 매핑.
+          // Index mapping of [tray?] + unpinned mails + [load-more spinner?].
           if (hasTray && index == 0) {
             return _buildPinnedTray(context, t, pinned);
           }
@@ -458,11 +468,12 @@ class _MailListScreenState extends State<MailListScreen>
     );
   }
 
-  /// R0001(0027) — "ピン留め(고정됨)" 트레이. 핀 메일을 시간순 목록과 분리된
-  /// 시각적 컨테이너(틴트 배경·테두리·헤더)에 모아 보여준다. 헤더 탭으로
-  /// 접고 펼 수 있으며(공간이 많아도 핀이 많을 때 부담 없이 접힘), 펼친 상태에선
-  /// 핀 메일 행을 그대로(행 핀 토글 포함) 렌더한다 — 트레이에서 핀을 해제하면
-  /// 그 메일은 즉시 아래 본문 리스트로 내려간다.
+  /// R0001(0027) — the "ピン留め(pinned)" tray. Gathers pinned mails into a visual
+  /// container (tinted background, border, header) separate from the chronological
+  /// list. It can be collapsed/expanded by tapping the header (so many pins fold
+  /// away without burden even when space is ample), and when expanded it renders
+  /// the pinned mail rows as-is (including the per-row pin toggle) — unpinning from
+  /// the tray immediately drops that mail down into the body list below.
   Widget _buildPinnedTray(
       BuildContext context, AppLocalizations t, List<MailSummary> pinned) {
     final theme = Theme.of(context);
@@ -476,7 +487,7 @@ class _MailListScreenState extends State<MailListScreen>
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // 헤더: 핀 아이콘 + 라벨 + 개수 배지 + 펼침/접힘 셰브론. 전체가 탭 영역.
+          // Header: pin icon + label + count badge + expand/collapse chevron. The whole row is the tap area.
           InkWell(
             onTap: () =>
                 setState(() => _pinnedTrayExpanded = !_pinnedTrayExpanded),
@@ -543,9 +554,10 @@ class _MailListScreenState extends State<MailListScreen>
   }
 }
 
-/// 재인증 필요 배너(R0001) — 연결됐지만 OAuth credential이 유실된 계정
-/// (status=reauth_required)을 표면화하고, "재연결" 버튼으로 AccountConnectScreen을
-/// 연다. 서버 ReconnectAccount가 기존 계정 row를 갱신하므로 중복 계정은 생기지 않는다.
+/// Re-auth required banner (R0001) — surfaces an account that is connected but has
+/// lost its OAuth credential (status=reauth_required), and opens AccountConnectScreen
+/// via the "reconnect" button. The server's ReconnectAccount updates the existing
+/// account row, so no duplicate account is created.
 class _ReauthBanner extends StatelessWidget {
   final String email;
   final VoidCallback onReconnect;
@@ -633,10 +645,11 @@ class _LabelSwitcher extends StatelessWidget {
   }
 }
 
-/// R0001(0013) — 계정별 구분색 팔레트. 서버 `display_color`는 계정마다 동일한
-/// 기본값(Gmail #EA4335 등)으로 부여되는 경우가 많아, 색만으로는 구분이 안 된다.
-/// 따라서 색은 계정 식별자 해시로 이 팔레트에서 안정적으로 파생해 *계정마다
-/// 서로 다른 색*을 보장한다(텍스트 라벨이 1차 단서, 색은 보조 단서).
+/// R0001(0013) — per-account distinguishing-color palette. The server's
+/// `display_color` is often assigned the same default per account (Gmail #EA4335,
+/// etc.), so color alone cannot distinguish them. Therefore the color is derived
+/// stably from a hash of the account identifier over this palette to guarantee *a
+/// different color per account* (the text label is the primary cue, color is secondary).
 const List<Color> _kAccountPalette = [
   Color(0xFF1565C0), // blue
   Color(0xFF2E7D32), // green
@@ -650,8 +663,8 @@ const List<Color> _kAccountPalette = [
   Color(0xFF00695C), // teal
 ];
 
-/// 계정 식별자 → 안정적 구분색. 같은 계정은 항상 같은 색, 다른 계정은(거의)
-/// 다른 색. 식별자가 없으면 중립 회색.
+/// Account identifier → stable distinguishing color. The same account always gets
+/// the same color, different accounts (almost) always different. Neutral gray if no identifier.
 Color _accountColor(MailAccountRef account) {
   final key = account.key;
   if (key.isEmpty) return const Color(0xFF607D8B);
@@ -666,7 +679,7 @@ class _MailListTile extends StatelessWidget {
   final MailSummary summary;
   final VoidCallback onTap;
 
-  /// R0001(0027) — 행의 핀 토글. 핀=상단 고정 UX의 진입점(트레일링 핀 아이콘).
+  /// R0001(0027) — the row's pin toggle. Pin = entry point to the pin-to-top UX (trailing pin icon).
   final VoidCallback onTogglePin;
 
   const _MailListTile({
@@ -686,8 +699,8 @@ class _MailListTile extends StatelessWidget {
     final pinned = summary.isPinned;
     return ListTile(
       onTap: onTap,
-      // 트레일링 핀 토글 — 채워진 핀=고정됨, 외곽선=미고정. 행 본문 탭(상세 열기)과
-      // 독립적으로 동작한다(IconButton이 자체 탭을 가로챈다).
+      // Trailing pin toggle — filled pin = pinned, outline = unpinned. Operates
+      // independently of the row-body tap (open detail) (the IconButton intercepts its own tap).
       trailing: IconButton(
         icon: Icon(
           pinned ? Icons.push_pin : Icons.push_pin_outlined,
@@ -697,7 +710,7 @@ class _MailListTile extends StatelessWidget {
         tooltip: pinned ? t.mailUnpin : t.mailPin,
         onPressed: onTogglePin,
       ),
-      // 좌측 색상 바 + 아바타 — 바 색은 계정별로 달라 어느 계정인지 한눈에 보인다.
+      // Left color bar + avatar — the bar color differs per account so you can tell at a glance which account.
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -759,7 +772,7 @@ class _MailListTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall,
             ),
-          // R0001(0013) — 어느 계정으로 받았는지 표시하는 배지(점 + 계정 라벨).
+          // R0001(0013) — a badge showing which account received it (dot + account label).
           if (acct.hasIdentity)
             Padding(
               padding: const EdgeInsets.only(top: 3),

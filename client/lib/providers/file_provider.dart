@@ -183,9 +183,9 @@ class FileProvider extends ChangeNotifier {
     loadChildren(storageUuid, userUuid);
   }
 
-  /// 검색 UI 토글만 해제(B0001/0026) — 파일 children을 다시 로드하지 않는다.
-  /// 공용 AppBar 검색창은 이 플래그로 표시되지만, 메일 storage에서는 검색이
-  /// MailProvider로 라우팅되므로 메일 검색을 닫을 때 파일 노드 API를 호출해선 안 된다.
+  /// Toggle off only the search UI (B0001/0026) — does not reload file children.
+  /// The shared AppBar search box is shown via this flag, but in mail storage
+  /// search is routed to MailProvider, so closing mail search must not call the file node API.
   void exitSearchModeUiOnly() {
     _searchQuery = '';
     _isSearchMode = false;

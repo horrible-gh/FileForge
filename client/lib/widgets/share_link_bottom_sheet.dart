@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/node.dart';
 import '../providers/share_link_provider.dart';
 import '../config/env.dart';
@@ -40,6 +41,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
   }
 
   Future<void> _createLink() async {
+    final t = AppLocalizations.of(context);
     final provider = context.read<ShareLinkProvider>();
     final nodeUuid = widget.node.nodeUuid ?? '';
     final nodeType = widget.node.type;
@@ -53,7 +55,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
         _generatedUrl = _buildShareUrl(token);
       });
     } else if (provider.error != null) {
-      AppToast.error(context, 'Failed to create link: ${provider.error}');
+      AppToast.error(context, t.shareCreateLinkFailed('${provider.error}'));
     }
   }
 
@@ -69,6 +71,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final isLoading = context.select<ShareLinkProvider, bool>(
       (p) => p.isLoading,
     );
@@ -86,7 +89,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Text(
-                'Create Share Link',
+                t.shareCreateLinkTitle,
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
@@ -121,7 +124,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Set Password'),
+                  Text(t.shareSetPassword),
                   Switch(
                     value: _usePassword,
                     onChanged: isLoading
@@ -143,12 +146,12 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                   controller: _passwordController,
                   enabled: !isLoading,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter password',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    hintText: t.shareEnterPassword,
+                    border: const OutlineInputBorder(),
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                   ),
                 ),
               ),
@@ -165,7 +168,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Create Link'),
+                      : Text(t.shareCreateLink),
                 ),
               ),
             ),
@@ -193,7 +196,7 @@ class _ShareLinkBottomSheetState extends State<ShareLinkBottomSheet> {
                             : Icons.content_copy_rounded,
                         size: 18,
                       ),
-                      label: Text(_copied ? 'Copied' : 'Copy'),
+                      label: Text(_copied ? t.commonCopied : t.commonCopy),
                     ),
                   ],
                 ),

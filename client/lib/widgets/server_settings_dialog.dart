@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 
 class ServerSettingsDialog extends StatefulWidget {
@@ -44,6 +45,7 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
   ///   2. `scheme://host`      — text text translated text URL
   ///   3. `host:port`          — scheme None, translated text text 1~65535
   String? _validate(String value) {
+    final t = AppLocalizations.of(context);
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
 
@@ -52,20 +54,20 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
 
     if (hasScheme) {
       final uri = Uri.tryParse(trimmed);
-      if (uri == null || !uri.hasAuthority) return 'Invalid format';
+      if (uri == null || !uri.hasAuthority) return t.serverInvalidFormat;
       return null;
     }
 
     // scheme None → host:port text text
     final colonIndex = trimmed.lastIndexOf(':');
     if (colonIndex == -1) {
-      return 'Port number is required (e.g., 192.168.1.10:8000 or https://example.com)';
+      return t.serverPortRequired;
     }
 
     final portStr = trimmed.substring(colonIndex + 1);
     final port = int.tryParse(portStr);
-    if (port == null) return 'Port number must be numeric';
-    if (port < 1 || port > 65535) return 'Port out of range (1-65535)';
+    if (port == null) return t.serverPortNumeric;
+    if (port < 1 || port > 65535) return t.serverPortRange;
 
     return null;
   }
@@ -133,11 +135,12 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final validationError = _validate(_controller.text);
 
     return AlertDialog(
-      title: const Text('Server Settings'),
+      title: Text(t.navServerSettings),
       content: SizedBox(
         width: 360,
         child: Column(
@@ -149,7 +152,7 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(
-                labelText: 'Server Address',
+                labelText: t.serverAddress,
                 hintText: '192.168.1.10:8000 or https://example.com',
                 border: const OutlineInputBorder(),
                 errorText: validationError,
@@ -203,15 +206,15 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
                   width: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Test Connection'),
+              : Text(t.serverTestConnection),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(t.cancel),
         ),
         FilledButton(
           onPressed: (_isTesting || _isSaveDisabled) ? null : _save,
-          child: const Text('Save'),
+          child: Text(t.commonSave),
         ),
       ],
     );

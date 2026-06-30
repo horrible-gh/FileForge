@@ -64,11 +64,11 @@ class AccountProvider extends ChangeNotifier {
   /// text(primeFromCache)text translated text ready text text text translated text text translated text.
   bool get isResolved => _gate == AccountGateState.ready;
 
-  /// 재인증(재연결)이 필요한 계정이 1개 이상인지 — 0018.0009-TR가 OAuth credential
-  /// 유실 시 status=reauth_required로 표시. 메일 목록 상단 재연결 배너 노출 조건.
+  /// Whether at least one account needs re-authentication (re-connection) — 0018.0009-TR
+  /// marks status=reauth_required when OAuth credentials are lost. Condition for showing the reconnect banner atop the mail list.
   bool get hasReauthRequired => _accounts.any((a) => a.needsReauth);
 
-  /// 재인증이 필요한 계정 목록(배너에 이메일을 표시하기 위함).
+  /// List of accounts needing re-authentication (to show their emails in the banner).
   List<MailAccount> get reauthAccounts =>
       _accounts.where((a) => a.needsReauth).toList(growable: false);
 

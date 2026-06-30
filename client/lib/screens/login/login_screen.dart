@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/routes.dart';
 import '../../widgets/server_settings_dialog.dart';
+import '../../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -50,6 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     const cardColor = Color(0xDD223746);
     const fieldColor = Color(0xFF2C4556);
     const fieldBorderColor = Color(0xFF5E8196);
@@ -151,9 +153,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Enter your account information to return to your workspace',
-                  style: TextStyle(
+                Text(
+                  t.loginSubtitle,
+                  style: const TextStyle(
                     color: secondaryTextColor,
                     fontSize: 14,
                   ),
@@ -162,20 +164,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
+                  decoration: InputDecoration(
+                    labelText: t.commonUsername,
                   ),
                   style: const TextStyle(color: primaryTextColor),
                   textInputAction: TextInputAction.next,
                   autofillHints: const [AutofillHints.username],
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Please enter your username' : null,
+                      (v == null || v.trim().isEmpty) ? t.loginUsernameRequired : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
+                  decoration: InputDecoration(
+                    labelText: t.commonPassword,
                   ),
                   style: const TextStyle(color: primaryTextColor),
                   obscureText: true,
@@ -183,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onFieldSubmitted: (_) => _submit(),
                   autofillHints: const [AutofillHints.password],
                   validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Please enter your password' : null,
+                      (v == null || v.isEmpty) ? t.loginPasswordRequired : null,
                 ),
                 const SizedBox(height: 8),
                 // server error translated text (L002 ST-01 text)
@@ -212,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Sign In'),
+                        : Text(t.loginSignIn),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -223,9 +225,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       size: 16,
                       color: Color(0xFF7A9BAD),
                     ),
-                    label: const Text(
-                      'Server Settings',
-                      style: TextStyle(
+                    label: Text(
+                      t.navServerSettings,
+                      style: const TextStyle(
                         color: Color(0xFF7A9BAD),
                         fontSize: 13,
                       ),

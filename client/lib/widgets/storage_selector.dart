@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/storage.dart';
 import '../providers/storage_provider.dart';
 
@@ -25,6 +26,7 @@ class StorageSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final storageProvider = context.watch<StorageProvider>();
     final storages = storageProvider.storages;
     final current = storageProvider.currentStorage;
@@ -37,20 +39,20 @@ class StorageSelector extends StatelessWidget {
     }
 
     if (storages.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Text('No Storage', style: TextStyle(color: Colors.grey)),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(t.storageNone, style: const TextStyle(color: Colors.grey)),
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
-            'Storage',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            t.storageSectionLabel,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
           ),
         ),
         ...storages.map((s) {

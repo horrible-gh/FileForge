@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../providers/share_page_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 /// D004 §2-3 — public text text text screen.
 /// - SharePageProvidertext text translated text text create (text register prohibited — L004 ST-L4-02).
@@ -26,12 +27,13 @@ class _SharePageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final state = context.select<SharePageProvider, SharePageState>(
       (p) => p.state,
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shared File')),
+      appBar: AppBar(title: Text(t.sharedFileTitle)),
       body: switch (state) {
         SharePageState.loading => const Center(child: CircularProgressIndicator()),
         SharePageState.password => const _PasswordView(),
@@ -63,6 +65,7 @@ class _PasswordViewState extends State<_PasswordView> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final errorMsg = context.select<SharePageProvider, String?>(
       (p) => p.errorMessage,
     );
@@ -80,13 +83,13 @@ class _PasswordViewState extends State<_PasswordView> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('This link is password protected'),
+            Text(t.sharePasswordProtected),
             const SizedBox(height: 24),
             TextField(
               controller: _controller,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: 'Password',
+                labelText: t.commonPassword,
                 border: const OutlineInputBorder(),
                 errorText: errorMsg,
               ),
@@ -97,7 +100,7 @@ class _PasswordViewState extends State<_PasswordView> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => _submit(context),
-                child: const Text('Confirm'),
+                child: Text(t.commonConfirm),
               ),
             ),
           ],
@@ -120,6 +123,7 @@ class _FileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final provider = context.watch<SharePageProvider>();
     final fileInfo = provider.fileInfo;
     if (fileInfo == null) return const SizedBox.shrink();
@@ -154,19 +158,19 @@ class _FileView extends StatelessWidget {
                   await Clipboard.setData(ClipboardData(text: url));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Link copied')),
+                      SnackBar(content: Text(t.shareLinkCopied)),
                     );
                   }
                 },
                 icon: const Icon(Icons.link_rounded),
-                label: const Text('Copy Link'),
+                label: Text(t.shareCopyLink),
               ),
               const SizedBox(height: 12),
             ],
             FilledButton.icon(
               onPressed: () => _download(context),
               icon: const Icon(Icons.download_rounded),
-              label: const Text('Download'),
+              label: Text(t.commonDownload),
             ),
           ],
         ),
@@ -198,6 +202,7 @@ class _FolderView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final provider = context.watch<SharePageProvider>();
     final breadcrumbs = provider.breadcrumbs;
     final items = provider.items;
@@ -240,7 +245,7 @@ class _FolderView extends StatelessWidget {
         // text
         Expanded(
           child: items.isEmpty
-              ? const Center(child: Text('Folder is empty'))
+              ? Center(child: Text(t.shareFolderEmpty))
               : ListView.separated(
                   itemCount: items.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
@@ -269,6 +274,7 @@ class _FolderItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final isFolder = item.type == 'folder';
     final icon = isFolder
         ? Icons.folder_rounded
@@ -286,12 +292,12 @@ class _FolderItemTile extends StatelessWidget {
                 if (!isPasswordProtected)
                   IconButton(
                     icon: const Icon(Icons.link_rounded, size: 20),
-                    tooltip: 'Copy Link',
+                    tooltip: t.shareCopyLink,
                     onPressed: () => _copyLink(context),
                   ),
                 IconButton(
                   icon: const Icon(Icons.download_rounded, size: 20),
-                  tooltip: 'Download',
+                  tooltip: t.commonDownload,
                   onPressed: () => _download(context),
                 ),
               ],
@@ -315,12 +321,13 @@ class _FolderItemTile extends StatelessWidget {
   }
 
   Future<void> _copyLink(BuildContext context) async {
+    final t = AppLocalizations.of(context);
     final provider = context.read<SharePageProvider>();
     final url = '${AppConfig.baseUrl}/share/${provider.token}/${item.uuid}';
     await Clipboard.setData(ClipboardData(text: url));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link copied')),
+        SnackBar(content: Text(t.shareLinkCopied)),
       );
     }
   }
@@ -333,10 +340,11 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final msg = context.select<SharePageProvider, String?>(
           (p) => p.errorMessage,
         ) ??
-        'An unknown error occurred';
+        t.shareUnknownError;
 
     return Center(
       child: Padding(

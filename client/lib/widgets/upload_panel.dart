@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/upload_item.dart';
 import '../providers/upload_provider.dart';
 
@@ -36,6 +37,7 @@ class UploadPanel extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, UploadProvider provider) {
+    final t = AppLocalizations.of(context);
     final uploading = provider.uploadingCount;
     final total = provider.items.length;
     final completed = provider.completedCount;
@@ -71,7 +73,7 @@ class UploadPanel extends StatelessWidget {
             if (provider.canClearAll)
               TextButton(
                 onPressed: provider.clearCompleted,
-                child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                child: Text(t.uploadClearAll, style: const TextStyle(fontSize: 12)),
               ),
           ],
         ),
@@ -98,6 +100,7 @@ class UploadPanel extends StatelessWidget {
     UploadItem item,
     UploadProvider provider,
   ) {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
@@ -145,7 +148,7 @@ class UploadPanel extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      'Waiting',
+                      t.uploadWaiting,
                       style: TextStyle(
                         fontSize: 11,
                         color: Theme.of(context).colorScheme.outline,

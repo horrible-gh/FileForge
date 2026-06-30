@@ -110,18 +110,21 @@ class VaultCategory {
 
 /// DEFAULT_CATEGORIES (L0006 §1.3) — always present, never deletable, and they
 /// win on merge. The id set {work, personal, entertainment} is fixed.
+// The `name` here is only a non-localized fallback: the UI shows a localized
+// label keyed on the fixed id (see `vaultCategoryName` in vault_screen.dart),
+// so these names are never rendered for the default ids.
 const List<VaultCategory> kDefaultVaultCategories = [
   VaultCategory(
-      id: 'work', name: '업무', icon: '💼', color: '#667eea', isDefault: true),
+      id: 'work', name: 'Work', icon: '💼', color: '#667eea', isDefault: true),
   VaultCategory(
       id: 'personal',
-      name: '개인',
+      name: 'Personal',
       icon: '👤',
       color: '#48bb78',
       isDefault: true),
   VaultCategory(
       id: 'entertainment',
-      name: '엔터테인먼트',
+      name: 'Entertainment',
       icon: '🎮',
       color: '#ed8936',
       isDefault: true),

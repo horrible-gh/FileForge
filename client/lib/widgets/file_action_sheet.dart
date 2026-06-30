@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/node.dart';
 
 /// D003 §2-3 — translated text (BottomSheet)
@@ -36,6 +37,7 @@ class FileActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final isFile = node.isFile;
     final isFileStorage = storageType == 'file';
 
@@ -56,33 +58,33 @@ class FileActionSheet extends StatelessWidget {
           if (isFileStorage)
             ListTile(
               leading: const Icon(Icons.download_rounded),
-              title: const Text('Download'),
+              title: Text(t.commonDownload),
               onTap: () => onAction(FileAction.download),
             ),
           // Rename
           ListTile(
             leading: const Icon(Icons.edit_rounded),
-            title: const Text('Rename'),
+            title: Text(t.commonRename),
             onTap: () => onAction(FileAction.rename),
           ),
           // Share — file storage only, Phase 5
           if (isFileStorage)
             ListTile(
               leading: const Icon(Icons.link_rounded),
-              title: const Text('Share'),
+              title: Text(t.commonShare),
               onTap: () => onAction(FileAction.share),
             ),
           // Preview — files only, file storage only (D006 §1-3, §13-1)
           if (isFile && isFileStorage)
             ListTile(
               leading: const Icon(Icons.visibility_rounded),
-              title: const Text('Preview'),
+              title: Text(t.actionPreview),
               onTap: () => onAction(FileAction.preview),
             ),
           // Delete
           ListTile(
             leading: const Icon(Icons.delete_rounded, color: Colors.red),
-            title: const Text('Delete', style: TextStyle(color: Colors.red)),
+            title: Text(t.commonDelete, style: const TextStyle(color: Colors.red)),
             onTap: () => onAction(FileAction.delete),
           ),
           const SizedBox(height: 8),

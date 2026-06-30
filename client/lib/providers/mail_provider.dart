@@ -47,26 +47,28 @@ class MailProvider extends ChangeNotifier {
   String _currentLabel = 'inbox';
   int _loadSeq = 0;
 
-  /// 활성 검색어(B0001/0026). 비어 있으면 검색 모드가 아니다. 검색 중에는
-  /// [loadMore]가 같은 `q`를 유지해 다음 페이지도 검색 결과로만 채워지고, 자동 폴링/
-  /// 동기화는 검색 결과를 덮어쓰지 않도록 호출부(MailListScreen)가 [isSearchMode]로
-  /// 가드한다. `loadInbox`(비검색 로드)는 진입 시 이 값을 비워 상태를 일관되게 유지한다.
+  /// Active search query (B0001/0026). Empty means not in search mode. While
+  /// searching, [loadMore] keeps the same `q` so the next page is also filled with
+  /// search results only, and the caller (MailListScreen) guards via [isSearchMode]
+  /// so auto polling/sync does not overwrite the search results. `loadInbox`
+  /// (non-search load) clears this value on entry to keep state consistent.
   String _searchQuery = '';
 
   List<MailSummary> get mails => List.unmodifiable(_mails);
 
-  /// R0001(0027) — "ピン留め(고정됨)" 트레이에 채울 핀 메일들. 본 목록(`_mails`)을
-  /// 핀/비핀으로 파티션해 트레이와 본문 리스트를 분리한다(핀이 시간순 목록에
-  /// 묻혀 쌓이지 않고 **별도 트레이**로 모인다 — 사용자 반려 반영). 서버 통합
-  /// 목록은 `ORDER BY m.is_pinned DESC`라 핀 메일이 결과 앞쪽(=첫 페이지)에 먼저
-  /// 실려 들어오므로, 로드된 범위 안에서 트레이가 핀을 빠짐없이 모은다.
+  /// R0001(0027) — pinned mails to fill the "ピン留め" (pinned) tray. Partitions the
+  /// main list (`_mails`) into pinned/unpinned to separate the tray from the body
+  /// list (pins gather into a **separate tray** instead of piling up buried in the
+  /// chronological list — reflecting user rejection feedback). The server unified
+  /// list is `ORDER BY m.is_pinned DESC`, so pinned mails come in at the front of
+  /// the results (= first page); thus within the loaded range the tray gathers all pins.
   List<MailSummary> get pinnedMails =>
       List.unmodifiable(mails.where((m) => m.isPinned));
 
-  /// R0001(0027) — 트레이 아래 본문 시간순 리스트(비핀 메일만). 핀 메일은
-  /// [pinnedMails] 트레이로 빠지므로 여기엔 중복되지 않는다. 공개 [mails]
-  /// 게터에서 파생하므로(내부 `_mails` 직참조 아님) 서브클래스/테스트가 [mails]를
-  /// 오버라이드하면 트레이/본문 파티션도 그 목록을 그대로 따른다.
+  /// R0001(0027) — the chronological body list below the tray (unpinned mails only).
+  /// Pinned mails go into the [pinnedMails] tray, so they are not duplicated here.
+  /// Derived from the public [mails] getter (not a direct `_mails` reference), so if
+  /// a subclass/test overrides [mails], the tray/body partition follows that list too.
   List<MailSummary> get unpinnedMails =>
       List.unmodifiable(mails.where((m) => !m.isPinned));
 
@@ -74,14 +76,14 @@ class MailProvider extends ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   bool get isSyncing => _isSyncing;
 
-  /// 직전 동기화에서 서버가 계정을 reauth_required로 표시했는지(재인증 필요). 화면은
-  /// AccountProvider의 배너로도 이를 표면화하지만, 동기화 직후 즉시 알 수 있도록 노출한다.
+  /// Whether the last sync had the server mark an account reauth_required (re-auth needed).
+  /// The screen also surfaces this via AccountProvider's banner, but it is exposed here so it can be known immediately after a sync.
   bool get reauthRequired => _reauthRequired;
   String? get error => _error;
   bool get hasMore => _hasMore;
   String get currentLabel => _currentLabel;
 
-  /// 현재 검색 중인지(B0001/0026) — 검색어가 비어 있지 않으면 true.
+  /// Whether a search is currently active (B0001/0026) — true if the query is not empty.
   bool get isSearchMode => _searchQuery.isNotEmpty;
   String get searchQuery => _searchQuery;
 
@@ -100,7 +102,7 @@ class MailProvider extends ChangeNotifier {
   /// text translated text text(text text text). text translated text translated text text translated text.
   Future<void> loadInbox({String label = 'inbox'}) async {
     _currentLabel = label;
-    _searchQuery = ''; // 비검색 로드 — 이전 검색 상태를 해제한다(B0001/0026).
+    _searchQuery = ''; // non-search load — clears the previous search state (B0001/0026).
     final seq = ++_loadSeq;
     _isLoading = true;
     _error = null;
@@ -126,25 +128,27 @@ class MailProvider extends ChangeNotifier {
   /// translated text translated text — current text text text translated text translated text.
   Future<void> refresh() => loadInbox(label: _currentLabel);
 
-  /// 받은편지함 동기화 후 재로딩(R0001) — 서버 `POST /sync`로 IMAP 수신을 끌어온 뒤
-  /// 로컬 목록(`GET /mails`)을 다시 읽는다. 송신과 달리 **수신은 이 트리거가 있어야**
-  /// 채워진다(서버에 백그라운드 동기화 워커가 없고, 기존 클라이언트는 sync를 전혀
-  /// 호출하지 않아 받은편지함이 영영 비어 있었다).
+  /// Reload after syncing the inbox (R0001) — pull IMAP receipts via the server
+  /// `POST /sync`, then re-read the local list (`GET /mails`). Unlike sending,
+  /// **receiving is only filled when this trigger fires** (the server has no
+  /// background sync worker, and the old client never called sync, so the inbox
+  /// stayed empty forever).
   ///
-  /// 동기화 대상은 받은편지함뿐이므로 `inbox` 라벨에서만 sync를 트리거하고, 그 외
-  /// 라벨(sent/drafts)은 로컬 재로딩만 한다. 동기화는 best-effort: 실패(네트워크/재인증)
-  /// 해도 로컬 메일은 그대로 보여주며, 재인증이 필요하면 [reauthRequired]로 표면화한다.
+  /// Since only the inbox is synced, sync is triggered only on the `inbox` label;
+  /// other labels (sent/drafts) just reload locally. Sync is best-effort: even on
+  /// failure (network/re-auth) the local mails are still shown, and if re-auth is
+  /// needed it is surfaced via [reauthRequired].
   Future<void> syncInbox({String label = 'inbox'}) async {
     if (label == 'inbox' && !_isSyncing) {
       _isSyncing = true;
-      _isLoading = true; // 동기화~재로딩 전체 구간 동안 스피너 유지
+      _isLoading = true; // keep the spinner for the whole sync~reload span
       _error = null;
       notifyListeners();
       try {
         final r = await _service.triggerSync();
         _reauthRequired = r.reauthRequired;
       } catch (_) {
-        // best-effort: 동기화 실패는 조용히 무시하고 로컬 목록 로드로 진행.
+        // best-effort: silently ignore sync failure and proceed to load the local list.
       } finally {
         _isSyncing = false;
       }
@@ -152,7 +156,7 @@ class MailProvider extends ChangeNotifier {
     await loadInbox(label: label);
   }
 
-  /// 당겨서 새로고침 / 받은편지함 진입 시 호출 — current 라벨로 [syncInbox].
+  /// Called on pull-to-refresh / inbox entry — [syncInbox] with the current label.
   Future<void> syncRefresh() => syncInbox(label: _currentLabel);
 
   /// text text(text) text — translated text translated text text loading translated text translated text.
@@ -166,7 +170,7 @@ class MailProvider extends ChangeNotifier {
     try {
       final page = await _service.listMails(
         label: _currentLabel,
-        q: _searchQuery.isEmpty ? null : _searchQuery, // 검색 중이면 다음 페이지도 검색 유지
+        q: _searchQuery.isEmpty ? null : _searchQuery, // keep search on the next page too while searching
         cursor: cursor,
       );
       if (seq != _loadSeq) return; // text text translated text
@@ -183,12 +187,13 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  // ── 검색(B0001/0026) ─────────────────────────────────────────────────────────
+  // ── search (B0001/0026) ──────────────────────────────────────────────────────
 
-  /// 메일 검색(B0001/0026) — 현재 라벨 안에서 `q`로 서버 검색(`GET /mails?q=`)을 돌려
-  /// 목록을 결과로 교체한다. 서버는 `q`를 SQL WHERE로 내려 **보관함 전체**(모든 계정·
-  /// 모든 페이지)를 필터링하므로 "현재 페이지 내 검색"이 아니라 진짜 전체 검색이다.
-  /// 빈 검색어는 검색을 해제한다([clearSearch]).
+  /// Mail search (B0001/0026) — runs a server search by `q` within the current
+  /// label (`GET /mails?q=`) and replaces the list with the results. The server
+  /// pushes `q` down to SQL WHERE to filter the **entire mailbox** (all accounts,
+  /// all pages), so it is a true full search, not a "search within the current page".
+  /// An empty query clears the search ([clearSearch]).
   Future<void> searchMails(String query) async {
     final q = query.trim();
     if (q.isEmpty) {
@@ -218,8 +223,8 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 검색 해제(B0001/0026) — 현재 라벨의 일반 목록으로 복귀한다(`loadInbox`가
-  /// `_searchQuery`를 비운다). 이미 검색 중이 아니면 아무것도 하지 않는다.
+  /// Clear search (B0001/0026) — return to the current label's normal list (`loadInbox`
+  /// clears `_searchQuery`). Does nothing if not already searching.
   Future<void> clearSearch() async {
     if (_searchQuery.isEmpty) return;
     await loadInbox(label: _currentLabel);
@@ -252,8 +257,8 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 첨부파일 다운로드(NR0003 §4) — 응답 바이트/헤더를 그대로 화면에 전달해
-  /// [DownloadSaveService]로 저장하도록 한다. provider 상태는 바꾸지 않는다.
+  /// Download an attachment (NR0003 §4) — passes the response bytes/headers straight
+  /// to the screen to be saved via [DownloadSaveService]. Does not change provider state.
   Future<Response<List<int>>> downloadAttachment({
     required String mailId,
     required String attachmentId,
@@ -276,15 +281,16 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 핀 고정/해제(R0001/0027) — 낙관적 갱신. 토글이 즉시 UI에 반영되도록 먼저
-  /// 로컬 상태를 바꾼다. 핀을 켜면 그 메일은 시간순 본문 리스트에서 빠져
-  /// **"ピン留め(고정됨)" 트레이**([pinnedMails])로 즉시 이동하고, 끄면 다시
-  /// 본문 리스트로 돌아온다(파티션은 [pinnedMails]/[unpinnedMails] 게터가 수행).
-  /// 서버 PATCH 실패 시 토글 이전 상태(플래그+순서)를 되돌린다. 열려 있는
-  /// 상세(detail)가 같은 메일이면 그 상태도 함께 맞춘다. 내부 `_mails`는 핀을
-  /// 앞쪽에 모으는 안정 파티션(_resortPinned)을 유지하는데, 이는 서버
-  /// `ORDER BY m.is_pinned DESC`와 같은 순서라 페이지네이션·재로딩에서 핀이
-  /// 앞쪽에 일관되게 남도록 보장한다(렌더링은 트레이/본문 게터로 분리).
+  /// Pin/unpin (R0001/0027) — optimistic update. Changes local state first so the
+  /// toggle reflects in the UI immediately. Turning a pin on removes that mail from
+  /// the chronological body list and moves it at once into the **"ピン留め" (pinned)
+  /// tray** ([pinnedMails]); turning it off returns it to the body list (the
+  /// partition is done by the [pinnedMails]/[unpinnedMails] getters). On a server
+  /// PATCH failure the pre-toggle state (flag + order) is rolled back. If the open
+  /// detail is the same mail, its state is aligned too. Internal `_mails` keeps a
+  /// stable partition (_resortPinned) that gathers pins at the front, matching the
+  /// server `ORDER BY m.is_pinned DESC`, so pins stay consistently at the front
+  /// across pagination/reload (rendering is split via the tray/body getters).
   Future<void> togglePin(String mailId, {bool? pinned}) async {
     final idx = _mails.indexWhere((m) => m.mailId == mailId);
     final current = idx >= 0
@@ -293,12 +299,12 @@ class MailProvider extends ChangeNotifier {
     final next = pinned ?? !current;
     if (next == current && idx < 0 && _detail?.mailId != mailId) return;
 
-    // 실패 시 정확히 되돌릴 수 있도록 순서/상세 상태를 스냅샷한다(되돌리기는 단순
-    // 플래그 복원만으로는 부족 — _resortPinned가 이미 순서를 바꿔놨기 때문).
+    // Snapshot order/detail state so we can roll back exactly on failure (a simple
+    // flag restore is not enough — _resortPinned has already reordered the list).
     final prevOrder = List<MailSummary>.from(_mails);
     final prevDetail = _detail;
 
-    // 낙관적 적용
+    // optimistic apply
     if (idx >= 0) _mails[idx] = _mails[idx].copyWithPinned(next);
     if (_detail?.mailId == mailId) _detail = _detail!.copyWithPinned(next);
     _resortPinned();
@@ -307,7 +313,7 @@ class MailProvider extends ChangeNotifier {
     try {
       await _service.setPinned(mailId, next);
     } catch (_) {
-      // 실패 시 토글 이전 상태(플래그+순서)를 그대로 복원한다(서버 미반영).
+      // On failure, restore the pre-toggle state (flag + order) exactly (server not updated).
       _mails
         ..clear()
         ..addAll(prevOrder);
@@ -316,8 +322,9 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
-  /// 핀 메일을 목록 최상단으로 올리되 그룹 내 상대 순서(수신 시각순)는 보존하는
-  /// 안정 정렬 — 서버의 `ORDER BY m.is_pinned DESC, m.sent_date DESC`와 동일한 시각 결과.
+  /// Stable sort that raises pinned mails to the top of the list while preserving
+  /// the relative order within each group (by received time) — visually identical
+  /// to the server's `ORDER BY m.is_pinned DESC, m.sent_date DESC`.
   void _resortPinned() {
     if (_mails.isEmpty) return;
     final pinned = <MailSummary>[];
