@@ -5,11 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:file_forge_app/models/mail.dart';
 import 'package:file_forge_app/providers/mail_provider.dart';
 
-/// R0001 — 메일 핀 기능(fileforge.mailanchorpython.0027). NR0003가 짚은 배선갭의
-/// 클라이언트 끝단을 고정한다: (1) MailSummary/MailDetail이 서버의 `is_pinned`를
-/// 파싱하고, (2) MailProvider.togglePin이 PATCH `{is_pinned}`를 보내며 낙관적으로
-/// 핀을 목록 최상단으로 올리고(서버 `ORDER BY is_pinned DESC`와 동일한 시각 결과),
-/// (3) 서버 PATCH 실패 시 원상복구함을 검증한다.
+/// R0001 — mail pin feature (fileforge.mailanchorpython.0027). Pins down the client end of
+/// the wiring gap NR0003 identified: (1) MailSummary/MailDetail parse the server's `is_pinned`,
+/// (2) MailProvider.togglePin sends PATCH `{is_pinned}` and optimistically floats the pin
+/// to the top of the list (same visual result as the server's `ORDER BY is_pinned DESC`),
+/// (3) reverts to the original state on server PATCH failure.
 class _StubAdapter implements HttpClientAdapter {
   final Map<String, (int, Object?)> routes;
   final List<String> calls = [];

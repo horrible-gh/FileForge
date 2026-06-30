@@ -64,7 +64,9 @@ void main() {
         const VaultCategory(id: 'work', name: 'HACKED', isDefault: false),
       ];
       final merged = VaultService.mergeCategories(const [], server);
-      expect(merged.firstWhere((c) => c.id == 'work').name, '업무');
+      // The default category's canonical (non-localized) name resists the
+      // server value; display names are localized in the UI by id (i18n 0003).
+      expect(merged.firstWhere((c) => c.id == 'work').name, 'Work');
     });
 
     test('server custom category wins over local custom on id collision', () {

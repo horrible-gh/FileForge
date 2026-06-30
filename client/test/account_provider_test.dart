@@ -190,8 +190,8 @@ void main() {
     });
 
     test('reauth_required account → hasAccounts true but hasReauthRequired true (R0001)', () async {
-      // 0018.0009-TR: credential 유실 시 status=reauth_required. 계정 row는 남아
-      // hasAccounts=true(온보딩 미표시)이므로, 재연결 동선은 hasReauthRequired로 연다.
+      // 0018.0009-TR: on credential loss, status=reauth_required. The account row remains so
+      // hasAccounts=true (onboarding hidden), so the reconnect flow is opened via hasReauthRequired.
       final p = AccountProvider(_dioWith(_StubAdapter({
         'GET /accounts': (200, {
           'ok': true,

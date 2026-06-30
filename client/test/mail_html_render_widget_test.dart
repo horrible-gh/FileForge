@@ -38,7 +38,7 @@ void main() {
     }
   });
 
-  // B0001 / 0018 — the KB statement body rendered BLANK ("하나도 보여주지 않는다").
+  // B0001 / 0018 — the KB statement body rendered BLANK ("showed nothing at all").
   // Root cause is server-side (the image-proxy rewrite emitted a CSS url() DOUBLE-
   // QUOTED inside a double-quoted style="…" attribute, so the inner quote closed the
   // attribute and the HTML parser swallowed the rest of the body). These two tests

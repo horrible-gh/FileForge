@@ -8,9 +8,9 @@ import 'package:file_forge_app/providers/mail_provider.dart';
 import 'package:file_forge_app/providers/account_provider.dart';
 import 'package:file_forge_app/screens/mail/mail_list_screen.dart';
 
-/// R0001(0022) 실시간 수신(방향 A) — 받은편지함이 떠 있는 동안 주기 폴링으로
-/// 자동 수신하되, ★T0004 제약: 메일 작성 화면이 위에 push되어 있는 동안에는
-/// 절대 동기화하지 않는다(작성 방해 금지). 네트워크 없이 syncInbox 호출 횟수로 고정.
+/// R0001(0022) real-time receive (direction A) — while the inbox is open, periodic polling
+/// auto-receives, but with the ★T0004 constraint: never sync while the compose screen is
+/// pushed on top (no interrupting composition). Pinned by syncInbox call count, no network.
 class _CountingMailProvider extends MailProvider {
   _CountingMailProvider() : super(Dio());
 
@@ -28,7 +28,7 @@ class _CountingMailProvider extends MailProvider {
   }
 }
 
-/// 계정 1개 연결된 상태(no network).
+/// State with one account connected (no network).
 class _ConnectedAccountProvider extends AccountProvider {
   _ConnectedAccountProvider() : super(Dio());
 
@@ -68,11 +68,11 @@ void main() {
         ),
       );
 
-  // 화면 진입(_enterMail)으로 syncInbox가 1회 호출된 시점까지 펌프.
+  // Pump until screen entry (_enterMail) has called syncInbox once.
   Future<void> settleEnter(WidgetTester tester) async {
-    await tester.pump(); // account 분기
+    await tester.pump(); // account branch
     await tester.pump(); // postFrame _enterMail
-    await tester.pump(); // load 완료 후 syncInbox
+    await tester.pump(); // syncInbox after load completes
   }
 
   testWidgets('polls and auto-syncs the inbox after the interval', (tester) async {
@@ -81,13 +81,13 @@ void main() {
     await settleEnter(tester);
 
     final afterEnter = mail.syncs;
-    expect(afterEnter, greaterThanOrEqualTo(1)); // 진입 시 1회
+    expect(afterEnter, greaterThanOrEqualTo(1)); // once on entry
 
-    // 간격(10s)을 넘기면 폴링 tick이 한 번 더 동기화한다 = 실시간 수신.
+    // Past the interval (10s), a polling tick syncs once more = real-time receive.
     await tester.pump(const Duration(seconds: 11));
     expect(mail.syncs, greaterThan(afterEnter));
 
-    // 타이머 정리: 화면 dispose.
+    // Timer cleanup: dispose the screen.
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -97,7 +97,7 @@ void main() {
     await tester.pumpWidget(harness(mail));
     await settleEnter(tester);
 
-    // 작성 화면을 받은편지함 위로 push(메일 작성 중 상황 모사).
+    // Push the compose screen on top of the inbox (simulating mid-composition).
     navKey.currentState!.push(
       MaterialPageRoute<void>(
         builder: (_) => const Scaffold(body: Text('composing')),
@@ -106,12 +106,12 @@ void main() {
     await tester.pumpAndSettle();
     final baseline = mail.syncs;
 
-    // 작성 중에 간격이 지나도 폴링은 절대 동기화하지 않아야 한다(★T0004 제약).
+    // While composing, polling must never sync even past the interval (★T0004 constraint).
     await tester.pump(const Duration(seconds: 11));
     expect(mail.syncs, baseline,
         reason: '메일 작성 화면이 위에 있는 동안 자동 새로고침이 발생하면 안 된다');
 
-    // 작성 화면을 닫고 받은편지함으로 복귀하면 폴링이 재개된다.
+    // Closing the compose screen and returning to the inbox resumes polling.
     navKey.currentState!.pop();
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 11));

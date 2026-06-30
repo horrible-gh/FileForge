@@ -8,7 +8,7 @@ import 'package:file_forge_app/providers/auth_provider.dart';
 import 'package:file_forge_app/services/auth_service.dart';
 import 'package:file_forge_app/services/mail_api_client.dart';
 
-/// R0001 "팅김?" / NR0003 (F1 in-memory refresh desync, F2 dual-Dio concurrent
+/// R0001 "kicked out?" / NR0003 (F1 in-memory refresh desync, F2 dual-Dio concurrent
 /// rotation race) / L0004 (3rd-gen token manager). These tests pin the fix:
 ///   - F1: every rotation replaces BOTH the in-memory and stored refresh token,
 ///         so the next rotation sends the *rotated* token (not the retired one).

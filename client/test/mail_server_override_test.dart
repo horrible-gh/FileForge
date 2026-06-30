@@ -3,13 +3,14 @@ import 'package:file_forge_app/config/env.dart';
 import 'package:file_forge_app/providers/auth_provider.dart';
 import 'package:file_forge_app/services/mail_api_client.dart';
 
-/// B0001 / NR0003 §3 regression guard — 런타임 서버 주소 오버라이드가 메일 Dio에도
-/// 전파되어야 한다.
+/// B0001 / NR0003 §3 regression guard — a runtime server-address override must also
+/// propagate to the mail Dio.
 ///
-/// 결함: 사용자가 설정에서 서버 주소를 바꾸면 파일 API Dio만 따라가고 메일 Dio는
-/// 빌드에 박힌 `mailBaseUrl`(기본 localhost)에 고정 → `GET /mail/accounts`가 엉뚱한
-/// 서버로 가서 빈 목록 → "구글 연동하라". 웹은 두 Dio가 같은 origin이라 정상.
-/// 수정: MailApiClient.setBaseUrl + AuthProvider.setServerUrl 전파.
+/// Defect: when the user changes the server address in settings, only the file API Dio
+/// follows; the mail Dio stays pinned to the build-baked `mailBaseUrl` (default localhost) →
+/// `GET /mail/accounts` goes to the wrong server, returns an empty list → "connect Google".
+/// Web is fine because both Dios share the same origin.
+/// Fix: MailApiClient.setBaseUrl + AuthProvider.setServerUrl propagation.
 void main() {
   group('MailApiClient.setBaseUrl 정규화', () {
     test('host:port → /fileforge/mail 부착', () {
@@ -68,9 +69,9 @@ void main() {
 
       auth.setServerUrl('192.168.0.250:8000');
 
-      // 파일 Dio
+      // File Dio
       expect(auth.dio.options.baseUrl, 'http://192.168.0.250:8000/fileforge');
-      // 메일 Dio — 수정 전이라면 여전히 localhost(빌드 기본값)였을 것.
+      // Mail Dio — before the fix this would still be localhost (the build default).
       expect(mail.dio.options.baseUrl,
           'http://192.168.0.250:8000/fileforge/mail');
       expect(mail.dio.options.baseUrl.contains('localhost'), isFalse);

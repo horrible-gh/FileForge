@@ -9,9 +9,9 @@ import 'package:file_forge_app/providers/mail_provider.dart';
 import 'package:file_forge_app/providers/account_provider.dart';
 import 'package:file_forge_app/screens/mail/mail_list_screen.dart';
 
-/// R0001(0013) — 다계정 연동 시 받은편지함 리스트에서 각 메일이 *내 어느 계정*으로
-/// 왔는지 한눈에 보여야 한다. 서버가 행마다 실어 보내는 account 식별자를 리스트
-/// 타일이 배지로 렌더하는지 검증한다(이전 rev들이 "안 나온다"고 반려된 핵심).
+/// R0001(0013) — with multiple accounts connected, the inbox list must show at a glance
+/// which of *my accounts* each mail arrived on. Verifies the list tile renders the per-row
+/// account identifier the server sends as a badge (the crux earlier revs were rejected over as "not showing").
 class _FixedMailProvider extends MailProvider {
   _FixedMailProvider(this._fixed) : super(Dio());
   final List<MailSummary> _fixed;
@@ -96,11 +96,11 @@ void main() {
     ];
 
     await tester.pumpWidget(harness(_FixedMailProvider(mails)));
-    await tester.pump(); // account 분기
+    await tester.pump(); // account branch
     await tester.pump(); // postFrame _enterMail
     await tester.pump(); // settle
 
-    // 두 메일의 *수신 계정* 라벨이 리스트에 실제로 보인다 = 어느 계정인지 구분 가능.
+    // Both mails' *receiving account* labels actually appear in the list = the account is distinguishable.
     expect(find.text('Work Gmail'), findsOneWidget);
     expect(find.text('Personal Gmail'), findsOneWidget);
 

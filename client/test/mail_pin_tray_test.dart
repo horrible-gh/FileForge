@@ -9,9 +9,10 @@ import 'package:file_forge_app/providers/mail_provider.dart';
 import 'package:file_forge_app/providers/account_provider.dart';
 import 'package:file_forge_app/screens/mail/mail_list_screen.dart';
 
-/// R0001(0027) — "ピン留め(고정됨)" 트레이 UX(사용자 반려 반영). 핀 메일이 시간순
-/// 목록에 쌓이지 않고 **별도 트레이**에 모여 렌더되는지, 헤더에 라벨/개수가 보이고
-/// 접으면 트레이 안의 핀 메일이 사라지는지(본문 비핀 메일은 항상 보임)를 검증한다.
+/// R0001(0027) — "ピン留め (Pinned)" tray UX (reflecting user rejection). Verifies that pinned
+/// mails do not pile up in the chronological list but gather and render in a **separate tray**,
+/// that the header shows a label/count, and that collapsing it hides the pinned mails in the
+/// tray (non-pinned body mails are always visible).
 class _FixedMailProvider extends MailProvider {
   _FixedMailProvider(this._fixed) : super(Dio());
   final List<MailSummary> _fixed;

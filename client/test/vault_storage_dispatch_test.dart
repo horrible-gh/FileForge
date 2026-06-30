@@ -12,18 +12,18 @@ import 'package:file_forge_app/providers/file_provider.dart';
 import 'package:file_forge_app/providers/selection_provider.dart';
 import 'package:file_forge_app/providers/storage_provider.dart';
 import 'package:file_forge_app/providers/upload_provider.dart';
+import 'package:file_forge_app/l10n/app_localizations.dart';
 import 'package:file_forge_app/providers/vault_provider.dart';
 import 'package:file_forge_app/screens/file/file_list_screen.dart';
 import 'package:file_forge_app/screens/main/storage_dispatcher.dart';
 import 'package:file_forge_app/screens/vault/vault_screen.dart';
 
-/// SecureBolt fileforge.securebolt.0003 / TR0005 — 핵심 회귀 가드.
+/// SecureBolt fileforge.securebolt.0003 / TR0005 — core regression guard.
 ///
-/// 사용자 요구(R0001/CH0006): SecureBolt 를 드로어 전용 메뉴가 아니라 **스토리지
-/// 타입**('password')으로 만들어, 목록에서 탭하면 그 스토리지가 볼트로 열려야
-/// 한다. load-bearing: StorageDispatcher 가 storage_type=='password' 를
-/// VaultStorageView 로 분기해야 한다(분기 누락 시 파일 브라우저로 떨어져 "되는게
-/// 없다"가 재현됨).
+/// User requirement (R0001/CH0006): make SecureBolt a **storage type** ('password'), not a
+/// drawer-only menu, so that tapping it in the list opens that storage as a vault.
+/// load-bearing: StorageDispatcher must branch storage_type=='password' to VaultStorageView
+/// (without the branch it falls through to the file browser, reproducing "nothing works").
 class _StoragesStub implements HttpClientAdapter {
   final List<Map<String, dynamic>> storages;
   _StoragesStub(this.storages);
@@ -73,6 +73,9 @@ Widget _mount({
           create: (_) => SelectionProvider()),
     ],
     child: MaterialApp(
+      locale: const Locale('ko'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: StorageDispatcher(storageUuid: storageUuid),
     ),
   );
@@ -98,8 +101,8 @@ void main() {
     );
     await tester.pump();
 
-    // load-bearing: 볼트 화면으로 분기됐고(=VaultStorageView), 잠금 상태이므로
-    // 잠금 해제 뷰가 보인다. 파일 브라우저가 아니다.
+    // load-bearing: branched to the vault screen (=VaultStorageView), and since it's locked
+    // the unlock view is shown. Not the file browser.
     expect(find.byType(VaultStorageView), findsOneWidget);
     expect(find.text('볼트 잠금 해제'), findsOneWidget);
     expect(find.byType(FileListScreen), findsNothing);
@@ -107,13 +110,18 @@ void main() {
 
   testWidgets('embedded vault carries its own [+] FAB once unlocked',
       (tester) async {
-    // load-bearing for R-3 ("그 안에서 카드를 [+]로 만든다"): the embedded view —
+    // load-bearing for R-3 ("create a card inside it with [+]"): the embedded view —
     // not the shell AppBar — owns the add affordance. Locked → no FAB.
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       ChangeNotifierProvider<VaultProvider>(
         create: (_) => VaultProvider(Dio(BaseOptions(baseUrl: 'http://x/'))),
-        child: const MaterialApp(home: VaultStorageView()),
+        child: MaterialApp(
+          locale: const Locale('ko'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const VaultStorageView(),
+        ),
       ),
     );
     await tester.pump();

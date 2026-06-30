@@ -24,8 +24,8 @@ class _FakeMailProvider extends MailProvider {
     notifyListeners();
   }
 
-  // R0001(TR0005): 화면 진입/새로고침은 이제 syncInbox를 호출한다. 네트워크 없이
-  // 로컬 로드(loadInbox)만 기록하도록 위임해 기존 회귀 의도를 유지한다.
+  // R0001(TR0005): screen entry/refresh now calls syncInbox. Delegate to local load
+  // (loadInbox) only, with no network, to preserve the existing regression intent.
   @override
   Future<void> syncInbox({String label = 'inbox'}) => loadInbox(label: label);
 }

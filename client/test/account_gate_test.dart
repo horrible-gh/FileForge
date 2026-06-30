@@ -23,8 +23,8 @@ class _SpyMailProvider extends MailProvider {
     notifyListeners();
   }
 
-  // R0001(TR0005): 화면 진입은 이제 syncInbox를 호출한다. 네트워크 없이 로컬 로드만
-  // 기록하도록 위임해 "계정 있으면 inbox 로드" 회귀 의도를 그대로 유지한다.
+  // R0001(TR0005): screen entry now calls syncInbox. Delegate to local load only
+  // (no network) so the "load inbox when an account exists" regression intent holds.
   @override
   Future<void> syncInbox({String label = 'inbox'}) => loadInbox(label: label);
 }
@@ -110,17 +110,17 @@ void main() {
     expect(mail.loaded, contains('inbox'));
     expect(find.text('Inbox'), findsOneWidget); // text translated text text
     expect(find.text('Connect account'), findsNothing);
-    // R0001: 계정이 있어도 계정 관리(추가/재연결) 진입점이 상시 보여야 한다.
+    // R0001: even with an account, the account management (add/reconnect) entry point must always show.
     expect(find.byTooltip('Manage mail accounts'), findsOneWidget);
-    // 정상 계정만 있으면 재인증 배너는 뜨지 않는다.
+    // With only healthy accounts, the re-auth banner does not appear.
     expect(find.text('Reconnection required'), findsNothing);
   });
 
   testWidgets(
       'reauth_required account → reconnect banner + manage entry shown (R0001)',
       (tester) async {
-    // 0018.0009-TR가 부여하는 status=reauth_required 계정. 온보딩은 뜨지 않지만
-    // (hasAccounts=true), 사용자는 배너의 "재연결"로 계정 화면에 도달할 수 있어야 한다.
+    // status=reauth_required account assigned by 0018.0009-TR. Onboarding does not show
+    // (hasAccounts=true), but the user must be able to reach the account screen via the banner's "Reconnect".
     final mail = _SpyMailProvider();
     await tester.pumpWidget(
         _harness(mail, _FakeAccounts(AccountGateState.ready, _reauthAccount)));
@@ -130,9 +130,9 @@ void main() {
     expect(find.text('Reconnection required'), findsOneWidget);
     expect(find.text('Reconnect'), findsOneWidget);
     expect(find.textContaining('reauth@example.com'), findsOneWidget);
-    // 상시 진입점도 함께 존재.
+    // The always-on entry point also exists.
     expect(find.byTooltip('Manage mail accounts'), findsOneWidget);
-    // 온보딩은 표시되지 않는다(계정이 존재하므로).
+    // Onboarding is not shown (since an account exists).
     expect(find.text('Connect account'), findsNothing);
   });
 

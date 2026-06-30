@@ -4,17 +4,17 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:file_forge_app/providers/mail_provider.dart';
 
-/// B0001 / 0026 — "말 안듣는 검색엔진". 메일 검색이 MailProvider로 배선되지 않아
-/// 메일 화면 검색이 무반응이었다(검색창이 FileProvider에만 연결). 이 테스트는
-/// MailProvider의 검색 동작을 고정한다:
-///   (1) searchMails 가 `GET /mails?q=` 를 보내고 목록을 결과로 교체하며 검색 모드가 됨
-///   (2) 검색 중 loadMore 가 같은 `q` 를 유지함(다음 페이지도 검색 결과)
-///   (3) clearSearch 가 q 없는 일반 목록으로 복귀하고 검색 모드를 해제함
+/// B0001 / 0026 — "the search engine that won't listen". Mail search wasn't wired to
+/// MailProvider, so search on the mail screen was unresponsive (the search box was only
+/// connected to FileProvider). This test pins MailProvider's search behaviour:
+///   (1) searchMails sends `GET /mails?q=`, replaces the list with the results, and enters search mode
+///   (2) loadMore keeps the same `q` while searching (next page is also a search result)
+///   (3) clearSearch returns to the plain q-less list and exits search mode
 class _RecordingAdapter implements HttpClientAdapter {
   /// (METHOD path) → (status, jsonBody).
   final Map<String, (int, Object?)> routes;
 
-  /// 호출된 요청의 전체 URI(쿼리 포함)를 순서대로 기록 — `q` 전달을 검증한다.
+  /// Records the full URI (incl. query) of each request in order — verifies `q` is passed.
   final List<Uri> uris = [];
 
   _RecordingAdapter(this.routes);

@@ -5,11 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:file_forge_app/providers/mail_provider.dart';
 import 'package:file_forge_app/services/mail_service.dart';
 
-/// R0001 — 수신 동기화 트리거(TR0005). 근본원인: 클라이언트가 `POST /sync`를 전혀
-/// 호출하지 않아(서버에도 백그라운드 워커 없음) 받은편지함이 영영 비어 있었다.
-/// 이 테스트는 (1) MailService.triggerSync 파싱, (2) MailProvider.syncInbox 가
-/// inbox에서 sync→list 순으로 호출하고 그 외 라벨에선 sync를 건너뛰며, (3) sync 실패가
-/// best-effort(로컬 목록은 그대로 로드)임을 고정한다.
+/// R0001 — receive sync trigger (TR0005). Root cause: the client never called `POST /sync`
+/// (and the server had no background worker either), so the inbox stayed empty forever.
+/// This test pins (1) MailService.triggerSync parsing, (2) MailProvider.syncInbox calling
+/// sync→list in that order on inbox and skipping sync on other labels, and (3) sync failure
+/// being best-effort (the local list still loads).
 class _StubAdapter implements HttpClientAdapter {
   /// (METHOD path) → (status, jsonBody).
   final Map<String, (int, Object?)> routes;
