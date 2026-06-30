@@ -117,6 +117,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailCopied => 'Copied to clipboard';
 
   @override
+  String get mailLinkOpenTitle => 'Open link';
+
+  @override
+  String get mailLinkOpenConfirm => 'Open this link in your external browser?';
+
+  @override
+  String get mailLinkOpenAction => 'Open';
+
+  @override
+  String get mailLinkOpenFailed => 'Couldn\'t open the link';
+
+  @override
   String get mailPin => 'Pin';
 
   @override

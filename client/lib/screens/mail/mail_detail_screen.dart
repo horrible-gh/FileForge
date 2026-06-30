@@ -11,6 +11,7 @@ import '../../utils/mail_body_render.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/error_retry.dart';
 import '../../widgets/mail_html_body.dart';
+import '../../widgets/mail_linked_text.dart';
 import 'mail_compose_screen.dart';
 
 /// text text screen — NR0003 §7 initial implementation(text translated text).
@@ -267,15 +268,16 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   /// cannot relayout the hovered subtree (0009 R0001 / NR0003 — the
   /// `mouse_tracker.dart:199` re-entrancy assertion flood).
   List<Widget> _buildBodyContent(MailBody body) {
-    // Plain `Text` here, not `SelectableText`: the surrounding [SelectionArea]
-    // owns selection, and a nested SelectableText would create a second,
-    // conflicting selectable. (HTML bodies still go through [MailHtmlBody]; the
-    // AppBar copy menu guarantees copy for those regardless of selectability.)
+    // Plain text goes through [MailLinkedText]: a `Text.rich` that keeps the
+    // surrounding [SelectionArea]'s drag-selection while turning bare URLs into
+    // tappable links (R0001 / 0031, NR0003 root cause B — a plain `Text` made
+    // every plain-text URL un-openable). It falls back to a plain `Text` when
+    // the body has no links, so selection behaviour is unchanged there.
     if (!body.isHtml) {
-      return [Text(body.content)];
+      return [MailLinkedText(body.content)];
     }
     if (body.content.trim().isEmpty) {
-      return [Text(stripHtmlToText(body.content))];
+      return [MailLinkedText(stripHtmlToText(body.content))];
     }
     return [MailHtmlBody(body.content)];
   }

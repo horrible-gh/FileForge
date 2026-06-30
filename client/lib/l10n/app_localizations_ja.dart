@@ -117,6 +117,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mailCopied => 'クリップボードにコピーしました';
 
   @override
+  String get mailLinkOpenTitle => 'リンクを開く';
+
+  @override
+  String get mailLinkOpenConfirm => 'このリンクを外部ブラウザで開きますか？';
+
+  @override
+  String get mailLinkOpenAction => '開く';
+
+  @override
+  String get mailLinkOpenFailed => 'リンクを開けませんでした';
+
+  @override
   String get mailPin => 'ピン留め';
 
   @override

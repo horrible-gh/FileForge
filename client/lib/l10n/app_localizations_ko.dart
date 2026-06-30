@@ -117,6 +117,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mailCopied => '클립보드에 복사했습니다';
 
   @override
+  String get mailLinkOpenTitle => '링크 열기';
+
+  @override
+  String get mailLinkOpenConfirm => '이 링크를 외부 브라우저에서 여시겠습니까?';
+
+  @override
+  String get mailLinkOpenAction => '열기';
+
+  @override
+  String get mailLinkOpenFailed => '링크를 열 수 없습니다';
+
+  @override
   String get mailPin => '고정';
 
   @override
