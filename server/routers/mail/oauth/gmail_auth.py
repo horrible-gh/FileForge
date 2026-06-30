@@ -236,9 +236,16 @@ async def gmail_oauth_callback(
         # Fetch user info
         user_info = await gmail_oauth.get_user_info(token_data["access_token"])
 
-        # Encrypt tokens and store in DB
+        # Encrypt tokens and store in DB. A missing refresh token must be stored as
+        # NULL, NOT encrypt("") — AES pads b"" to a non-empty 16-byte block, so an
+        # encrypted empty string is *truthy* and would defeat the "no refresh token →
+        # reauth" guard, turning a recoverable reauth into a silent token-refresh
+        # failure later (B0001 / NR0003 H3).
         encrypted_access = encrypt_password(SECRET_KEY, user_uuid, token_data["access_token"])
-        encrypted_refresh = encrypt_password(SECRET_KEY, user_uuid, token_data.get("refresh_token", ""))
+        raw_refresh = (token_data.get("refresh_token") or "").strip()
+        encrypted_refresh = (
+            encrypt_password(SECRET_KEY, user_uuid, raw_refresh) if raw_refresh else None
+        )
 
         # Check for an existing account
         existing = db_instance.fetch_one(

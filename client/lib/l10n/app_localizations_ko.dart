@@ -171,6 +171,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mailMarkAllReadFailed => '모두 읽음 처리에 실패했습니다';
 
   @override
+  String mailSyncAccountFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '계정 $count개가 동기화되지 않았습니다',
+      one: '계정 1개가 동기화되지 않았습니다',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get addLabel => '추가';
 
   @override

@@ -394,6 +394,12 @@ abstract class AppLocalizations {
   /// **'Failed to mark all as read'**
   String get mailMarkAllReadFailed;
 
+  /// Warning banner when some accounts failed to sync during the last refresh; count is how many.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 account didn\'\'t sync} other{{count} accounts didn\'\'t sync}}'**
+  String mailSyncAccountFailed(int count);
+
   /// No description provided for @addLabel.
   ///
   /// In en, this message translates to:

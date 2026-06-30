@@ -91,6 +91,45 @@ void main() {
       final r = await svc.triggerSync();
       expect(r.reauthRequired, true);
     });
+
+    test('parses per-account errors[] (B0001/0037 H2: failures no longer silent)',
+        () async {
+      final svc = MailService(_dioWith(_StubAdapter({
+        'POST /sync': (
+          200,
+          {
+            'ok': true,
+            'data': {
+              'state': 'idle',
+              'applied': 2,
+              'reauth_required': false,
+              'errors': [
+                {
+                  'account_id': 'acc-bad',
+                  'email': 'bad@example.com',
+                  'message': 'IMAP 연결 실패: too many connections'
+                }
+              ]
+            }
+          }
+        ),
+      })));
+      final r = await svc.triggerSync();
+      expect(r.applied, 2);
+      expect(r.accountErrors, hasLength(1));
+      expect(r.accountErrors.first.accountId, 'acc-bad');
+      expect(r.accountErrors.first.email, 'bad@example.com');
+      expect(r.accountErrors.first.message, contains('too many connections'));
+    });
+
+    test('absent errors[] yields an empty accountErrors list (clean sync)',
+        () async {
+      final svc = MailService(_dioWith(_StubAdapter({
+        'POST /sync': (202, {'ok': true, 'data': {'state': 'idle', 'applied': 0}}),
+      })));
+      final r = await svc.triggerSync();
+      expect(r.accountErrors, isEmpty);
+    });
   });
 
   group('MailProvider.syncInbox', () {
@@ -126,6 +165,34 @@ void main() {
       expect(adapter.calls, ['POST /sync', 'GET /mails']);
       expect(provider.error, isNull);
       expect(provider.isSyncing, false);
+    });
+
+    test('exposes per-account sync errors (B0001/0037 H2) for the banner', () async {
+      final adapter = _StubAdapter({
+        'POST /sync': (
+          200,
+          {
+            'ok': true,
+            'data': {
+              'state': 'idle',
+              'applied': 0,
+              'errors': [
+                {'account_id': 'acc-x', 'email': 'x@e.com', 'message': 'IMAP 거부'}
+              ]
+            }
+          }
+        ),
+        'GET /mails': _emptyInbox,
+      });
+      final provider = MailProvider(_dioWith(adapter));
+      await provider.syncInbox();
+      expect(provider.syncAccountErrors, hasLength(1));
+      expect(provider.syncAccountErrors.first.accountId, 'acc-x');
+      // A clean follow-up sync clears the surfaced errors.
+      adapter.routes['POST /sync'] =
+          (202, {'ok': true, 'data': {'state': 'idle', 'applied': 0}});
+      await provider.syncInbox();
+      expect(provider.syncAccountErrors, isEmpty);
     });
   });
 }

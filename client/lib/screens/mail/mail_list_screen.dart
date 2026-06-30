@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/mail_provider.dart';
 import '../../providers/account_provider.dart';
+import '../../services/mail_service.dart' show SyncAccountError;
 import '../../models/mail.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/error_retry.dart';
@@ -49,6 +50,12 @@ class _MailListScreenState extends State<MailListScreen>
   /// be collapsed so it takes no space even with many pins, and defaults to
   /// expanded. If there are no pinned mails at all, the tray is not rendered.
   bool _pinnedTrayExpanded = true;
+
+  /// B0001(0037) — signature of the per-account sync errors the user already
+  /// dismissed. The 10s auto-poll keeps re-reporting a persistent failure; once
+  /// dismissed we hide it for the *same* set, but a new/different failure (a
+  /// different account or message) changes the signature and re-shows the banner.
+  String? _dismissedSyncErrorSig;
 
   /// R0001(0022) realtime receive — while the inbox is on screen, periodically
   /// pull a server sync (POST /sync) to auto-reflect externally arriving mail.
@@ -303,6 +310,20 @@ class _MailListScreenState extends State<MailListScreen>
               email: accounts.reauthAccounts.first.email,
               onReconnect: _openAccounts,
             ),
+          // B0001(0037, NR0003 H2) — per-account sync failures used to vanish
+          // silently (the inbox just looked empty). The server now reports which
+          // accounts failed and why; surface that as a dismissible warning so a
+          // single flaky account is no longer invisible.
+          Builder(builder: (context) {
+            final errors = context.watch<MailProvider>().syncAccountErrors;
+            if (errors.isEmpty) return const SizedBox.shrink();
+            final sig = errors.map((e) => '${e.accountId}:${e.message}').join('|');
+            if (sig == _dismissedSyncErrorSig) return const SizedBox.shrink();
+            return _SyncErrorBanner(
+              errors: errors,
+              onDismiss: () => setState(() => _dismissedSyncErrorSig = sig),
+            );
+          }),
           Expanded(child: _buildBody(context, t)),
         ],
       ),
@@ -605,6 +626,73 @@ class _ReauthBanner extends StatelessWidget {
           FilledButton(
             onPressed: onReconnect,
             child: Text(t.accountReauthAction),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// B0001(0037, NR0003 H2) — a dismissible warning that one or more accounts
+/// failed to sync on the last refresh. Replaces the old silent swallow where a
+/// flaky account simply made the inbox look empty with no explanation. Shows the
+/// failed-account count (localized plural) and the first account's reason for a
+/// quick clue; the user can dismiss it.
+class _SyncErrorBanner extends StatelessWidget {
+  final List<SyncAccountError> errors;
+  final VoidCallback onDismiss;
+
+  const _SyncErrorBanner({required this.errors, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+    final first = errors.first;
+    final detail = first.email.isNotEmpty
+        ? '${first.email} — ${first.message}'
+        : first.message;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.sync_problem_rounded,
+              color: theme.colorScheme.onTertiaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.mailSyncAccountFailed(errors.length),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  detail,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded),
+            tooltip: t.commonClose,
+            color: theme.colorScheme.onTertiaryContainer,
+            onPressed: onDismiss,
           ),
         ],
       ),
