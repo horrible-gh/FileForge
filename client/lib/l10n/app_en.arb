@@ -64,6 +64,11 @@
     "placeholders": { "count": { "type": "int" } }
   },
   "mailMarkAllReadFailed": "Failed to mark all as read",
+  "mailSyncAccountFailed": "{count, plural, =1{1 account didn''t sync} other{{count} accounts didn''t sync}}",
+  "@mailSyncAccountFailed": {
+    "description": "Warning banner when some accounts failed to sync during the last refresh; count is how many.",
+    "placeholders": { "count": { "type": "int" } }
+  },
   "addLabel": "Add",
   "removeLabel": "Remove",
 

@@ -41,6 +41,7 @@ class MailProvider extends ChangeNotifier {
   bool _isLoadingMore = false;
   bool _isSyncing = false;
   bool _reauthRequired = false;
+  List<SyncAccountError> _syncAccountErrors = const [];
   String? _error;
   String? _nextCursor;
   bool _hasMore = false;
@@ -79,6 +80,14 @@ class MailProvider extends ChangeNotifier {
   /// Whether the last sync had the server mark an account reauth_required (re-auth needed).
   /// The screen also surfaces this via AccountProvider's banner, but it is exposed here so it can be known immediately after a sync.
   bool get reauthRequired => _reauthRequired;
+
+  /// Per-account sync failures from the last sync (B0001 / NR0003 H2). Empty on a
+  /// clean sync. Previously the server swallowed these silently and a flaky
+  /// account just made the inbox look empty with no clue; now the screen can show
+  /// a dismissible warning ("N accounts didn't sync"). Derived list is read-only.
+  List<SyncAccountError> get syncAccountErrors =>
+      List.unmodifiable(_syncAccountErrors);
+
   String? get error => _error;
   bool get hasMore => _hasMore;
   String get currentLabel => _currentLabel;
@@ -147,8 +156,14 @@ class MailProvider extends ChangeNotifier {
       try {
         final r = await _service.triggerSync();
         _reauthRequired = r.reauthRequired;
+        // H2: surface per-account failures instead of swallowing them. The whole
+        // sync still succeeded HTTP-wise (best-effort), but individual accounts may
+        // have failed; keep that visible until the next clean sync clears it.
+        _syncAccountErrors = r.accountErrors;
       } catch (_) {
-        // best-effort: silently ignore sync failure and proceed to load the local list.
+        // best-effort: silently ignore a *whole-request* sync failure and proceed
+        // to load the local list (network down, etc.). Per-account errors above are
+        // a separate, surfaced channel.
       } finally {
         _isSyncing = false;
       }
@@ -458,6 +473,7 @@ class MailProvider extends ChangeNotifier {
     _isLoadingMore = false;
     _isSyncing = false;
     _reauthRequired = false;
+    _syncAccountErrors = const [];
     _error = null;
     _nextCursor = null;
     _hasMore = false;

@@ -74,10 +74,19 @@ class Settings(BaseSettings):
     # 🔹 IMAP IDLE real-time receive (R0001 / 0033, D0004). When enabled, the
     #    server keeps one long-lived IDLE connection per sync-enabled account and
     #    wakes the existing incremental sync engine on a server push, instead of
-    #    relying solely on the client's ~10s poll (NR0003). Defaults ON; set to
-    #    false to fall back to pure pull. The manager is also auto-skipped under
-    #    pytest. Multi-worker single-owner election is DEFERRED (NR0003 G5).
-    MAIL_IDLE_ENABLED: bool = True
+    #    relying solely on the client's ~10s poll.
+    #
+    #    Defaults OFF (B0001 / 0037, NR0003 H1). A *resident* IDLE connection per
+    #    account holds connection #1 open continuously, while the client's ~10s
+    #    poll (`POST /sync`) opens a separate connection #2. Providers with a
+    #    strict simultaneous-connection cap (some ISPs / corporate Exchange) reject
+    #    the second one, so that account's sync fails — and it used to fail
+    #    *silently* (now surfaced via trigger_sync `errors[]`). Flipping the
+    #    default back OFF restores the pre-IDLE live behaviour (pure poll already
+    #    covers receiving) while leaving real-time push as an explicit opt-in. The
+    #    manager is also auto-skipped under pytest. Multi-worker single-owner
+    #    election is DEFERRED (NR0003 G5).
+    MAIL_IDLE_ENABLED: bool = False
 
     RATE_LIMIT_DEFAULT: str = "100/hour"
     RATE_LIMIT_LOGIN: str = "5/minute"

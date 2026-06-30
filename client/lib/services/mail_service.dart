@@ -3,19 +3,44 @@ import '../models/mail.dart';
 import 'mail_compose.dart';
 import 'mail_envelope.dart';
 
-/// POST /sync result (F) — the sync end state for the primary account.
+/// A single account that failed to sync during POST /sync (B0001 / NR0003 H2).
+/// The server no longer swallows per-account failures silently; it reports each
+/// one here so the UI can tell the user *which* account didn't sync and why,
+/// instead of the inbox just looking empty.
+class SyncAccountError {
+  final String accountId;
+  final String email;
+  final String message;
+
+  const SyncAccountError({
+    required this.accountId,
+    required this.email,
+    required this.message,
+  });
+
+  factory SyncAccountError.fromJson(Map<String, dynamic> json) => SyncAccountError(
+        accountId: json['account_id'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        message: json['message'] as String? ?? '',
+      );
+}
+
+/// POST /sync result (F) — the sync end state for the user's accounts.
 /// [applied] is the number of changes merged into local storage by this sync;
-/// [reauthRequired] is whether the server dropped the account to reauth_required
-/// (re-authentication needed).
+/// [reauthRequired] is whether any account needs re-authentication;
+/// [accountErrors] lists per-account sync failures (empty on a clean sync) so
+/// "메일이 안온다" from one flaky account is no longer invisible (NR0003 H2).
 class SyncResult {
   final String state;
   final int applied;
   final bool reauthRequired;
+  final List<SyncAccountError> accountErrors;
 
   const SyncResult({
     required this.state,
     required this.applied,
     required this.reauthRequired,
+    this.accountErrors = const [],
   });
 }
 
@@ -65,10 +90,17 @@ class MailService {
     final resp = await _dio.post('/sync');
     final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
     final map = expectMapData(data, httpStatus: resp.statusCode);
+    final rawErrors = map['errors'];
     return SyncResult(
       state: map['state'] as String? ?? 'idle',
       applied: (map['applied'] as num?)?.toInt() ?? 0,
       reauthRequired: map['reauth_required'] == true,
+      accountErrors: rawErrors is List
+          ? rawErrors
+              .whereType<Map>()
+              .map((e) => SyncAccountError.fromJson(e.cast<String, dynamic>()))
+              .toList()
+          : const [],
     );
   }
 

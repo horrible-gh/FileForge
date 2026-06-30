@@ -684,30 +684,78 @@ async def delete_account(account_id: str, user_uuid: str = Depends(current_user_
 # Sync (P0007 §7.15) — synchronous IMAP fetch → store merge
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _gmail_refresh_token_usable(acc: dict, user_uuid: str) -> bool:
+    """True iff a Gmail account has a *usable* (non-empty) refresh token.
+
+    The bare `acc["refresh_token_encrypted"]` truthiness check is NOT sufficient
+    (B0001 / NR0003 H3): a missing refresh token is stored as `encrypt("")`, which
+    AES-pads `b""` to one non-empty 16-byte block — so the column is truthy even
+    though there is no real token. Such accounts then sail past the guard and only
+    fail later inside token refresh, *silently* (Google rejects the empty grant).
+    Decrypt and require non-empty plaintext; any decrypt error is treated as
+    "not usable" so the account is routed to reauth instead of a silent failure.
+    """
+    enc = acc.get("refresh_token_encrypted")
+    if not enc:
+        return False
+    try:
+        return bool((decrypt_password(settings.SECRET_KEY, user_uuid, enc) or "").strip())
+    except Exception:  # noqa: BLE001
+        return False
+
+
 @router.post("/sync")
 def trigger_sync(user_uuid: str = Depends(current_user_uuid)):
     """POST /mail/sync — fetch new mail for the user's accounts into the store.
 
     Runs inline (not background) so the store is merged by the time the client
-    re-reads `/mails`. Per-account failures are swallowed (logged) so a single
-    flaky account never turns the trigger into a 5xx. (B0001 symptom #2)
+    re-reads `/mails`. A single flaky account never turns the trigger into a 5xx —
+    but, unlike before (B0001 / NR0003 H2), its failure is **no longer swallowed
+    silently**. The common failure path (IMAP rejected / timeout / token refresh)
+    does NOT raise: `sync_account_mails` catches it internally, records
+    `sync_logs status='failed'`, and *returns* `{success: False, message}`. So we
+    must inspect that return value — not just the `except` — and surface every
+    failed account in the response `errors[]`. The caller can then show
+    "account X didn't sync: <why>" instead of the inbox just appearing empty with
+    no clue (which is exactly the multi-account "메일이 안온다" symptom).
     """
     from .sync import sync_account_mails
     accounts = _resolve_accounts(user_uuid)
     applied = 0
     reauth_required = False
+    errors: list = []
+
+    def _record_error(acc: dict, message) -> None:
+        errors.append({
+            "account_id": acc.get("account_uuid") or "",
+            "email": acc.get("email") or acc.get("account_email") or "",
+            "message": str(message) if message else "sync failed",
+        })
+
     for acc in accounts:
         if not acc.get("sync_enabled", 1):
             continue
-        if acc.get("account_type") == "gmail" and not acc.get("refresh_token_encrypted"):
+        # Gmail without a usable refresh token → reauth, surfaced (not a silent
+        # token-refresh failure later). See _gmail_refresh_token_usable (H3).
+        if acc.get("account_type") == "gmail" and not _gmail_refresh_token_usable(acc, user_uuid):
             reauth_required = True
+            _record_error(acc, "re-authentication required (missing refresh token)")
             continue
         try:
-            res = sync_account_mails(acc["account_uuid"], user_uuid, "INBOX")
-            applied += int((res or {}).get("new_mails", 0) or 0)
-        except Exception as exc:  # noqa: BLE001
+            res = sync_account_mails(acc["account_uuid"], user_uuid, "INBOX") or {}
+            applied += int(res.get("new_mails", 0) or 0)
+            # H2: the common failure path returns success:False rather than raising.
+            if res.get("success") is False:
+                _record_error(acc, res.get("message"))
+        except Exception as exc:  # noqa: BLE001 — 2nd-stage backstop for leaks outside sync's try
             logger.error(f"[compat sync] account {acc.get('account_uuid')}: {exc}")
-    return _ok({"state": "idle", "applied": applied, "reauth_required": reauth_required})
+            _record_error(acc, exc)
+    return _ok({
+        "state": "idle",
+        "applied": applied,
+        "reauth_required": reauth_required,
+        "errors": errors,
+    })
 
 
 # ──────────────────────────────────────────────────────────────────────────────
