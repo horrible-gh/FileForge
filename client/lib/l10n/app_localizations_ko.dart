@@ -142,6 +142,23 @@ class AppLocalizationsKo extends AppLocalizations {
   String get mailPinnedTrayCollapse => '고정함 접기';
 
   @override
+  String get mailMarkAllRead => '모두 읽음 처리';
+
+  @override
+  String mailMarkedAllRead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count개를 읽음 처리했습니다',
+      zero: '읽지 않은 메일이 없습니다',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mailMarkAllReadFailed => '모두 읽음 처리에 실패했습니다';
+
+  @override
   String get addLabel => '추가';
 
   @override
@@ -669,6 +686,47 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get vaultCategoryEntertainment => '엔터테인먼트';
+
+  @override
+  String get vaultManageCategories => '분류 관리';
+
+  @override
+  String get vaultCategoryAll => '전체';
+
+  @override
+  String get vaultCategoryNew => '새 분류';
+
+  @override
+  String get vaultCategoryEdit => '분류 편집';
+
+  @override
+  String get vaultCategoryName => '이름';
+
+  @override
+  String get vaultCategoryIcon => '아이콘';
+
+  @override
+  String get vaultCategoryColor => '색상';
+
+  @override
+  String get vaultCategoryAdded => '분류를 추가했습니다';
+
+  @override
+  String get vaultCategoryUpdated => '분류를 변경했습니다';
+
+  @override
+  String get vaultCategoryDeleted => '분류를 삭제했습니다';
+
+  @override
+  String get vaultCategoryActionFailed => '분류 작업에 실패했습니다';
+
+  @override
+  String get vaultCategoryDefaultLocked => '기본 분류는 수정하거나 삭제할 수 없습니다';
+
+  @override
+  String vaultCategoryDeleteConfirm(String name) {
+    return '\'$name\' 분류를 삭제할까요? 이 분류의 항목은 \'개인\'으로 이동합니다.';
+  }
 
   @override
   String get vaultMsgDecryptBanner =>

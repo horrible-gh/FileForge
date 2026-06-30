@@ -352,6 +352,24 @@ abstract class AppLocalizations {
   /// **'Hide pinned'**
   String get mailPinnedTrayCollapse;
 
+  /// No description provided for @mailMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get mailMarkAllRead;
+
+  /// Toast after marking all mail as read; count is how many were unread.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No unread mail} =1{Marked 1 mail as read} other{Marked {count} mails as read}}'**
+  String mailMarkedAllRead(int count);
+
+  /// No description provided for @mailMarkAllReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to mark all as read'**
+  String get mailMarkAllReadFailed;
+
   /// No description provided for @addLabel.
   ///
   /// In en, this message translates to:
@@ -1347,6 +1365,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Entertainment'**
   String get vaultCategoryEntertainment;
+
+  /// No description provided for @vaultManageCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage categories'**
+  String get vaultManageCategories;
+
+  /// No description provided for @vaultCategoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get vaultCategoryAll;
+
+  /// No description provided for @vaultCategoryNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get vaultCategoryNew;
+
+  /// No description provided for @vaultCategoryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get vaultCategoryEdit;
+
+  /// No description provided for @vaultCategoryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get vaultCategoryName;
+
+  /// No description provided for @vaultCategoryIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get vaultCategoryIcon;
+
+  /// No description provided for @vaultCategoryColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get vaultCategoryColor;
+
+  /// No description provided for @vaultCategoryAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Category added'**
+  String get vaultCategoryAdded;
+
+  /// No description provided for @vaultCategoryUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Category updated'**
+  String get vaultCategoryUpdated;
+
+  /// No description provided for @vaultCategoryDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Category deleted'**
+  String get vaultCategoryDeleted;
+
+  /// No description provided for @vaultCategoryActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Category operation failed'**
+  String get vaultCategoryActionFailed;
+
+  /// No description provided for @vaultCategoryDefaultLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Default categories can\'t be edited or deleted'**
+  String get vaultCategoryDefaultLocked;
+
+  /// Confirm dialog body when deleting a custom vault category; its entries are re-homed to the Personal default.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete category \'{name}\'? Its entries will move to \'Personal\'.'**
+  String vaultCategoryDeleteConfirm(String name);
 
   /// No description provided for @vaultMsgDecryptBanner.
   ///

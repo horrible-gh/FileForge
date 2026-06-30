@@ -53,6 +53,13 @@
   },
   "mailPinnedTrayExpand": "Show pinned",
   "mailPinnedTrayCollapse": "Hide pinned",
+  "mailMarkAllRead": "Mark all as read",
+  "mailMarkedAllRead": "{count, plural, =0{No unread mail} =1{Marked 1 mail as read} other{Marked {count} mails as read}}",
+  "@mailMarkedAllRead": {
+    "description": "Toast after marking all mail as read; count is how many were unread.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "mailMarkAllReadFailed": "Failed to mark all as read",
   "addLabel": "Add",
   "removeLabel": "Remove",
 
@@ -273,6 +280,23 @@
   "vaultCategoryWork": "Work",
   "vaultCategoryPersonal": "Personal",
   "vaultCategoryEntertainment": "Entertainment",
+  "vaultManageCategories": "Manage categories",
+  "vaultCategoryAll": "All",
+  "vaultCategoryNew": "New category",
+  "vaultCategoryEdit": "Edit category",
+  "vaultCategoryName": "Name",
+  "vaultCategoryIcon": "Icon",
+  "vaultCategoryColor": "Color",
+  "vaultCategoryAdded": "Category added",
+  "vaultCategoryUpdated": "Category updated",
+  "vaultCategoryDeleted": "Category deleted",
+  "vaultCategoryActionFailed": "Category operation failed",
+  "vaultCategoryDefaultLocked": "Default categories can't be edited or deleted",
+  "vaultCategoryDeleteConfirm": "Delete category '{name}'? Its entries will move to 'Personal'.",
+  "@vaultCategoryDeleteConfirm": {
+    "description": "Confirm dialog body when deleting a custom vault category; its entries are re-homed to the Personal default.",
+    "placeholders": { "name": { "type": "String" } }
+  },
   "vaultMsgDecryptBanner": "Vault decryption failed. Make sure your login password is correct, then unlock again. (Protection: changes are not saved to the server in this state.)",
   "vaultMsgDecryptBlockedSave": "Can't save while decryption has failed. Saving was blocked to avoid overwriting your existing vault — check your password and unlock again.",
   "vaultMsgOfflineMode": "Offline mode: showing the vault stored on this device. It will sync when you're back online.",

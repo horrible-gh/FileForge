@@ -143,6 +143,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mailPinnedTrayCollapse => 'Hide pinned';
 
   @override
+  String get mailMarkAllRead => 'Mark all as read';
+
+  @override
+  String mailMarkedAllRead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Marked $count mails as read',
+      one: 'Marked 1 mail as read',
+      zero: 'No unread mail',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mailMarkAllReadFailed => 'Failed to mark all as read';
+
+  @override
   String get addLabel => 'Add';
 
   @override
@@ -676,6 +694,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultCategoryEntertainment => 'Entertainment';
+
+  @override
+  String get vaultManageCategories => 'Manage categories';
+
+  @override
+  String get vaultCategoryAll => 'All';
+
+  @override
+  String get vaultCategoryNew => 'New category';
+
+  @override
+  String get vaultCategoryEdit => 'Edit category';
+
+  @override
+  String get vaultCategoryName => 'Name';
+
+  @override
+  String get vaultCategoryIcon => 'Icon';
+
+  @override
+  String get vaultCategoryColor => 'Color';
+
+  @override
+  String get vaultCategoryAdded => 'Category added';
+
+  @override
+  String get vaultCategoryUpdated => 'Category updated';
+
+  @override
+  String get vaultCategoryDeleted => 'Category deleted';
+
+  @override
+  String get vaultCategoryActionFailed => 'Category operation failed';
+
+  @override
+  String get vaultCategoryDefaultLocked =>
+      'Default categories can\'t be edited or deleted';
+
+  @override
+  String vaultCategoryDeleteConfirm(String name) {
+    return 'Delete category \'$name\'? Its entries will move to \'Personal\'.';
+  }
 
   @override
   String get vaultMsgDecryptBanner =>

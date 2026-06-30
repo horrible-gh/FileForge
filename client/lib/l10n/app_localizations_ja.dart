@@ -142,6 +142,23 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mailPinnedTrayCollapse => 'ピン留めを隠す';
 
   @override
+  String get mailMarkAllRead => 'すべて既読にする';
+
+  @override
+  String mailMarkedAllRead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件を既読にしました',
+      zero: '未読メールはありません',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mailMarkAllReadFailed => 'すべて既読にできませんでした';
+
+  @override
   String get addLabel => '追加';
 
   @override
@@ -669,6 +686,47 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get vaultCategoryEntertainment => 'エンターテインメント';
+
+  @override
+  String get vaultManageCategories => '分類を管理';
+
+  @override
+  String get vaultCategoryAll => 'すべて';
+
+  @override
+  String get vaultCategoryNew => '新しい分類';
+
+  @override
+  String get vaultCategoryEdit => '分類を編集';
+
+  @override
+  String get vaultCategoryName => '名前';
+
+  @override
+  String get vaultCategoryIcon => 'アイコン';
+
+  @override
+  String get vaultCategoryColor => '色';
+
+  @override
+  String get vaultCategoryAdded => '分類を追加しました';
+
+  @override
+  String get vaultCategoryUpdated => '分類を更新しました';
+
+  @override
+  String get vaultCategoryDeleted => '分類を削除しました';
+
+  @override
+  String get vaultCategoryActionFailed => '分類の操作に失敗しました';
+
+  @override
+  String get vaultCategoryDefaultLocked => '既定の分類は編集・削除できません';
+
+  @override
+  String vaultCategoryDeleteConfirm(String name) {
+    return '「$name」分類を削除しますか？この分類の項目は「個人」に移動します。';
+  }
 
   @override
   String get vaultMsgDecryptBanner =>
