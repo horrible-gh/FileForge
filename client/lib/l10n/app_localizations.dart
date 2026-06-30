@@ -1522,6 +1522,18 @@ abstract class AppLocalizations {
   /// **'Download complete'**
   String get fileDownloadComplete;
 
+  /// No description provided for @fileDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading…'**
+  String get fileDownloading;
+
+  /// In-progress download indicator with a determinate percentage.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading… {percent}%'**
+  String fileDownloadingPercent(int percent);
+
   /// No description provided for @fileRenamed.
   ///
   /// In en, this message translates to:

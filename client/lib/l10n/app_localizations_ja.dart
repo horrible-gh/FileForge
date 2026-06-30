@@ -780,6 +780,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get fileDownloadComplete => 'ダウンロードが完了しました';
 
   @override
+  String get fileDownloading => 'ダウンロード中…';
+
+  @override
+  String fileDownloadingPercent(int percent) {
+    return 'ダウンロード中… $percent%';
+  }
+
+  @override
   String get fileRenamed => '名前を変更しました';
 
   @override

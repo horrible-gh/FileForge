@@ -780,6 +780,14 @@ class AppLocalizationsKo extends AppLocalizations {
   String get fileDownloadComplete => '다운로드 완료';
 
   @override
+  String get fileDownloading => '다운로드 중…';
+
+  @override
+  String fileDownloadingPercent(int percent) {
+    return '다운로드 중… $percent%';
+  }
+
+  @override
   String get fileRenamed => '이름을 변경했습니다';
 
   @override

@@ -790,6 +790,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileDownloadComplete => 'Download complete';
 
   @override
+  String get fileDownloading => 'Downloading…';
+
+  @override
+  String fileDownloadingPercent(int percent) {
+    return 'Downloading… $percent%';
+  }
+
+  @override
   String get fileRenamed => 'Renamed';
 
   @override

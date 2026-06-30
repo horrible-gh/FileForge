@@ -315,6 +315,12 @@
 
   "fileDownloadFailed": "Download failed",
   "fileDownloadComplete": "Download complete",
+  "fileDownloading": "Downloading…",
+  "fileDownloadingPercent": "Downloading… {percent}%",
+  "@fileDownloadingPercent": {
+    "description": "In-progress download indicator with a determinate percentage.",
+    "placeholders": { "percent": { "type": "int" } }
+  },
   "fileRenamed": "Renamed",
   "fileNameExists": "A file with this name already exists",
   "fileRenameFailed": "Failed to rename",

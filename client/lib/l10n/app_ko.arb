@@ -274,6 +274,12 @@
 
   "fileDownloadFailed": "다운로드에 실패했습니다",
   "fileDownloadComplete": "다운로드 완료",
+  "fileDownloading": "다운로드 중…",
+  "fileDownloadingPercent": "다운로드 중… {percent}%",
+  "@fileDownloadingPercent": {
+    "description": "In-progress download indicator with a determinate percentage.",
+    "placeholders": { "percent": { "type": "int" } }
+  },
   "fileRenamed": "이름을 변경했습니다",
   "fileNameExists": "같은 이름의 파일이 이미 있습니다",
   "fileRenameFailed": "이름 변경에 실패했습니다",

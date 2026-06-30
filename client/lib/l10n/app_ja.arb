@@ -274,6 +274,12 @@
 
   "fileDownloadFailed": "ダウンロードに失敗しました",
   "fileDownloadComplete": "ダウンロードが完了しました",
+  "fileDownloading": "ダウンロード中…",
+  "fileDownloadingPercent": "ダウンロード中… {percent}%",
+  "@fileDownloadingPercent": {
+    "description": "In-progress download indicator with a determinate percentage.",
+    "placeholders": { "percent": { "type": "int" } }
+  },
   "fileRenamed": "名前を変更しました",
   "fileNameExists": "同じ名前のファイルが既に存在します",
   "fileRenameFailed": "名前の変更に失敗しました",
