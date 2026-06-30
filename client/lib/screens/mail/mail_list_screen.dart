@@ -429,6 +429,23 @@ class _MailListScreenState extends State<MailListScreen>
   Widget _buildBody(BuildContext context, AppLocalizations t) {
     final mail = context.watch<MailProvider>();
 
+    // R0001(0037 rev1) — give every linked account a DISTINCT row color. The
+    // previous code hashed the account id into a 10-color palette; with only a
+    // few accounts two ids could hash to the same slot, so the list looked like
+    // it used "one color". Assign instead by the account's stable position in
+    // the AccountProvider list, so the first N≤10 accounts get N different
+    // colors (palette cycles beyond that). Accounts no longer in the live list
+    // (e.g. a removed account whose mail is still cached) fall back to the hash.
+    final colorMap = <String, Color>{};
+    final accs = context.watch<AccountProvider>().accounts;
+    for (var i = 0; i < accs.length; i++) {
+      final id = accs[i].accountId;
+      if (id.isNotEmpty) {
+        colorMap.putIfAbsent(
+            id, () => _kAccountPalette[i % _kAccountPalette.length]);
+      }
+    }
+
     if (mail.isLoading && mail.mails.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -468,7 +485,7 @@ class _MailListScreenState extends State<MailListScreen>
         itemBuilder: (context, index) {
           // Index mapping of [tray?] + unpinned mails + [load-more spinner?].
           if (hasTray && index == 0) {
-            return _buildPinnedTray(context, t, pinned);
+            return _buildPinnedTray(context, t, pinned, colorMap);
           }
           final i = index - trayCount;
           if (i >= rest.length) {
@@ -480,6 +497,7 @@ class _MailListScreenState extends State<MailListScreen>
           final summary = rest[i];
           return _MailListTile(
             summary: summary,
+            accountColor: _resolveAccountColor(summary.account, colorMap),
             onTap: () => _openMail(summary),
             onTogglePin: () =>
                 context.read<MailProvider>().togglePin(summary.mailId),
@@ -495,8 +513,8 @@ class _MailListScreenState extends State<MailListScreen>
   /// away without burden even when space is ample), and when expanded it renders
   /// the pinned mail rows as-is (including the per-row pin toggle) — unpinning from
   /// the tray immediately drops that mail down into the body list below.
-  Widget _buildPinnedTray(
-      BuildContext context, AppLocalizations t, List<MailSummary> pinned) {
+  Widget _buildPinnedTray(BuildContext context, AppLocalizations t,
+      List<MailSummary> pinned, Map<String, Color> colorMap) {
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
@@ -564,6 +582,7 @@ class _MailListScreenState extends State<MailListScreen>
               const Divider(height: 1),
               _MailListTile(
                 summary: summary,
+                accountColor: _resolveAccountColor(summary.account, colorMap),
                 onTap: () => _openMail(summary),
                 onTogglePin: () =>
                     context.read<MailProvider>().togglePin(summary.mailId),
@@ -735,9 +754,10 @@ class _LabelSwitcher extends StatelessWidget {
 
 /// R0001(0013) — per-account distinguishing-color palette. The server's
 /// `display_color` is often assigned the same default per account (Gmail #EA4335,
-/// etc.), so color alone cannot distinguish them. Therefore the color is derived
-/// stably from a hash of the account identifier over this palette to guarantee *a
-/// different color per account* (the text label is the primary cue, color is secondary).
+/// etc.), so color alone cannot distinguish them. The list assigns these colors by
+/// the account's *position* in the linked-account list (see `_buildBody`), so the
+/// first N≤10 accounts get N visibly different colors; `_accountColor` (a stable
+/// hash) is only the fallback for accounts no longer present in that list.
 const List<Color> _kAccountPalette = [
   Color(0xFF1565C0), // blue
   Color(0xFF2E7D32), // green
@@ -753,6 +773,11 @@ const List<Color> _kAccountPalette = [
 
 /// Account identifier → stable distinguishing color. The same account always gets
 /// the same color, different accounts (almost) always different. Neutral gray if no identifier.
+///
+/// Fallback only: hashes can collide (two ids → same slot), which is exactly what
+/// made the list look single-colored, so the live list now prefers index-based
+/// assignment (`_resolveAccountColor`) and this is used only for accounts absent
+/// from the current AccountProvider list.
 Color _accountColor(MailAccountRef account) {
   final key = account.key;
   if (key.isEmpty) return const Color(0xFF607D8B);
@@ -763,15 +788,29 @@ Color _accountColor(MailAccountRef account) {
   return _kAccountPalette[hash % _kAccountPalette.length];
 }
 
+/// Resolve a mail row's account color: prefer the distinct index-based color from
+/// the linked-account list (`colorMap`, keyed by account id); fall back to the
+/// stable hash for accounts not in the live list.
+Color _resolveAccountColor(MailAccountRef account, Map<String, Color> colorMap) {
+  final mapped = colorMap[account.accountId];
+  if (mapped != null) return mapped;
+  return _accountColor(account);
+}
+
 class _MailListTile extends StatelessWidget {
   final MailSummary summary;
   final VoidCallback onTap;
+
+  /// R0001(0037 rev1) — the distinct per-account color resolved by the parent
+  /// list from the account's position (so each linked account differs).
+  final Color accountColor;
 
   /// R0001(0027) — the row's pin toggle. Pin = entry point to the pin-to-top UX (trailing pin icon).
   final VoidCallback onTogglePin;
 
   const _MailListTile({
     required this.summary,
+    required this.accountColor,
     required this.onTap,
     required this.onTogglePin,
   });
@@ -783,7 +822,7 @@ class _MailListTile extends StatelessWidget {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
     final acct = summary.account;
-    final acctColor = _accountColor(acct);
+    final acctColor = accountColor;
     final pinned = summary.isPinned;
     return ListTile(
       onTap: onTap,
