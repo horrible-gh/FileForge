@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/mail.dart';
+import '../../models/mail_account.dart';
+import '../../providers/account_provider.dart';
 import '../../providers/mail_provider.dart';
 import '../../services/mail_compose.dart';
 import '../../services/mail_envelope.dart';
@@ -59,6 +61,10 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   String _format = 'text'; // 'text' | 'html' (P0007 §3.2)
   bool _showCcBcc = false;
 
+  /// R0001(0035) — selected sender account (account_uuid). null = server default
+  /// (first account). Reply/forward seed it from the original's receiving account.
+  String? _fromAccountId;
+
   final List<MailAttachment> _attachments = [];
   final List<_UploadTask> _uploads = [];
 
@@ -93,6 +99,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       if (init != null && init.body.format.isNotEmpty) {
         _format = init.body.format;
       }
+      _fromAccountId = init?.fromAccountId;
     }
     _showCcBcc = _cc.isNotEmpty || _bcc.isNotEmpty;
   }
@@ -115,7 +122,19 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       attachmentIds: _attachments.map((a) => a.attachmentId).toList(),
       inReplyTo: init?.inReplyTo,
       replyType: init?.replyType,
+      fromAccountId: _fromAccountId,
     );
+  }
+
+  /// R0001(0035) — the effective sender id given the connected accounts: the
+  /// explicit selection when it still maps to a connected account, otherwise the
+  /// first account (mirrors the server's deterministic default). Empty when none.
+  String _effectiveFrom(List<MailAccount> accounts) {
+    if (_fromAccountId != null &&
+        accounts.any((a) => a.accountId == _fromAccountId)) {
+      return _fromAccountId!;
+    }
+    return accounts.isNotEmpty ? accounts.first.accountId : '';
   }
 
   // ── text upload (§7.11) ─────────────────────────────────────────────────────
@@ -321,6 +340,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _senderField(t),
             RecipientField(
               label: t.fieldTo,
               addresses: _to,
@@ -378,6 +398,37 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// R0001(0035) — sender account selector. Shown only when more than one account
+  /// is linked (a single account leaves nothing to choose). The chosen account is
+  /// what the message is sent from, ending the "who/what is the From — random?"
+  /// ambiguity. Reply/forward arrive pre-selected with the receiving account.
+  Widget _senderField(AppLocalizations t) {
+    final accounts = context.watch<AccountProvider>().accounts;
+    if (accounts.length < 2) return const SizedBox.shrink();
+    final value = _effectiveFrom(accounts);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DropdownButtonFormField<String>(
+        initialValue: value.isNotEmpty ? value : null,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: t.fieldFrom,
+          prefixIcon: const Icon(Icons.account_circle_outlined),
+        ),
+        items: [
+          for (final a in accounts)
+            DropdownMenuItem<String>(
+              value: a.accountId,
+              child: Text(a.email, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: _sending
+            ? null
+            : (v) => setState(() => _fromAccountId = v),
       ),
     );
   }

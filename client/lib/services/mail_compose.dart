@@ -80,6 +80,11 @@ class SendPayload {
   /// Drafttext translated text text — text text servertext Draft delete·text translated text(L0012 §2.4).
   final String? fromDraftId;
 
+  /// R0001(0035) — sender account (account_uuid) to send from. With multiple linked
+  /// accounts this is how the client names the From; null lets the server pick its
+  /// deterministic default (first account by display_order).
+  final String? fromAccountId;
+
   const SendPayload({
     this.to = const [],
     this.cc = const [],
@@ -90,6 +95,7 @@ class SendPayload {
     this.inReplyTo,
     this.replyType,
     this.fromDraftId,
+    this.fromAccountId,
   });
 
   /// text text text verify(L0012 §4.1 text translated text translated text translated text).
@@ -124,6 +130,8 @@ class SendPayload {
       if (inReplyTo != null) 'in_reply_to': inReplyTo,
       if (replyType != null) 'reply_type': replyType,
       if (fromDraftId != null) 'from_draft_id': fromDraftId,
+      if (fromAccountId != null && fromAccountId!.isNotEmpty)
+        'from_account_id': fromAccountId,
     };
   }
 }
@@ -142,6 +150,11 @@ SendPayload composeFrom(
     return header + m.body.content;
   }
 
+  // R0001(0035) — reply/forward default the sender to the account the original
+  // mail arrived at, so the reply leaves from the right address (null when the
+  // detail did not carry a receiving account).
+  final replyFrom = original.accountId.isNotEmpty ? original.accountId : null;
+
   switch (mode) {
     case ComposeMode.reply:
       return SendPayload(
@@ -150,6 +163,7 @@ SendPayload composeFrom(
         body: const MailBody(),
         inReplyTo: original.mailId,
         replyType: 'reply',
+        fromAccountId: replyFrom,
       );
     case ComposeMode.replyAll:
       final cc = [...original.to, ...original.cc]
@@ -165,6 +179,7 @@ SendPayload composeFrom(
         body: const MailBody(),
         inReplyTo: original.mailId,
         replyType: 'reply_all',
+        fromAccountId: replyFrom,
       );
     case ComposeMode.forward:
       return SendPayload(
@@ -173,6 +188,7 @@ SendPayload composeFrom(
         body: MailBody(format: 'text', content: quote(original)),
         inReplyTo: original.mailId,
         replyType: 'forward',
+        fromAccountId: replyFrom,
       );
     case ComposeMode.newMail:
       return const SendPayload();

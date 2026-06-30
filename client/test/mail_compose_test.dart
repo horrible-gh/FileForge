@@ -170,4 +170,51 @@ void main() {
       expect(twice.subject, 'Re: June receipt'); // Re: Re: text
     });
   });
+
+  // R0001(0035) — sender (From) account selection across multiple linked accounts.
+  group('sender account selection', () {
+    test('toJson emits from_account_id only when set', () {
+      final without = const SendPayload(
+        to: [MailAddress(address: 'x@y.com')],
+      ).toJson();
+      expect(without.containsKey('from_account_id'), false);
+
+      final withId = const SendPayload(
+        to: [MailAddress(address: 'x@y.com')],
+        fromAccountId: 'acc-b',
+      ).toJson();
+      expect(withId['from_account_id'], 'acc-b');
+    });
+
+    test('reply/forward default sender to the receiving account', () {
+      final original = MailDetail(
+        mailId: 'm1',
+        accountId: 'acc-b',
+        from: const MailAddress(address: 'billing@shop.com'),
+        subject: 'Receipt',
+        body: const MailBody(format: 'text', content: 'body'),
+      );
+      expect(composeFrom(ComposeMode.reply, original).fromAccountId, 'acc-b');
+      expect(composeFrom(ComposeMode.replyAll, original).fromAccountId, 'acc-b');
+      expect(composeFrom(ComposeMode.forward, original).fromAccountId, 'acc-b');
+    });
+
+    test('reply leaves sender null when original carries no receiving account', () {
+      final original = MailDetail(
+        mailId: 'm1',
+        from: const MailAddress(address: 'billing@shop.com'),
+        subject: 'Receipt',
+      );
+      expect(composeFrom(ComposeMode.reply, original).fromAccountId, isNull);
+    });
+
+    test('MailDetail.fromJson reads account_id', () {
+      final d = MailDetail.fromJson({
+        'mail_id': 'm1',
+        'account_id': 'acc-b',
+        'from': {'address': 'a@b.com'},
+      });
+      expect(d.accountId, 'acc-b');
+    });
+  });
 }

@@ -218,6 +218,10 @@ class MailSummary {
 class MailDetail {
   final String mailId;
   final String threadId;
+
+  /// R0001(0035) — the *receiving* account (account_uuid) this mail arrived at, so a
+  /// reply/forward can default its sender to the same account. Empty when absent.
+  final String accountId;
   final MailAddress from;
   final List<MailAddress> to;
   final List<MailAddress> cc;
@@ -234,6 +238,7 @@ class MailDetail {
   const MailDetail({
     required this.mailId,
     this.threadId = '',
+    this.accountId = '',
     required this.from,
     this.to = const [],
     this.cc = const [],
@@ -255,6 +260,7 @@ class MailDetail {
     return MailDetail(
       mailId: json['mail_id'] as String? ?? '',
       threadId: json['thread_id'] as String? ?? '',
+      accountId: json['account_id'] as String? ?? '',
       from: MailAddress.fromJson(
           (json['from'] as Map?)?.cast<String, dynamic>() ?? const {}),
       to: addrs('to'),
@@ -279,6 +285,7 @@ class MailDetail {
   MailDetail copyWithPinned(bool pinned) => MailDetail(
         mailId: mailId,
         threadId: threadId,
+        accountId: accountId,
         from: from,
         to: to,
         cc: cc,
@@ -296,6 +303,7 @@ class MailDetail {
   MailDetail copyWithRead(bool read) => MailDetail(
         mailId: mailId,
         threadId: threadId,
+        accountId: accountId,
         from: from,
         to: to,
         cc: cc,
