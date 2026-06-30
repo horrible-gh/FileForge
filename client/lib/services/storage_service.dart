@@ -94,11 +94,18 @@ class StorageService {
   }
 
   /// GET /storages/download — text file/folder download (translated text)
+  ///
+  /// [onReceiveProgress] surfaces transfer progress so callers can show an
+  /// in-flight indicator (fileforge.ui.0002 "고스트 다운로드"). `count`/`total`
+  /// follow Dio's convention; `total` is -1 when the server omits
+  /// Content-Length.
   Future<Response<List<int>>> download({
     required String storageUuid,
     required String userUuid,
     required String groupUuid,
     required String nodeUuid,
+    ProgressCallback? onReceiveProgress,
+    CancelToken? cancelToken,
   }) async {
     return _dio.get<List<int>>(
       '/storages/download',
@@ -109,6 +116,8 @@ class StorageService {
         'node_uuid': nodeUuid,
       },
       options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onReceiveProgress,
+      cancelToken: cancelToken,
     );
   }
 
@@ -174,11 +183,15 @@ class StorageService {
   /// POST /storages/bulk/download — text ZIP download
   Future<Response<List<int>>> bulkDownload({
     required List<String> nodeUuids,
+    ProgressCallback? onReceiveProgress,
+    CancelToken? cancelToken,
   }) async {
     return _dio.post<List<int>>(
       '/storages/bulk/download',
       data: {'node_uuids': nodeUuids},
       options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onReceiveProgress,
+      cancelToken: cancelToken,
     );
   }
 
