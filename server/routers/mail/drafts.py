@@ -29,7 +29,7 @@ router = APIRouter()
 class DraftSaveRequest(BaseModel):
     user_uuid: str
     account_uuid: str
-    draft_uuid: Optional[str] = None  # 기존 임시저장 수정 시
+    draft_uuid: Optional[str] = None  # when editing an existing draft
     to_addresses: str = ""
     cc_addresses: Optional[str] = None
     bcc_addresses: Optional[str] = None
@@ -44,20 +44,20 @@ class DraftDeleteRequest(BaseModel):
 
 
 # ========================================
-# 임시저장 API
+# Draft API
 # ========================================
 
 @router.post("/save", dependencies=[Depends(verify_token)])
 async def save_draft(request: DraftSaveRequest):
     """
-    메일 임시저장
-    
-    - draft_uuid가 있으면 기존 임시저장 업데이트
-    - 없으면 새로 생성
+    Save a mail draft
+
+    - If draft_uuid is present, update the existing draft
+    - Otherwise create a new one
     """
-    
+
     try:
-        # drafts 폴더 조회 (없으면 생성)
+        # Look up the drafts folder (create if missing)
         drafts_folder = db_instance.fetch_one(
             """
             SELECT folder_uuid 
@@ -86,21 +86,21 @@ async def save_draft(request: DraftSaveRequest):
             drafts_folder = {"folder_uuid": folder_uuid}
             logger.info(f"[Drafts] drafts 폴더 생성: {folder_uuid}")
         
-        # 계정 정보 조회
+        # Look up account info
         account = db_instance.fetch_one(
             sqloader.load_sql("mail_anchor.json", "get_account"),
             (request.account_uuid,)
         )
-        
+
         if not account:
             raise HTTPException(status_code=404, detail="계정을 찾을 수 없음")
-        
-        # 기존 임시저장 수정 또는 신규 생성
+
+        # Update an existing draft or create a new one
         if request.draft_uuid:
-            # 기존 임시저장 업데이트
+            # Update the existing draft
             message_uuid = request.draft_uuid
-            
-            # .eml 파일 업데이트
+
+            # Update the .eml file
             eml_path = db_instance.fetch_one(
                 "SELECT body_file_path FROM mail_messages WHERE message_uuid = %s",
                 (message_uuid,)
@@ -113,7 +113,7 @@ async def save_draft(request: DraftSaveRequest):
                 os.makedirs(eml_dir, exist_ok=True)
                 eml_file_path = os.path.join(eml_dir, f"{message_uuid}.eml")
             
-            # 메일 메시지 생성
+            # Build the mail message
             msg = MIMEMultipart('alternative')
             msg['From'] = f"{account.get('account_name', '')} <{account['email']}>"
             msg['To'] = request.to_addresses
@@ -127,11 +127,11 @@ async def save_draft(request: DraftSaveRequest):
             if request.body_html:
                 msg.attach(MIMEText(request.body_html, 'html', 'utf-8'))
             
-            # .eml 파일 저장
+            # Save the .eml file
             with open(eml_file_path, 'w', encoding='utf-8') as f:
                 f.write(msg.as_string())
-            
-            # DB 업데이트
+
+            # DB update
             db_instance.execute_query(
                 """
                 UPDATE mail_messages 
@@ -158,13 +158,13 @@ async def save_draft(request: DraftSaveRequest):
             logger.info(f"[Drafts] 임시저장 업데이트: {message_uuid}")
             
         else:
-            # 신규 임시저장 생성
+            # Create a new draft
             message_uuid = str(uuid_lib.uuid4())
             message_id = make_msgid(domain=account['email'].split('@')[1])
             timestamp = int(time.time() * 1000000)
             uid = -timestamp
-            
-            # .eml 파일 생성
+
+            # Create .eml file
             msg = MIMEMultipart('alternative')
             msg['From'] = f"{account.get('account_name', '')} <{account['email']}>"
             msg['To'] = request.to_addresses
@@ -186,7 +186,7 @@ async def save_draft(request: DraftSaveRequest):
             with open(eml_path, 'w', encoding='utf-8') as f:
                 f.write(msg.as_string())
             
-            # DB 저장
+            # Save to DB
             db_instance.execute_query(
                 """
                 INSERT INTO mail_messages (
@@ -218,7 +218,7 @@ async def save_draft(request: DraftSaveRequest):
                     "bcc_emails": request.bcc_addresses or '',
                     "subject": request.subject or '(제목 없음)',
                     "preview": make_preview(request.body_text, request.body_html, 200),
-                    "sent_date": now_utc_naive(),       # naive-UTC 규약(0025.0003-NR)
+                    "sent_date": now_utc_naive(),       # naive-UTC convention (0025.0003-NR)
                     "received_date": now_utc_naive(),
                     "is_read": True,
                     "is_starred": False,
@@ -244,17 +244,17 @@ async def save_draft(request: DraftSaveRequest):
 
 
 # ========================================
-# 임시저장 삭제 API
+# Draft delete API
 # ========================================
 
 @router.post("/delete", dependencies=[Depends(verify_token)])
 async def delete_draft(request: DraftDeleteRequest):
     """
-    임시저장 삭제
+    Delete a draft
     """
-    
+
     try:
-        # DB에서 삭제 (is_deleted = TRUE)
+        # Soft-delete in the DB (is_deleted = TRUE)
         db_instance.execute_query(
             """
             UPDATE mail_messages 

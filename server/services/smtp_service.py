@@ -1,6 +1,6 @@
 """
 MailAnchor - SMTP Service
-메일 발송, 임시저장
+Mail sending, drafts
 """
 
 import smtplib
@@ -25,19 +25,19 @@ class SMTPService:
         self.connection: Optional[smtplib.SMTP] = None
     
     def connect(self) -> Dict[str, Any]:
-        """SMTP 서버 연결"""
+        """Connect to the SMTP server."""
         try:
             context = ssl.create_default_context()
-            
+
             if self.port == 465:
-                # SSL 직접 연결
+                # Direct SSL connection
                 self.connection = smtplib.SMTP_SSL(
                     self.host, 
                     self.port, 
                     context=context, 
                     timeout=30
                 )
-                self.connection.ehlo('localhost')  # 호스트네임 문제 해결
+                self.connection.ehlo('localhost')  # hostname issue fix
             elif self.port == 587:
                 # STARTTLS
                 self.connection = smtplib.SMTP(self.host, self.port, timeout=30)
@@ -58,7 +58,7 @@ class SMTPService:
             return {"success": False, "message": f"연결 실패: {e}"}
     
     def disconnect(self):
-        """연결 종료"""
+        """Close the connection."""
         if self.connection:
             try:
                 self.connection.quit()
@@ -74,7 +74,7 @@ class SMTPService:
         self.disconnect()
     
     # ========================================
-    # 메일 발송
+    # Mail sending
     # ========================================
     
     def send_mail(
@@ -90,15 +90,15 @@ class SMTPService:
         attachments: Optional[List[Dict[str, Any]]] = None,
         reply_to: Optional[str] = None
     ) -> Dict[str, Any]:
-        """메일 발송"""
+        """Send mail."""
         try:
             if not self.connection:
-                # 연결 안 되어 있으면 연결 시도
+                # If not connected, attempt to connect
                 result = self.connect()
                 if not result["success"]:
                     return result
-            
-            # 메일 메시지 생성
+
+            # Create the mail message
             msg = self._create_message(
                 from_name=from_name,
                 from_email=from_email,
@@ -111,14 +111,14 @@ class SMTPService:
                 attachments=attachments
             )
             
-            # 수신자 목록 합치기
+            # Combine the recipient list
             all_recipients = list(to_addresses)
             if cc_addresses:
                 all_recipients.extend(cc_addresses)
             if bcc_addresses:
                 all_recipients.extend(bcc_addresses)
-            
-            # 발송
+
+            # Send
             self.connection.send_message(msg, from_email, all_recipients)
             
             return {"success": True, "message": "메일 발송 완료"}
@@ -142,9 +142,9 @@ class SMTPService:
         reply_to: Optional[str] = None,
         attachments: Optional[List[Dict[str, Any]]] = None
     ) -> MIMEMultipart:
-        """MIME 메시지 생성"""
-        
-        # 첨부파일 있으면 mixed, 없으면 alternative
+        """Create a MIME message."""
+
+        # mixed if there are attachments, otherwise alternative
         if attachments:
             msg = MIMEMultipart('mixed')
             body_part = MIMEMultipart('alternative')
@@ -152,7 +152,7 @@ class SMTPService:
             msg = MIMEMultipart('alternative')
             body_part = msg
         
-        # 헤더 설정
+        # Header setup
         msg['From'] = formataddr((from_name, from_email))
         msg['To'] = ', '.join(to_addresses)
         msg['Subject'] = subject
@@ -164,35 +164,35 @@ class SMTPService:
         if reply_to:
             msg['Reply-To'] = reply_to
         
-        # 본문 추가 (text/plain -> text/html 순서)
+        # Add body (text/plain -> text/html order)
         if body_text:
             body_part.attach(MIMEText(body_text, 'plain', 'utf-8'))
-        
+
         if body_html:
             body_part.attach(MIMEText(body_html, 'html', 'utf-8'))
         elif body_text:
-            # HTML 없으면 텍스트를 HTML로 변환
+            # If no HTML, convert text to HTML
             html_body = f"<html><body><pre>{body_text}</pre></body></html>"
             body_part.attach(MIMEText(html_body, 'html', 'utf-8'))
         
-        # 첨부파일이 있으면 본문 파트를 메인 메시지에 추가
+        # If there are attachments, add the body part to the main message
         if attachments:
             msg.attach(body_part)
-            
-            # 첨부파일 추가
+
+            # Add attachments
             for attachment in attachments:
                 self._attach_file(msg, attachment)
         
         return msg
     
     def _attach_file(self, msg: MIMEMultipart, attachment: Dict[str, Any]):
-        """첨부파일 추가"""
+        """Add an attachment."""
         filename = attachment.get('filename', 'attachment')
         content = attachment.get('content')  # bytes
         content_type = attachment.get('content_type', 'application/octet-stream')
         
         if not content:
-            # 파일 경로가 주어진 경우
+            # When a file path is given
             filepath = attachment.get('filepath')
             if filepath and os.path.exists(filepath):
                 with open(filepath, 'rb') as f:
@@ -205,7 +205,7 @@ class SMTPService:
         if not content:
             return
         
-        # MIME 타입에 따라 처리
+        # Handle based on MIME type
         maintype, subtype = content_type.split('/', 1) if '/' in content_type else ('application', 'octet-stream')
         
         if maintype == 'image':
@@ -215,7 +215,7 @@ class SMTPService:
             part.set_payload(content)
             encoders.encode_base64(part)
         
-        # 파일명 설정 (한글 파일명 처리)
+        # Set the filename (handles non-ASCII filenames)
         part.add_header(
             'Content-Disposition',
             'attachment',
@@ -225,7 +225,7 @@ class SMTPService:
         msg.attach(part)
     
     # ========================================
-    # 빠른 답장
+    # Quick reply
     # ========================================
     
     def reply(
@@ -238,14 +238,14 @@ class SMTPService:
         reply_body: str,
         reply_html: Optional[str] = None
     ) -> Dict[str, Any]:
-        """답장 보내기"""
-        # Re: 접두사 추가 (이미 있으면 추가 안 함)
+        """Send a reply."""
+        # Add the Re: prefix (skip if already present)
         if not original_subject.lower().startswith('re:'):
             subject = f"Re: {original_subject}"
         else:
             subject = original_subject
         
-        # 인용문 추가
+        # Add the quoted text
         quoted_body = self._quote_original(original_body)
         full_body_text = f"{reply_body}\n\n{quoted_body}"
         
@@ -265,13 +265,13 @@ class SMTPService:
         )
     
     def _quote_original(self, original_body: str) -> str:
-        """원본 메일 인용"""
+        """Quote the original mail."""
         lines = original_body.split('\n')
         quoted_lines = ['> ' + line for line in lines]
         return '\n'.join(quoted_lines)
     
     # ========================================
-    # 전달
+    # Forward
     # ========================================
     
     def forward(
@@ -286,14 +286,14 @@ class SMTPService:
         forward_message: str = "",
         attachments: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
-        """메일 전달"""
-        # Fwd: 접두사 추가
+        """Forward mail."""
+        # Add the Fwd: prefix
         if not original_subject.lower().startswith('fwd:'):
             subject = f"Fwd: {original_subject}"
         else:
             subject = original_subject
         
-        # 전달 헤더 추가
+        # Add the forward header
         forward_header = f"""
 ---------- Forwarded message ---------
 From: {original_from}
@@ -315,7 +315,7 @@ Subject: {original_subject}
 
 
 # ========================================
-# 편의 함수
+# Convenience functions
 # ========================================
 
 def send_simple_mail(
@@ -329,7 +329,7 @@ def send_simple_mail(
     body: str,
     is_html: bool = False
 ) -> Dict[str, Any]:
-    """간단한 메일 발송 (연결 → 발송 → 종료)"""
+    """Simple mail send (connect → send → close)."""
     with SMTPService(smtp_host, smtp_port, smtp_username, smtp_password) as smtp:
         return smtp.send_mail(
             from_name=from_name,
@@ -342,7 +342,7 @@ def send_simple_mail(
 
 
 def test_smtp_connection(host: str, port: int, username: str, password: str) -> Dict[str, Any]:
-    """SMTP 연결 테스트"""
+    """SMTP connection test."""
     try:
         context = ssl.create_default_context()
         

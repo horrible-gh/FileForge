@@ -22,9 +22,9 @@ sqloader = db.sqloader
 
 router = APIRouter()
 
-# 동기화 상태 추적 (인메모리)
+# Sync status tracking (in-memory)
 sync_status: Dict[str, dict] = {}
-# 계정별 동기화 실행 중 플래그
+# Per-account "sync in progress" flag
 active_syncs: Dict[str, bool] = {}
 
 
@@ -33,18 +33,18 @@ active_syncs: Dict[str, bool] = {}
 # ========================================
 
 def is_sync_running(account_uuid: str, folder: str) -> bool:
-    """해당 계정/폴더가 현재 동기화 중인지 확인"""
+    """Check whether the given account/folder is currently syncing."""
     sync_key = f"{account_uuid}_{folder}"
     return active_syncs.get(sync_key, False)
 
 
 def set_sync_running(account_uuid: str, folder: str, running: bool):
-    """동기화 실행 상태 설정"""
+    """Set the sync running state."""
     sync_key = f"{account_uuid}_{folder}"
     active_syncs[sync_key] = running
 
 def parse_email_header(header_value):
-    """이메일 헤더 디코딩"""
+    """Decode an email header."""
     if not header_value:
         return ""
 
@@ -64,11 +64,11 @@ def parse_email_header(header_value):
 
 
 def extract_email_address(addr_string):
-    """이메일 주소 추출 (From: "Name" <email@example.com> 형식 처리)"""
+    """Extract an email address (handles the From: "Name" <email@example.com> form)."""
     if not addr_string:
         return "", ""
 
-    # email 라이브러리로 파싱
+    # Parse with the email library
     from email.utils import parseaddr
     name, email_addr = parseaddr(addr_string)
 
@@ -76,11 +76,12 @@ def extract_email_address(addr_string):
 
 
 def decode_address_list(header_value) -> str:
-    """Address-list 헤더(To/Cc)를 RFC2047 디코딩하여 'Name <addr>, ...' 문자열로.
+    """RFC2047-decode an address-list header (To/Cc) into a 'Name <addr>, ...' string.
 
-    R0001 / 0017: To 헤더의 표시이름이 RFC2047 인코딩워드(=?..?B?..?=)로 와도
-    From/Subject처럼 디코딩하여 저장한다. getaddresses로 콤마 안전하게 분리하고,
-    표시이름만 parse_email_header로 디코딩한다(주소부는 ASCII이므로 그대로).
+    R0001 / 0017: even when a To header's display name arrives as an RFC2047
+    encoded-word (=?..?B?..?=), decode it before storing, just like From/Subject.
+    Split safely on commas with getaddresses, and decode only the display name with
+    parse_email_header (the address part is ASCII, so it is left as-is).
     """
     if not header_value:
         return ""
@@ -177,33 +178,34 @@ def _decode_part_text(part) -> str:
 
 
 def parse_email_message(raw_email: bytes) -> dict:
-    """RFC822 메일 파싱"""
+    """Parse an RFC822 email."""
     msg = email.message_from_bytes(raw_email)
 
-    # From 파싱
+    # Parse From
     from_header = msg.get('From', '')
     from_name, from_email = extract_email_address(from_header)
 
-    # To 파싱 (RFC2047 인코딩워드 디코딩 — From/Subject와 대칭)
+    # Parse To (RFC2047 encoded-word decoding — symmetric with From/Subject)
     to_emails = decode_address_list(msg.get('To', ''))
 
-    # Cc 파싱 (compat 상세 응답의 cc 필드 채움)
+    # Parse Cc (fills the cc field of the compat detail response)
     cc_emails = decode_address_list(msg.get('Cc', ''))
 
-    # Subject 파싱
+    # Parse Subject
     subject = parse_email_header(msg.get('Subject', '(제목없음)'))
 
-    # Date 파싱 — 발신 오프셋을 보존해 UTC로 정규화 후 저장(naive-UTC 규약).
-    # 과거엔 aware datetime을 그대로 insert → 드라이버가 오프셋을 버려 발신자
-    # 로컬 벽시계가 저장됨(R0001 '그놈의 UTC' / 0025.0003-NR). to_storage_utc로
-    # 항상 UTC 벽시계만 저장하고, 표시 직렬화(compat._iso)가 +00:00을 붙인다.
+    # Parse Date — preserve the sender's offset, normalize to UTC, then store
+    # (naive-UTC convention). Previously an aware datetime was inserted as-is, so
+    # the driver dropped the offset and the sender's local wall clock got stored
+    # (R0001 "that damn UTC" / 0025.0003-NR). to_storage_utc always stores only the
+    # UTC wall clock, and the display serializer (compat._iso) appends +00:00.
     date_header = msg.get('Date')
     try:
         sent_date = to_storage_utc(parsedate_to_datetime(date_header)) if date_header else now_utc_naive()
     except Exception:
         sent_date = now_utc_naive()
 
-    # 본문 추출
+    # Extract body
     body_text = ""
     body_html = ""
     attachments = []
@@ -213,7 +215,7 @@ def parse_email_message(raw_email: bytes) -> dict:
             content_type = part.get_content_type()
             content_disposition = str(part.get("Content-Disposition", ""))
 
-            # 첨부파일
+            # Attachment
             if "attachment" in content_disposition:
                 filename = part.get_filename()
                 if filename:
@@ -223,7 +225,7 @@ def parse_email_message(raw_email: bytes) -> dict:
                         "content_type": content_type,
                         "size": len(part.get_payload(decode=True) or b'')
                     })
-            # 본문 (파트 charset 존중 디코딩 — B0001/0018 defect 2)
+            # Body (decode honoring the part charset — B0001/0018 defect 2)
             elif content_type == "text/plain" and not body_text:
                 try:
                     body_text = _decode_part_text(part)
@@ -245,7 +247,7 @@ def parse_email_message(raw_email: bytes) -> dict:
         except:
             body_text = str(msg.get_payload())
 
-    # Preview 생성: 평문 우선, HTML뿐이면 태그 strip 후 평문화 (원시 마크업 금지 — B0001/0018)
+    # Build preview: prefer plain text; if HTML-only, strip tags to plain text (no raw markup — B0001/0018)
     preview = make_preview(body_text, body_html, 100)
 
     return {
@@ -266,16 +268,16 @@ def parse_email_message(raw_email: bytes) -> dict:
 
 
 def save_email_to_filesystem(account_uuid: str, message_uuid: str, raw_email: bytes) -> str:
-    """메일 원본을 파일 시스템에 저장"""
+    """Save the raw email to the filesystem."""
     # {mail_storage_base(account)}/{account_uuid}/messages/{uuid[:2]}/{uuid}.eml
     base_path = Path(mail_storage_base(account_uuid=account_uuid)) / account_uuid / "messages"
     subdir = message_uuid[:2]
     file_path = base_path / subdir / f"{message_uuid}.eml"
 
-    # 디렉토리 생성
+    # Create directory
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 파일 저장
+    # Save file
     with open(file_path, 'wb') as f:
         f.write(raw_email)
 
@@ -283,16 +285,16 @@ def save_email_to_filesystem(account_uuid: str, message_uuid: str, raw_email: by
 
 
 def save_attachment_to_filesystem(account_uuid: str, attachment_uuid: str, filename: str, content: bytes) -> str:
-    """첨부파일을 파일 시스템에 저장"""
+    """Save an attachment to the filesystem."""
     # {mail_storage_base(account)}/{account_uuid}/attachments/{uuid[:2]}/{uuid}_{filename}
     base_path = Path(mail_storage_base(account_uuid=account_uuid)) / account_uuid / "attachments"
     subdir = attachment_uuid[:2]
     file_path = base_path / subdir / f"{attachment_uuid}_{filename}"
 
-    # 디렉토리 생성
+    # Create directory
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 파일 저장
+    # Save file
     with open(file_path, 'wb') as f:
         f.write(content)
 
@@ -300,8 +302,8 @@ def save_attachment_to_filesystem(account_uuid: str, attachment_uuid: str, filen
 
 
 def get_or_create_folder_uuid(account_uuid: str, folder_name: str, folder_path: str = None) -> str:
-    """폴더 UUID 조회 또는 생성"""
-    # 기존 폴더 조회
+    """Look up or create a folder UUID."""
+    # Look up existing folder
     check_query = """
         SELECT folder_uuid FROM mail_folders
         WHERE account_uuid = %s AND folder_name = %s
@@ -311,7 +313,7 @@ def get_or_create_folder_uuid(account_uuid: str, folder_name: str, folder_path: 
     if existing:
         return existing['folder_uuid']
 
-    # 없으면 새로 생성
+    # Create a new one if it does not exist
     folder_uuid = str(uuid.uuid4())
     folder_type = 'inbox' if folder_name.upper() == 'INBOX' else 'custom'
 
@@ -334,9 +336,9 @@ def get_or_create_folder_uuid(account_uuid: str, folder_name: str, folder_path: 
 
 
 def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX") -> dict:
-    """특정 계정의 메일 동기화 실제 로직"""
+    """Actual logic for syncing a specific account's mail."""
 
-    # 중복 동기화 체크
+    # Duplicate-sync check
     if is_sync_running(account_uuid, folder):
         logger.warn(f"[Sync] 이미 동기화 진행 중 - 계정: {account_uuid}, 폴더: {folder}")
         return {
@@ -346,7 +348,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
             "total_mails": 0
         }
 
-    # 동기화 시작 플래그 설정
+    # Set the sync-start flag
     set_sync_running(account_uuid, folder, True)
 
     sync_id = f"{account_uuid}_{folder}_{datetime.now().timestamp()}"
@@ -361,7 +363,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
     logger.debug(f"[Sync] sync_status에 추가됨: {list(sync_status.keys())}")
 
     try:
-        # 1. 계정 정보 조회
+        # 1. Look up account info
         account = db_instance.fetch_one(
             sqloader.load_sql("mail_anchor.json", "get_account"),
             (account_uuid,)
@@ -370,7 +372,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
         if not account:
             raise Exception("계정을 찾을 수 없음")
 
-        # 2. Gmail이면 OAuth, 아니면 기존 방식
+        # 2. OAuth for Gmail, otherwise the legacy approach
         if account.get('account_type') == 'gmail':
             from services.gmail_service import GmailIMAPService, GmailOAuthService
 
@@ -390,7 +392,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
 
                 access_token = token_data['access_token']
 
-                # DB 업데이트
+                # DB update
                 encrypted_access = encrypt_password(settings.SECRET_KEY, user_uuid, access_token)
                 db_instance.execute_query(
                     sqloader.load_sql("mail_anchor.json", "gmail.update_access_token"),
@@ -425,14 +427,14 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
         if not connect_result["success"]:
             raise Exception(f"IMAP 연결 실패: {connect_result['message']}")
 
-        # 4. 폴더 선택 전에 folder_uuid 확보
+        # 4. Secure folder_uuid before selecting the folder
         folder_uuid = get_or_create_folder_uuid(account_uuid, folder, folder)
 
-        # 5. 폴더 선택
+        # 5. Select folder
         imap.connection.select(folder, readonly=True)
 
 
-        # 6. 메일 UID 목록 가져오기
+        # 6. Fetch the mail UID list
         last_uid_query = """
             SELECT MAX(uid) as last_uid
             FROM mail_messages
@@ -445,7 +447,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
 
         last_uid = last_uid_row['last_uid'] if last_uid_row and last_uid_row['last_uid'] else None
 
-        # IMAP에서 전체 UID 가져오기
+        # Fetch all UIDs from IMAP
         status, messages = imap.connection.uid('search', None, 'ALL')
         if status != 'OK':
             raise Exception("메일 검색 실패")
@@ -466,30 +468,30 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
 
         if total == 0:
             logger.info(f"[Sync] 새 메일 없음")
-            # 동기화 성공 기록하고 종료
+            # Record sync success and finish
 
         sync_status[sync_id]["total"] = total
         logger.info(f"[Sync] 계정 {account_uuid} - {folder} 폴더: {total}개 메일 발견")
 
 
-        # 7. 이미 동기화된 UID 확인 (기존 코드 그대로)
+        # 7. Check already-synced UIDs (kept as-is from the original code)
         existing_uids = set()
 
-        # 8. 메일 순회하며 저장 (기존 코드 그대로)
+        # 8. Iterate over mails and store them (kept as-is from the original code)
         new_count = 0
         for idx, uid in enumerate(mail_uids):
             uid_str = uid.decode()
 
-            # 진행률 업데이트
+            # Update progress
             sync_status[sync_id]["current"] = idx + 1
 
 
-            # 중복 체크
+            # Duplicate check
             if uid_str in existing_uids:
                 continue
 
             try:
-                # ✅ 여기 추가! (저장 전에 체크)
+                # Added here! (check before storing)
                 uid_int = int(uid)
                 existing = db_instance.fetch_one(
                     "SELECT message_uuid FROM mail_messages WHERE account_uuid = %(account_uuid)s AND folder_uuid = %(folder_uuid)s AND uid = %(uid)s",
@@ -503,23 +505,23 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
                     logger.debug(f"[Sync] UID {uid} 이미 존재 - 스킵")
                     continue
 
-                # 메일 fetch
+                # Fetch mail
                 status, msg_data = imap.connection.uid('fetch', uid, '(RFC822)')
                 if status != 'OK' or not msg_data or not msg_data[0]:
                     continue
 
                 raw_email = msg_data[0][1]
 
-                # 메일 파싱
+                # Parse mail
                 parsed = parse_email_message(raw_email)
 
-                # UUID 생성
+                # Generate UUID
                 message_uuid = str(uuid.uuid4())
 
-                # 파일 시스템에 저장
+                # Save to filesystem
                 email_path = save_email_to_filesystem(account_uuid, message_uuid, raw_email)
 
-                # DB에 메타데이터 저장
+                # Save metadata to DB
                 insert_query = sqloader.load_sql("mail_anchor.json", "sync.insert_message")
 
                 db_instance.execute_query(insert_query, {
@@ -537,9 +539,9 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
                     "has_attachments": parsed['has_attachments'],
                     "body_file_path": email_path,
                     "size_bytes": parsed['size_bytes']
-                })  # 딕셔너리!
+                })  # dictionary!
 
-                # 첨부파일 저장
+                # Save attachments
                 if parsed['attachments']:
                     for attach in parsed['attachments']:
                         attachment_uuid = str(uuid.uuid4())
@@ -571,13 +573,13 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
                 logger.error(f"[Sync] 메일 {uid_str} 처리 실패: {str(e)}")
                 sync_status[sync_id]["errors"].append(f"UID {uid_str}: {str(e)}")
 
-            # 진행상황 업데이트
+            # Update progress
             sync_status[sync_id]["progress"] = idx + 1
 
-        # 8. IMAP 연결 종료
+        # 8. Close IMAP connection
         imap.disconnect()
 
-        # 9. 동기화 로그 저장
+        # 9. Save sync log
         log_query = sqloader.load_sql("mail_anchor.json", "sync.insert_sync_log")
 
 
@@ -587,9 +589,9 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
             "status": "completed",
             "messages_fetched": total,
             "messages_updated": new_count
-        })  # ← 딕셔너리!
+        })  # ← dictionary!
 
-        # 10. 계정의 last_sync_at 업데이트
+        # 10. Update the account's last_sync_at
         update_query = """
             UPDATE mail_accounts
             SET last_sync_at = NOW()
@@ -609,7 +611,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
 
         threading.Thread(target=clear_sync, daemon=True).start()
 
-        # 동기화 완료 플래그 해제
+        # Clear the sync-complete flag
         set_sync_running(account_uuid, folder, False)
 
         logger.info(f"[Sync] 완료 - 신규 {new_count}개 / 전체 {total}개")
@@ -626,10 +628,10 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
         sync_status[sync_id]["status"] = "failed"
         sync_status[sync_id]["errors"].append(str(e))
 
-        # 동기화 실패 시에도 플래그 해제
+        # Clear the flag on sync failure too
         set_sync_running(account_uuid, folder, False)
 
-        # 실패한 sync_status도 5초 후 삭제
+        # Delete the failed sync_status after 5 seconds too
         def clear_sync():
             import time
             time.sleep(5)
@@ -638,7 +640,7 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
 
         threading.Thread(target=clear_sync, daemon=True).start()
 
-        # 실패 로그 저장
+        # Save failure log
         try:
             log_query = sqloader.load_sql("mail_anchor.json", "sync.insert_sync_log")
             db_instance.execute_query(log_query, {
@@ -663,23 +665,23 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
 @router.post("/all", dependencies=[Depends(verify_token)])
 async def sync_all_accounts(request_params: SyncRequest, background_tasks: BackgroundTasks):
     """
-    모든 계정의 메일 동기화
+    Sync mail for all accounts
 
-    - sync_enabled = TRUE인 계정만 동기화
-    - 각 계정의 INBOX만 동기화
+    - Only accounts with sync_enabled = TRUE are synced
+    - Only each account's INBOX is synced
     """
 
     request = request_params.model_dump()
     logger.debug(request)
     user_uuid = request['user_uuid']
 
-    # 활성화된 계정 목록 조회
+    # Look up the list of enabled accounts
     accounts = db_instance.fetch_all(
         sqloader.load_sql("mail_anchor.json", "accounts.get_accounts"),
         {"user_uuid": user_uuid}
     )
 
-    # sync_enabled = TRUE인 계정만 필터링
+    # Filter to only accounts with sync_enabled = TRUE
     active_accounts = [acc for acc in accounts if acc.get('sync_enabled', True)]
 
     if not active_accounts:
@@ -687,7 +689,7 @@ async def sync_all_accounts(request_params: SyncRequest, background_tasks: Backg
 
     logger.info(f"[Sync All] {len(active_accounts)}개 계정 동기화 시작")
 
-    # 백그라운드에서 동기화 실행
+    # Run sync in the background
     for account in active_accounts:
         background_tasks.add_task(
             sync_account_mails,
@@ -696,7 +698,7 @@ async def sync_all_accounts(request_params: SyncRequest, background_tasks: Backg
             "INBOX"
         )
 
-    # 즉시 응답 반환 (동기화는 백그라운드에서 진행)
+    # Return immediately (sync proceeds in the background)
     return {
         "success": True,
         "message": f"{len(active_accounts)}개 계정 동기화 시작",
@@ -707,22 +709,22 @@ async def sync_all_accounts(request_params: SyncRequest, background_tasks: Backg
 async def sync_account(
     account_uuid: str,
     request: SyncRequest,
-    background_tasks: BackgroundTasks,  # ✅ = None 제거
+    background_tasks: BackgroundTasks,  # removed = None
     folder: str = "INBOX"
 ):
     """
-    특정 계정의 메일 동기화 (IMAP → DB)
+    Sync mail for a specific account (IMAP → DB)
 
-    - 기본적으로 INBOX 폴더 동기화
-    - folder 파라미터로 다른 폴더 지정 가능
-    - 백그라운드에서 실행
+    - Syncs the INBOX folder by default
+    - Another folder can be specified via the folder parameter
+    - Runs in the background
     """
 
     user_uuid = request.user_uuid
 
     logger.info(f"[Sync] 동기화 시작 - 계정: {account_uuid}, 폴더: {folder}")
 
-    # ✅ 백그라운드로 실행
+    # Run in the background
     background_tasks.add_task(
         sync_account_mails,
         account_uuid,
@@ -730,7 +732,7 @@ async def sync_account(
         folder
     )
 
-    # ✅ 즉시 응답
+    # Respond immediately
     return {
         "success": True,
         "message": f"계정 {account_uuid} 동기화 시작"
@@ -739,7 +741,7 @@ async def sync_account(
 @router.get("/status", dependencies=[Depends(verify_token)])
 async def get_sync_status():
     """
-    현재 진행 중인 동기화 상태 조회
+    Get the status of syncs currently in progress
     """
 
     logger.debug(f"[SyncStatus] 현재 sync_status: {sync_status}")
@@ -751,7 +753,7 @@ async def get_sync_status():
 @router.get("/logs/{account_uuid}", dependencies=[Depends(verify_token)])
 async def get_sync_logs(account_uuid: str, limit: int = 20):
     """
-    특정 계정의 동기화 로그 조회
+    Get the sync logs for a specific account
     """
     query = """
         SELECT * FROM sync_logs

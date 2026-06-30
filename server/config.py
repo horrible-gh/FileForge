@@ -61,13 +61,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = ""
     FRONTEND_BASE_URL: str = ""
     OAUTH_SUCCESS_REDIRECT_URL: str = ""
-    # 🔹 OAuth 성공 후 모바일 앱 자동 복귀용 딥링크(커스텀 스킴). R0001/NR0003/T0004 §Option C.
-    #    웹 프론트 redirect(OAUTH_SUCCESS_REDIRECT_URL/FRONTEND_BASE_URL)가 없어 self-contained
-    #    성공 페이지가 표시되는 데스크톱/모바일/로컬 구성에서만 사용된다. 값이 있으면 성공
-    #    페이지가 이 스킴으로 자동 리다이렉트하여 모바일에서 브라우저를 떠나 앱을 foreground로
-    #    복귀시키고(클라가 딥링크 수신 시 계정 목록 재로딩), 데스크톱/웹에서는 자동 창 닫기와
-    #    수동 "앱으로 돌아가기" 버튼이 폴백으로 동작한다. 빈 값이면 딥링크 단계를 건너뛴다.
-    #    클라이언트(Android intent-filter / iOS CFBundleURLTypes)에 동일 스킴이 등록되어야 한다.
+    # 🔹 Deeplink (custom scheme) for auto-returning to the mobile app after OAuth success. R0001/NR0003/T0004 §Option C.
+    #    Used only in desktop/mobile/local setups where there is no web-front redirect
+    #    (OAUTH_SUCCESS_REDIRECT_URL/FRONTEND_BASE_URL) and the self-contained success page is shown.
+    #    If set, the success page auto-redirects to this scheme so that on mobile the browser is
+    #    left and the app is brought back to the foreground (the client reloads the account list on
+    #    receiving the deeplink); on desktop/web, auto window-close and a manual "Return to the app"
+    #    button act as the fallback. If empty, the deeplink step is skipped.
+    #    The same scheme must be registered in the client (Android intent-filter / iOS CFBundleURLTypes).
     OAUTH_SUCCESS_DEEPLINK: str = "fileforge://oauth/gmail/success"
 
     RATE_LIMIT_DEFAULT: str = "100/hour"

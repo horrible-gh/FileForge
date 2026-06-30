@@ -15,7 +15,7 @@ sqloader = db.sqloader
 
 router = APIRouter()
 
-# 1. 라벨 목록 조회
+# 1. Get label list
 @router.get("/list", dependencies=[Depends(verify_token)])
 async def get_labels(request: LabelGetRequest = Depends()):
     data = request.model_dump()
@@ -29,12 +29,12 @@ async def get_labels(request: LabelGetRequest = Depends()):
     logger.debug(f"📦 DB 결과: {result}")
     return {"labels": result}
 
-# 2. 라벨 생성
+# 2. Create label
 @router.post("/create", dependencies=[Depends(verify_token)])
 async def create_label(request: LabelCreateRequest):
     data = request.model_dump()
 
-    # 중복 체크
+    # Duplicate check
     existing = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "labels.check_duplicate"),
         data
@@ -50,17 +50,17 @@ async def create_label(request: LabelCreateRequest):
 
     return {"success": True, "label_uuid": result, "message": "Label created successfully"}
 
-# 3. 라벨 수정 (동적 SQL 생성)
+# 3. Update label (dynamic SQL generation)
 @router.put("/{label_uuid}", dependencies=[Depends(verify_token)])
 async def update_label(label_uuid: str, request: LabelUpdateRequest):
     data = request.model_dump()
     logger.debug(f"📝 update_label 원본 데이터: {data}")
 
-    # 업데이트할 필드 동적 생성
+    # Build the fields to update dynamically
     update_fields = []
     params = {"label_uuid": label_uuid}
 
-    # 필드 매핑: request 필드명 → DB 컬럼명
+    # Field mapping: request field name → DB column name
     field_mapping = {
         "label_name": "label_name",
         "label_color": "label_color",
@@ -78,7 +78,7 @@ async def update_label(label_uuid: str, request: LabelUpdateRequest):
     if not update_fields:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    # 동적 SQL 생성
+    # Generate dynamic SQL
     query = f"""
         UPDATE mail_labels
         SET {", ".join(update_fields)}
@@ -91,7 +91,7 @@ async def update_label(label_uuid: str, request: LabelUpdateRequest):
 
     return {"success": True, "message": "Label updated successfully"}
 
-# 4. 라벨 삭제
+# 4. Delete label
 @router.delete("/{label_uuid}", dependencies=[Depends(verify_token)])
 async def delete_label(label_uuid: str):
     data = {"label_uuid": label_uuid}
@@ -103,18 +103,18 @@ async def delete_label(label_uuid: str):
 
     return {"success": True, "message": "Label deleted successfully"}
 
-# 5. 메일에 라벨 지정
+# 5. Assign labels to a mail
 @router.post("/assign", dependencies=[Depends(verify_token)])
 async def assign_labels(request: MessageLabelAssignRequest):
     data = request.model_dump()
 
-    # 기존 라벨 삭제
+    # Delete existing labels
     db_instance.execute(
         sqloader.load_sql("mail_anchor.json", "labels.delete_message_labels"),
         {"message_uuid": data['message_uuid']}
     )
 
-    # 새 라벨 지정
+    # Assign new labels
     if data['label_uuids']:
         for label_uuid in data['label_uuids']:
             db_instance.execute(
@@ -127,7 +127,7 @@ async def assign_labels(request: MessageLabelAssignRequest):
 
     return {"success": True, "message": "Labels assigned successfully"}
 
-# 6. 메일의 라벨 조회
+# 6. Get a mail's labels
 @router.get("/message/{message_uuid}", dependencies=[Depends(verify_token)])
 async def get_message_labels(message_uuid: str):
     data = {"message_uuid": message_uuid}
@@ -139,7 +139,7 @@ async def get_message_labels(message_uuid: str):
 
     return {"labels": labels}
 
-# 7. 라벨별 메일 필터링 (✅ 응답 구조 수정)
+# 7. Filter mail by label (response structure fixed)
 @router.get("/filter/{label_uuid}", dependencies=[Depends(verify_token)])
 async def filter_by_label(label_uuid: str, request: LabelFilterRequest = Depends()):
     data = request.model_dump()
@@ -163,7 +163,7 @@ async def filter_by_label(label_uuid: str, request: LabelFilterRequest = Depends
     total = total_result['total'] if total_result else 0
     has_more = (data['page'] * data['limit']) < total
 
-    # ✅ MailList.vue가 기대하는 응답 구조로 맞춤
+    # Match the response structure expected by MailList.vue
     return {
         "success": True,
         "messages": messages,
@@ -175,7 +175,7 @@ async def filter_by_label(label_uuid: str, request: LabelFilterRequest = Depends
         "has_more": has_more
     }
 
-# 8. 라벨 통계
+# 8. Label statistics
 @router.get("/stats", dependencies=[Depends(verify_token)])
 async def get_label_stats(request: LabelGetRequest = Depends()):
     data = request.model_dump()

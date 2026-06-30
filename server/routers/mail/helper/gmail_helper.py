@@ -1,6 +1,6 @@
 """
-Gmail 토큰 갱신 헬퍼
-기존 IMAP/SMTP 서비스에서 Gmail OAuth 계정 사용 시 토큰 자동 갱신
+Gmail token refresh helper
+Auto-refresh tokens when a Gmail OAuth account is used in the existing IMAP/SMTP services
 """
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
@@ -20,16 +20,16 @@ async def get_valid_gmail_credentials(
     user_uuid: str
 ) -> Tuple[Optional[str], Optional[str]]:
     """
-    유효한 Gmail 자격 증명 반환 (필요시 토큰 갱신)
-    
+    Return valid Gmail credentials (refreshing the token if needed).
+
     Returns:
-        (email, access_token) 또는 실패 시 (None, None)
-    
+        (email, access_token), or (None, None) on failure
+
     Usage:
         email, access_token = await get_valid_gmail_credentials(account_uuid, user_uuid)
         if access_token:
             with GmailIMAPService(email, access_token) as imap:
-                # 메일 조회...
+                # fetch mail...
     """
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "gmail.check_token_expiry"),
@@ -41,21 +41,21 @@ async def get_valid_gmail_credentials(
     
     email = account["email"]
     
-    # 토큰이 5분 이내 만료되거나 이미 만료된 경우 갱신
+    # Refresh if the token expires within 5 minutes or is already expired
     if account.get("needs_refresh") or account.get("is_expired"):
         if not account.get("refresh_token_encrypted"):
-            return None, None  # 재인증 필요
-        
+            return None, None  # re-authentication required
+
         try:
-            # refresh_token 복호화
+            # Decrypt the refresh_token
             refresh_token = decrypt_password(
                 SECRET_KEY, user_uuid, account["refresh_token_encrypted"]
             )
-            
-            # 토큰 갱신
+
+            # Refresh the token
             token_data = await gmail_oauth.refresh_access_token(refresh_token)
-            
-            # 새 토큰 암호화 및 저장
+
+            # Encrypt and store the new token
             encrypted_access = encrypt_password(
                 SECRET_KEY, user_uuid, token_data["access_token"]
             )
@@ -75,7 +75,7 @@ async def get_valid_gmail_credentials(
             print(f"Gmail 토큰 갱신 실패: {e}")
             return None, None
     
-    # 토큰이 아직 유효한 경우
+    # Token is still valid
     try:
         access_token = decrypt_password(
             SECRET_KEY, user_uuid, account["access_token_encrypted"]
@@ -86,5 +86,5 @@ async def get_valid_gmail_credentials(
 
 
 def is_gmail_account(account: dict) -> bool:
-    """계정이 Gmail OAuth 계정인지 확인"""
+    """Check whether the account is a Gmail OAuth account."""
     return account.get("account_type") == "gmail"

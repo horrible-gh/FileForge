@@ -66,7 +66,7 @@ app.include_router(shared_link.router, prefix=f"{CONTEXT}/share", tags=["Share"]
 app.include_router(public_share.router, prefix=f"{CONTEXT}/share", tags=["Share Public"])
 app.include_router(totp.router, prefix=f"{CONTEXT}/auth/totp", tags=["TOTP"])
 
-# 🔹 Mail subsystem (absorbed from legacy mail-server — D0004 병합안 / NR0003 Gap D).
+# 🔹 Mail subsystem (absorbed from legacy mail-server — D0004 merge plan / NR0003 Gap D).
 #    Same path prefixes as legacy (/fileforge/mail/*, /fileforge/oauth/gmail) so the
 #    client keeps a single :8000/fileforge origin. Every mail route gates on the
 #    server's RS256 verify_token (Auth Bridge — NR0003 Gap A, L0006 §2.1).

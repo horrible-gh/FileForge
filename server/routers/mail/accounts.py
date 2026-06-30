@@ -29,7 +29,7 @@ async def get_accounts(account: AccountGetRequest = Depends()):
 async def insert_account(account: AccountCreateRequest):
     account_data = account.model_dump()
     
-    # 비밀번호 암호화
+    # Encrypt passwords
     user_uuid = account_data['user_uuid']
     logger.debug("user_uuid", user_uuid)
     logger.debug("SECRET_KEY", SECRET_KEY)
@@ -61,7 +61,7 @@ async def insert_account(account: AccountCreateRequest):
 async def update_account(account: AccountUpdateRequest):
     account_data = account.model_dump()
     
-    # 비밀번호가 있으면 암호화
+    # Encrypt passwords if present
     user_uuid = account_data['user_uuid']
     data = {
         "account_uuid": account_data['account_uuid'],
@@ -102,7 +102,7 @@ async def test_connection(account: AccountCreateRequest):
     account_data = account.model_dump()
     logger.debug(account_data)
     
-    # IMAP 테스트
+    # IMAP test
     imap_result = test_imap_connection(
         account_data['imap_host'],
         account_data['imap_port'],
@@ -111,7 +111,7 @@ async def test_connection(account: AccountCreateRequest):
         account_data['imap_use_ssl']
     )
     
-    # SMTP 테스트
+    # SMTP test
     smtp_result = test_smtp_connection(
         account_data['smtp_host'],
         account_data['smtp_port'],

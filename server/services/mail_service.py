@@ -1,6 +1,6 @@
 """
 MailAnchor - Mail Account Service
-메일 계정 통합 관리 (IMAP/SMTP 연결 관리)
+Unified mail account management (IMAP/SMTP connection management)
 """
 
 from typing import Optional, Dict, Any, List
@@ -11,31 +11,31 @@ from .smtp_service import SMTPService, test_smtp_connection
 
 # @dataclass
 class MailAccount:
-    """메일 계정 정보"""
+    """Mail account info."""
     account_id: str
     account_name: str
     email: str
-    
-    # IMAP 설정
+
+    # IMAP settings
     imap_host: str
     imap_port: int
     imap_username: str
     imap_password: str
     imap_use_ssl: bool = True
     
-    # SMTP 설정
+    # SMTP settings
     smtp_host: str
     smtp_port: int
     smtp_username: str
     smtp_password: str
     
-    # 표시 설정
+    # Display settings
     display_color: str = "#4285f4"
-    display_name: Optional[str] = None  # 발신자 이름
+    display_name: Optional[str] = None  # sender name
 
 
 class MailAccountService:
-    """메일 계정 통합 서비스"""
+    """Unified mail account service."""
     
     def __init__(self):
         self._imap_connections: Dict[str, IMAPService] = {}
@@ -43,17 +43,17 @@ class MailAccountService:
         self._accounts: Dict[str, MailAccount] = {}
     
     # ========================================
-    # 계정 관리
+    # Account management
     # ========================================
-    
+
     def add_account(self, account: MailAccount) -> Dict[str, Any]:
-        """계정 추가"""
+        """Add an account."""
         self._accounts[account.account_id] = account
         return {"success": True, "message": f"계정 '{account.account_name}' 추가됨"}
     
     def remove_account(self, account_id: str) -> Dict[str, Any]:
-        """계정 제거"""
-        # 연결 종료
+        """Remove an account."""
+        # Close connections
         self.disconnect_imap(account_id)
         self.disconnect_smtp(account_id)
         
@@ -63,25 +63,25 @@ class MailAccountService:
         return {"success": False, "message": "계정을 찾을 수 없음"}
     
     def get_account(self, account_id: str) -> Optional[MailAccount]:
-        """계정 조회"""
+        """Get an account."""
         return self._accounts.get(account_id)
     
     def get_all_accounts(self) -> List[MailAccount]:
-        """전체 계정 목록"""
+        """List all accounts."""
         return list(self._accounts.values())
     
     # ========================================
-    # 연결 테스트
+    # Connection test
     # ========================================
-    
+
     def test_connection(self, account: MailAccount) -> Dict[str, Any]:
-        """IMAP/SMTP 연결 테스트"""
+        """IMAP/SMTP connection test."""
         results = {
             "imap": {"success": False, "message": ""},
             "smtp": {"success": False, "message": ""}
         }
         
-        # IMAP 테스트
+        # IMAP test
         try:
             imap = IMAPService(
                 host=account.imap_host,
@@ -96,7 +96,7 @@ class MailAccountService:
         except Exception as e:
             results["imap"] = {"success": False, "message": str(e)}
         
-        # SMTP 테스트
+        # SMTP test
         results["smtp"] = test_smtp_connection(
             host=account.smtp_host,
             port=account.smtp_port,
@@ -107,11 +107,11 @@ class MailAccountService:
         return results
     
     # ========================================
-    # IMAP 연결 관리
+    # IMAP connection management
     # ========================================
-    
+
     def get_imap(self, account_id: str) -> Optional[IMAPService]:
-        """IMAP 연결 가져오기 (없으면 생성)"""
+        """Get the IMAP connection (create if absent)."""
         if account_id in self._imap_connections:
             return self._imap_connections[account_id]
         
@@ -135,17 +135,17 @@ class MailAccountService:
         return None
     
     def disconnect_imap(self, account_id: str):
-        """IMAP 연결 종료"""
+        """Close the IMAP connection."""
         if account_id in self._imap_connections:
             self._imap_connections[account_id].disconnect()
             del self._imap_connections[account_id]
     
     # ========================================
-    # SMTP 연결 관리
+    # SMTP connection management
     # ========================================
-    
+
     def get_smtp(self, account_id: str) -> Optional[SMTPService]:
-        """SMTP 연결 가져오기 (없으면 생성)"""
+        """Get the SMTP connection (create if absent)."""
         if account_id in self._smtp_connections:
             return self._smtp_connections[account_id]
         
@@ -168,17 +168,17 @@ class MailAccountService:
         return None
     
     def disconnect_smtp(self, account_id: str):
-        """SMTP 연결 종료"""
+        """Close the SMTP connection."""
         if account_id in self._smtp_connections:
             self._smtp_connections[account_id].disconnect()
             del self._smtp_connections[account_id]
     
     # ========================================
-    # 통합 기능
+    # Unified features
     # ========================================
-    
+
     def get_all_folders(self) -> Dict[str, Any]:
-        """전체 계정의 폴더 목록 조회"""
+        """List folders across all accounts."""
         all_folders = {}
         
         for account_id, account in self._accounts.items():
@@ -196,13 +196,13 @@ class MailAccountService:
         return {"success": True, "accounts": all_folders}
     
     def get_unified_inbox(self, page: int = 1, limit: int = 20) -> Dict[str, Any]:
-        """통합 받은편지함 조회"""
+        """Retrieve the unified inbox."""
         all_mails = []
         
         for account_id, account in self._accounts.items():
             imap = self.get_imap(account_id)
             if imap:
-                result = imap.get_mail_list(folder="INBOX", page=1, limit=100)  # 많이 가져와서 합침
+                result = imap.get_mail_list(folder="INBOX", page=1, limit=100)  # fetch a lot and merge
                 if result["success"]:
                     for mail in result["mails"]:
                         mail["account_id"] = account_id
@@ -211,10 +211,10 @@ class MailAccountService:
                         mail["account_color"] = account.display_color
                         all_mails.append(mail)
         
-        # 날짜순 정렬
+        # Sort by date
         all_mails.sort(key=lambda x: x.get("date", ""), reverse=True)
-        
-        # 페이징
+
+        # Paging
         total_count = len(all_mails)
         start_idx = (page - 1) * limit
         end_idx = start_idx + limit
@@ -240,7 +240,7 @@ class MailAccountService:
         bcc_addresses: Optional[List[str]] = None,
         attachments: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
-        """메일 발송"""
+        """Send mail."""
         account = self._accounts.get(account_id)
         if not account:
             return {"success": False, "message": "계정을 찾을 수 없음"}
@@ -262,7 +262,7 @@ class MailAccountService:
         )
     
     def disconnect_all(self):
-        """모든 연결 종료"""
+        """Close all connections."""
         for account_id in list(self._imap_connections.keys()):
             self.disconnect_imap(account_id)
         
@@ -270,5 +270,5 @@ class MailAccountService:
             self.disconnect_smtp(account_id)
 
 
-# 전역 인스턴스
+# Global instance
 mail_service = MailAccountService()

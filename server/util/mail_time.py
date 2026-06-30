@@ -1,4 +1,4 @@
-"""Mail timestamp timezone normalization (R0001 '그놈의 UTC' / 0025.0003-NR).
+"""Mail timestamp timezone normalization (R0001 'that damn UTC' / 0025.0003-NR).
 
 Storage convention: ``mail_messages.sent_date`` is a tz-NAIVE datetime whose
 wall-clock IS UTC. The DB column (MySQL ``DATETIME`` / SQLite ``TEXT``) carries

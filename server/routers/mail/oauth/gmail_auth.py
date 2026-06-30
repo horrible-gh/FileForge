@@ -1,7 +1,7 @@
 """
-Gmail OAuth2 인증 라우터
-- OAuth2 플로우 처리
-- 토큰 발급/갱신
+Gmail OAuth2 authentication router
+- OAuth2 flow handling
+- Token issuance/refresh
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -21,7 +21,7 @@ sqloader = db.sqloader
 
 router = APIRouter()
 
-STATE_EXPIRE_SECONDS = 600  # 10분
+STATE_EXPIRE_SECONDS = 600  # 10 minutes
 
 gmail_oauth = GmailOAuthService()
 
@@ -35,7 +35,7 @@ def _first_allowed_origin() -> str:
 
 
 def _origin_of(url: str) -> str:
-    """절대 URL에서 scheme://host[:port] origin만 추출. 파싱 불가 시 ""."""
+    """Extract only the scheme://host[:port] origin from an absolute URL. Returns "" if unparseable."""
     try:
         parts = urlsplit((url or "").strip())
         if parts.scheme and parts.netloc:
@@ -46,17 +46,20 @@ def _origin_of(url: str) -> str:
 
 
 def _explicit_frontend_base() -> str:
-    """OAuth 콜백 완료 후 사용자를 되돌릴, **명시적으로 설정된 프론트엔드** origin.
+    """The **explicitly configured frontend** origin to return the user to after the
+    OAuth callback completes.
 
-    우선순위: FRONTEND_BASE_URL > ALLOWED_ORIGIN의 첫 구체 origin.
+    Priority: FRONTEND_BASE_URL > the first concrete origin in ALLOWED_ORIGIN.
 
-    과거(0005.0003-NR)에는 여기에 GOOGLE_REDIRECT_URI의 origin까지 최후 폴백으로 두었으나,
-    그 origin은 *프론트엔드*가 아니라 **백엔드(API 서버) 자신**이다. 백엔드에는
-    `/dashboard/mail/oauth/gmail/callback` 라우트가 없으므로, 거기로 리다이렉트하면
-    브라우저에 FastAPI 기본 404 `{"detail":"Not Found"}` 가 떴다
-    (0011.0003-NR — "2계정 이상 연동 시 Not Found", 실제로는 OAuth 연동 전건에서 발생).
-    따라서 백엔드 origin 폴백을 제거하고, 명시 설정이 없으면 "" 를 반환해
-    호출부가 self-contained 성공 페이지로 폴백하도록 한다.
+    Previously (0005.0003-NR) this also fell back to the origin of GOOGLE_REDIRECT_URI
+    as a last resort, but that origin is not the *frontend* — it is the **backend
+    (API server) itself**. The backend has no `/dashboard/mail/oauth/gmail/callback`
+    route, so redirecting there made the browser show FastAPI's default 404
+    `{"detail":"Not Found"}`
+    (0011.0003-NR — "Not Found when linking 2+ accounts", which actually happened on
+    every OAuth link). So the backend-origin fallback is removed, and when nothing is
+    explicitly configured this returns "" so the caller falls back to a self-contained
+    success page.
     """
     base = settings.FRONTEND_BASE_URL.strip().rstrip("/")
     if base:
@@ -65,11 +68,12 @@ def _explicit_frontend_base() -> str:
 
 
 def _oauth_result_url(**params) -> Optional[str]:
-    """성공 후 브라우저를 되돌릴 *실재하는* 프론트엔드 URL, 또는 None.
+    """A *real* frontend URL to return the browser to after success, or None.
 
-    OAUTH_SUCCESS_REDIRECT_URL(완성형) > 명시 프론트엔드 base + 표준 콜백 경로 순.
-    어느 것도 설정되지 않았으면(웹 프론트가 없는 데스크톱/로컬 구성) None 을 돌려주고,
-    호출부는 RedirectResponse 대신 self-contained 성공 HTML 을 반환한다.
+    Order: OAUTH_SUCCESS_REDIRECT_URL (complete URL) > explicit frontend base +
+    standard callback path. If neither is configured (a desktop/local setup with no
+    web frontend) this returns None, and the caller returns a self-contained success
+    HTML page instead of a RedirectResponse.
     """
     callback_url = settings.OAUTH_SUCCESS_REDIRECT_URL.strip()
     if not callback_url:
@@ -86,19 +90,22 @@ def _oauth_result_page(*, success: bool, heading: str, message: str,
                        status_code: int = 200,
                        deeplink: Optional[str] = None,
                        auto_close: bool = False) -> HTMLResponse:
-    """브라우저로 직접 반환하는 self-contained OAuth 결과 페이지.
+    """A self-contained OAuth result page returned directly to the browser.
 
-    웹 프론트엔드가 없는(데스크톱/로컬) 구성에서 redirect 목적지가 없을 때, 브라우저에
-    raw JSON(`{"detail":...}`) 대신 사람이 읽을 수 있는 안내를 보여준다.
+    When there is no redirect destination in a setup without a web frontend
+    (desktop/local), this shows the browser a human-readable notice instead of raw
+    JSON (`{"detail":...}`).
 
-    R0001/NR0003/T0004 §Option C — 성공 시 "닫고 앱으로 돌아가세요" 안내를 수동에 맡기지
-    않고 다음을 계층적으로 시도한다(모바일 불편 해소가 목적):
-      1) deeplink 가 있으면 짧은 지연 후 커스텀 스킴으로 자동 리다이렉트 → OS 가 앱을
-         foreground 로 올리고, 앱은 딥링크 수신 시 계정 목록을 재로딩해 연결을 감지한다.
-      2) 카운트다운 후 window.close() 시도(데스크톱/스크립트로 열린 창 폴백).
-      3) 위가 모두 막히는 환경(모바일 브라우저 등)을 위해 "FileForge 앱으로 돌아가기"
-         수동 버튼/링크를 항상 노출한다.
-    실패 페이지는 사용자가 메시지를 읽어야 하므로 자동 닫기/리다이렉트를 하지 않는다.
+    R0001/NR0003/T0004 §Option C — on success, rather than leaving the "close this and
+    return to the app" guidance to the user, it tries the following in layers (to ease
+    the mobile inconvenience):
+      1) if a deeplink exists, auto-redirect to the custom scheme after a short delay
+         → the OS brings the app to the foreground, and on receiving the deeplink the
+         app reloads the account list to detect the connection.
+      2) attempt window.close() after a countdown (fallback for desktop/script-opened windows).
+      3) for environments where all of the above are blocked (mobile browsers, etc.),
+         always expose a manual "Return to the FileForge app" button/link.
+    The failure page does not auto-close/redirect because the user needs to read the message.
     """
     accent = "#1a73e8" if success else "#d93025"
     icon = "✓" if success else "✕"
@@ -111,7 +118,7 @@ def _oauth_result_page(*, success: bool, heading: str, message: str,
             f'<a class="btn" href="{safe_link}">FileForge 앱으로 돌아가기</a>'
         )
     if success:
-        # JS는 별도 변수에 안전한 JSON 문자열로 주입(스킴/메시지 인젝션 방지).
+        # Inject into JS as a safe JSON string in a separate variable (prevents scheme/message injection).
         deeplink_js = json.dumps(deeplink) if deeplink else "null"
         script_html = f"""
 <script>
@@ -171,17 +178,17 @@ def _oauth_result_page(*, success: bool, heading: str, message: str,
 @router.get("/auth_url")
 async def get_gmail_auth_url(user_uuid: str = Depends(current_user_uuid)):
     """
-    Gmail OAuth2 인증 URL 생성
-    프론트엔드에서 이 URL로 사용자를 리다이렉트
+    Generate the Gmail OAuth2 authentication URL.
+    The frontend redirects the user to this URL.
 
-    user_uuid는 인증 토큰에서 해석한 users.user_uuid(PK)이다. 이 값이 그대로
-    Redis state에 저장되고 콜백에서 mail_accounts.user_uuid(FK)로 INSERT되므로,
-    토큰의 문자열 user_id를 그대로 쓰면 FK 위반(1452)이 난다
-    (fileforge.mailanchorpython.0004.0003-NR). current_user_uuid 의존성으로 해석.
+    user_uuid is the users.user_uuid (PK) resolved from the auth token. This value is
+    stored as-is in the Redis state and INSERTed as mail_accounts.user_uuid (FK) in the
+    callback, so using the token's string user_id directly causes an FK violation (1452)
+    (fileforge.mailanchorpython.0004.0003-NR). Resolved via the current_user_uuid dependency.
     """
     state = f"{user_uuid}:{secrets.token_urlsafe(16)}"
 
-    # Redis에 state 저장 (10분 TTL)
+    # Store state in Redis (10-minute TTL)
     redis_client.setex(f"gmail_oauth_state:{state}", STATE_EXPIRE_SECONDS, user_uuid)
 
     auth_url = gmail_oauth.generate_auth_url(state)
@@ -196,11 +203,11 @@ async def gmail_oauth_callback(
     error: str = Query(None),
 ):
     """
-    Google OAuth2 콜백 처리
-    Google 인증 후 리다이렉트되는 엔드포인트
+    Handle the Google OAuth2 callback.
+    The endpoint Google redirects to after authentication.
     """
-    # 이 엔드포인트는 **브라우저가 직접 도달**하는 화면이다(외부 브라우저 OAuth 복귀).
-    # 따라서 실패도 raw JSON(`{"detail":...}`)이 아니라 사람이 읽는 HTML 로 돌려준다.
+    # This endpoint is a screen the **browser reaches directly** (external-browser OAuth return).
+    # So failures are returned as human-readable HTML, not raw JSON (`{"detail":...}`).
     if error:
         return _oauth_result_page(
             success=False, status_code=400, heading="연결 실패",
@@ -211,7 +218,7 @@ async def gmail_oauth_callback(
             success=False, status_code=400, heading="연결 실패",
             message="인증 정보(code/state)가 누락되었습니다. 앱으로 돌아가 다시 시도해 주세요.")
 
-    # Redis에서 state 검증 및 삭제
+    # Validate and delete state from Redis
     redis_key = f"gmail_oauth_state:{state}"
     user_uuid = redis_client.get(redis_key)
 
@@ -223,24 +230,24 @@ async def gmail_oauth_callback(
     redis_client.delete(redis_key)
 
     try:
-        # 토큰 교환
+        # Exchange the code for tokens
         token_data = await gmail_oauth.exchange_code_for_tokens(code)
 
-        # 사용자 정보 조회
+        # Fetch user info
         user_info = await gmail_oauth.get_user_info(token_data["access_token"])
 
-        # 토큰 암호화 후 DB 저장
+        # Encrypt tokens and store in DB
         encrypted_access = encrypt_password(SECRET_KEY, user_uuid, token_data["access_token"])
         encrypted_refresh = encrypt_password(SECRET_KEY, user_uuid, token_data.get("refresh_token", ""))
 
-        # 기존 계정 확인
+        # Check for an existing account
         existing = db_instance.fetch_one(
             sqloader.load_sql("mail_anchor.json", "gmail.get_account_by_email"),
             {"user_uuid": user_uuid, "email": user_info["email"]}
         )
 
         if existing:
-            # 토큰 업데이트
+            # Update tokens
             db_instance.execute_query(
                 sqloader.load_sql("mail_anchor.json", "gmail.update_tokens"),
                 {
@@ -250,14 +257,14 @@ async def gmail_oauth_callback(
                     "token_expires_in": token_data.get("expires_in", 3600),
                 }
             )
-            # account_type도 gmail로 변경
+            # Also change account_type to gmail
             db_instance.execute_query(
                 sqloader.load_sql("mail_anchor.json", "gmail.update_account_by_email"),
                 {"account_uuid": existing["account_uuid"]}
             )
             account_uuid = existing["account_uuid"]
         else:
-            # 새 계정 생성
+            # Create a new account
             result = db_instance.execute_query(
                 sqloader.load_sql("mail_anchor.json", "gmail.insert_account"),
                 {
@@ -271,9 +278,9 @@ async def gmail_oauth_callback(
                 }
             )
 
-        # 명시적으로 설정된 웹 프론트엔드가 있으면 그곳으로 리다이렉트(기존 동작 유지).
-        # 없으면(데스크톱/로컬 구성) 존재하지 않는 /dashboard 경로로 보내 404 를 띄우는
-        # 대신 self-contained 성공 페이지를 직접 반환한다(0011.0003-NR).
+        # If an explicitly configured web frontend exists, redirect there (preserves existing behavior).
+        # Otherwise (a desktop/local setup), instead of sending to a non-existent /dashboard
+        # path that would show a 404, return a self-contained success page directly (0011.0003-NR).
         result_url = _oauth_result_url(gmail_connected="true", email=user_info["email"])
         if result_url:
             return RedirectResponse(url=result_url)
@@ -284,12 +291,13 @@ async def gmail_oauth_callback(
             deeplink=deeplink, auto_close=True)
 
     except HTTPException:
-        # redirect-URL 빌더 등 내부에서 의도적으로 올린 4xx/5xx는 의미·메시지를
-        # 보존하여 그대로 전파한다(아래 광범위 except가 "OAuth 처리 실패: 500: ..."
-        # 처럼 이중 prefix로 재포장하던 B0001 증상 제거).
+        # 4xx/5xx intentionally raised inside (e.g. the redirect-URL builder) are
+        # propagated as-is, preserving their meaning/message (removes the B0001 symptom
+        # where the broad except below re-wrapped them with a double prefix like
+        # "OAuth processing failed: 500: ...").
         raise
     except Exception as e:
-        # 토큰 교환/저장 단계 실패도 브라우저 화면이므로 HTML 로 안내(raw JSON 회피).
+        # Token exchange/store failures are also a browser screen, so guide via HTML (avoid raw JSON).
         import LogAssist.log as _logger
         _logger.error(f"[gmail callback] {e}")
         return _oauth_result_page(
@@ -300,10 +308,10 @@ async def gmail_oauth_callback(
 @router.post("/refresh_token", dependencies=[Depends(verify_token)])
 async def refresh_gmail_token(account_uuid: str = Query(...), user_uuid: str = Query(...)):
     """
-    Gmail 토큰 갱신
-    만료된 access_token을 refresh_token으로 갱신
+    Refresh the Gmail token.
+    Refresh an expired access_token using the refresh_token.
     """
-    # 계정 조회
+    # Look up the account
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "gmail.get_account"),
         {"account_uuid": account_uuid, "user_uuid": user_uuid}
@@ -316,15 +324,15 @@ async def refresh_gmail_token(account_uuid: str = Query(...), user_uuid: str = Q
         raise HTTPException(status_code=400, detail="재인증이 필요합니다. (refresh_token 없음)")
 
     try:
-        # refresh_token 복호화
+        # Decrypt the refresh_token
         refresh_token = decrypt_password(
             SECRET_KEY, user_uuid, account["refresh_token_encrypted"]
         )
 
-        # 토큰 갱신
+        # Refresh the token
         token_data = await gmail_oauth.refresh_access_token(refresh_token)
 
-        # 새 토큰 암호화 후 저장
+        # Encrypt the new token and store it
         encrypted_access = encrypt_password(SECRET_KEY, user_uuid, token_data["access_token"])
 
         db_instance.execute_query(
@@ -345,8 +353,8 @@ async def refresh_gmail_token(account_uuid: str = Query(...), user_uuid: str = Q
 @router.delete("/disconnect/{account_uuid}", dependencies=[Depends(verify_token)])
 async def disconnect_gmail(account_uuid: str, user_uuid: str = Query(...)):
     """
-    Gmail 계정 연결 해제
-    토큰 폐기 및 계정 비활성화
+    Disconnect the Gmail account.
+    Revoke tokens and deactivate the account.
     """
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "gmail.get_account"),
@@ -357,14 +365,14 @@ async def disconnect_gmail(account_uuid: str, user_uuid: str = Query(...)):
         raise HTTPException(status_code=404, detail="계정을 찾을 수 없습니다.")
 
     try:
-        # 토큰 폐기 시도
+        # Attempt to revoke the token
         if account.get("access_token_encrypted"):
             access_token = decrypt_password(
                 SECRET_KEY, user_uuid, account["access_token_encrypted"]
             )
             await gmail_oauth.revoke_token(access_token)
 
-        # 계정 비활성화
+        # Deactivate the account
         db_instance.execute_query(
             sqloader.load_sql("mail_anchor.json", "gmail.deactivate_account"),
             {"account_uuid": account_uuid}
@@ -373,7 +381,7 @@ async def disconnect_gmail(account_uuid: str, user_uuid: str = Query(...)):
         return {"success": True, "message": "Gmail 연결 해제 완료"}
 
     except Exception as e:
-        # 폐기 실패해도 계정은 비활성화
+        # Deactivate the account even if revocation fails
         db_instance.execute_query(
             sqloader.load_sql("mail_anchor.json", "gmail.deactivate_account"),
             {"account_uuid": account_uuid}
@@ -384,7 +392,7 @@ async def disconnect_gmail(account_uuid: str, user_uuid: str = Query(...)):
 @router.get("/accounts", dependencies=[Depends(verify_token)])
 async def get_gmail_accounts(user_uuid: str = Query(...)):
     """
-    Gmail 계정 목록 조회
+    List Gmail accounts.
     """
     accounts = db_instance.fetch_all(
         sqloader.load_sql("mail_anchor.json", "gmail.get_accounts"),

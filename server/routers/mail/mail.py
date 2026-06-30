@@ -14,9 +14,9 @@ import uuid as uuid_lib
 from datetime import datetime
 from util.mail_time import now_utc_naive
 from email.utils import make_msgid
-from email.mime.multipart import MIMEMultipart  # ✅ 추가
-from email.mime.text import MIMEText  # ✅ 추가
-import os  # ✅ 추가
+from email.mime.multipart import MIMEMultipart  # added
+from email.mime.text import MIMEText  # added
+import os  # added
 import time
 
 
@@ -28,12 +28,12 @@ router = APIRouter()
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # ========================================
-# 계정 관리 API
+# Account management API
 # ========================================
 
 @router.get("/accounts/list", dependencies=[Depends(verify_token)])
 async def get_accounts(request: AccountGetRequest = Depends()):
-    """계정 목록 조회"""
+    """Get account list"""
     data = request.model_dump()
     accounts = db_instance.fetch_all(
         sqloader.load_sql("mail_anchor.json", "accounts.get_accounts"),
@@ -44,10 +44,10 @@ async def get_accounts(request: AccountGetRequest = Depends()):
 
 @router.post("/accounts/test", dependencies=[Depends(verify_token)])
 async def test_account_connection(request: AccountCreateRequest):
-    """계정 연결 테스트"""
+    """Test account connection"""
     data = request.model_dump()
 
-    # IMAP 테스트
+    # IMAP test
     imap_result = {"success": False, "message": ""}
     try:
         imap = IMAPService(
@@ -62,7 +62,7 @@ async def test_account_connection(request: AccountCreateRequest):
     except Exception as e:
         imap_result = {"success": False, "message": str(e)}
 
-    # SMTP 테스트
+    # SMTP test
     smtp_result = test_smtp_connection(
         host=data['smtp_host'],
         port=data['smtp_port'],
@@ -75,11 +75,11 @@ async def test_account_connection(request: AccountCreateRequest):
 
 @router.post("/accounts/create", dependencies=[Depends(verify_token)])
 async def create_account(request: AccountCreateRequest):
-    """계정 추가"""
+    """Create account"""
     data = request.model_dump()
     user_uuid = data['user_uuid']
 
-    # 비밀번호 암호화
+    # Encrypt passwords
     encrypted_imap_pw = encrypt_password(user_uuid, data['imap_password'])
     encrypted_smtp_pw = encrypt_password(user_uuid, data['smtp_password'])
 
@@ -110,7 +110,7 @@ async def create_account(request: AccountCreateRequest):
 
 @router.put("/accounts/update", dependencies=[Depends(verify_token)])
 async def update_account(request: AccountUpdateRequest):
-    """계정 수정"""
+    """Update account"""
     data = request.model_dump()
     user_uuid = data['user_uuid']
 
@@ -134,7 +134,7 @@ async def update_account(request: AccountUpdateRequest):
 
 @router.delete("/accounts/delete/{account_uuid}", dependencies=[Depends(verify_token)])
 async def delete_account(account_uuid: str):
-    """계정 삭제"""
+    """Delete account"""
     result = db_instance.execute_query(
         sqloader.load_sql("mail_anchor.json", "accounts.remove_account"),
         {"account_uuid": account_uuid}
@@ -143,13 +143,13 @@ async def delete_account(account_uuid: str):
 
 
 # ========================================
-# 폴더 API
+# Folder API
 # ========================================
 
 @router.get("/folders/{account_uuid}", dependencies=[Depends(verify_token)])
 async def get_account_folders(account_uuid: str, user_uuid: str):
-    """특정 계정의 폴더 목록 (IMAP에서 가져오기)"""
-    # DB에서 계정 정보 조회
+    """Folder list for a specific account (fetched from IMAP)"""
+    # Look up account info from the DB
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "get_account"),
         (account_uuid,)
@@ -158,10 +158,10 @@ async def get_account_folders(account_uuid: str, user_uuid: str):
     if not account:
         raise HTTPException(status_code=404, detail="계정을 찾을 수 없음")
 
-    # 비밀번호 복호화
+    # Decrypt password
     imap_password = decrypt_password(user_uuid, account['imap_password_encrypted'])
 
-    # IMAP 연결
+    # IMAP connection
     imap = IMAPService(
         host=account['imap_host'],
         port=account['imap_port'],
@@ -184,7 +184,7 @@ async def get_account_folders(account_uuid: str, user_uuid: str):
 
 
 # ========================================
-# 메일 목록 API
+# Mail list API
 # ========================================
 
 @router.get("/list/{account_uuid}", dependencies=[Depends(verify_token)])
@@ -196,8 +196,8 @@ async def get_mail_list(
     limit: int = 20,
     search: Optional[str] = None
 ):
-    """특정 계정/폴더의 메일 목록"""
-    # DB에서 계정 정보 조회
+    """Mail list for a specific account/folder"""
+    # Look up account info from the DB
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "get_account"),
         (account_uuid,)
@@ -206,10 +206,10 @@ async def get_mail_list(
     if not account:
         raise HTTPException(status_code=404, detail="계정을 찾을 수 없음")
 
-    # 비밀번호 복호화
+    # Decrypt password
     imap_password = decrypt_password(user_uuid, account['imap_password_encrypted'])
 
-    # IMAP 연결
+    # IMAP connection
     imap = IMAPService(
         host=account['imap_host'],
         port=account['imap_port'],
@@ -235,7 +235,7 @@ async def get_mail_list(
 
 
 # ========================================
-# 메일 상세 API
+# Mail detail API
 # ========================================
 
 @router.get("/detail/{account_uuid}/{mail_uid}", dependencies=[Depends(verify_token)])
@@ -245,8 +245,8 @@ async def get_mail_detail(
     user_uuid: str,
     folder: str = "INBOX"
 ):
-    """메일 상세 조회"""
-    # DB에서 계정 정보 조회
+    """Get mail detail"""
+    # Look up account info from the DB
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "get_account"),
         (account_uuid,)
@@ -255,10 +255,10 @@ async def get_mail_detail(
     if not account:
         raise HTTPException(status_code=404, detail="계정을 찾을 수 없음")
 
-    # 비밀번호 복호화
+    # Decrypt password
     imap_password = decrypt_password(settings.SECRET_KEY, user_uuid, account['imap_password_encrypted'])
 
-    # IMAP 연결
+    # IMAP connection
     imap = IMAPService(
         host=account['imap_host'],
         port=account['imap_port'],
@@ -281,7 +281,7 @@ async def get_mail_detail(
 
 
 # ========================================
-# 메일 발송 API
+# Mail send API
 # ========================================
 
 @router.post("/send", dependencies=[Depends(verify_token)])
@@ -296,8 +296,8 @@ async def send_mail(
     bcc_addresses: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[])
 ):
-    """메일 발송"""
-    # DB에서 계정 정보 조회
+    """Send mail"""
+    # Look up account info from the DB
     account = db_instance.fetch_one(
         sqloader.load_sql("mail_anchor.json", "get_account"),
         (account_uuid,)
@@ -306,12 +306,12 @@ async def send_mail(
     if not account:
         raise HTTPException(status_code=404, detail="계정을 찾을 수 없음")
 
-    # 주소 파싱
+    # Parse addresses
     to_list = [addr.strip() for addr in to_addresses.split(",")]
     cc_list = [addr.strip() for addr in cc_addresses.split(",")] if cc_addresses else None
     bcc_list = [addr.strip() for addr in bcc_addresses.split(",")] if bcc_addresses else None
 
-    # 첨부파일 처리
+    # Handle attachments
     attachments = []
     for file in files:
         content = await file.read()
@@ -321,7 +321,7 @@ async def send_mail(
             "content_type": file.content_type or "application/octet-stream"
         })
 
-    # Gmail OAuth vs 일반 SMTP
+    # Gmail OAuth vs regular SMTP
     if account.get('account_type') == 'gmail':
         from services.gmail_service import GmailSMTPService, GmailOAuthService
 
@@ -341,7 +341,7 @@ async def send_mail(
             if not connect_result["success"]:
                 raise HTTPException(status_code=500, detail=f"Gmail SMTP 연결 실패: {connect_result['message']}")
 
-            # GmailSMTPService.send_mail은 간단한 버전이라 직접 발송
+            # GmailSMTPService.send_mail is a simple version, so send directly
             from email.mime.multipart import MIMEMultipart
             from email.mime.text import MIMEText
             from email.mime.base import MIMEBase
@@ -354,13 +354,13 @@ async def send_mail(
                 msg['Cc'] = ', '.join(cc_list)
             msg['Subject'] = subject
 
-            # 본문
+            # Body
             if body_html:
                 msg.attach(MIMEText(body_html, 'html', 'utf-8'))
             elif body_text:
                 msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
 
-            # 첨부파일
+            # Attachments
             for attach in attachments:
                 part = MIMEBase('application', 'octet-stream')
                 part.set_payload(attach['content'])
@@ -382,7 +382,7 @@ async def send_mail(
         send_result = {"success": True, "message": "메일 발송 완료"}
 
     else:
-        # 기존 SMTP 방식
+        # Legacy SMTP approach
         smtp = None
         try:
             smtp_password = decrypt_password(settings.SECRET_KEY, user_uuid, account['smtp_password_encrypted'])
@@ -421,10 +421,10 @@ async def send_mail(
     if not send_result["success"]:
         raise HTTPException(status_code=500, detail=send_result["message"])
 
-    # ✅ 보낸편지함(sent)에 저장
-    # ✅ 보낸편지함(sent)에 저장
+    # Save to the sent mailbox
+    # Save to the sent mailbox
     try:
-        # sent 폴더 조회 (없으면 생성)
+        # Look up the sent folder (create if missing)
         sent_folder = db_instance.fetch_one(
             """
             SELECT folder_uuid
@@ -435,7 +435,7 @@ async def send_mail(
             {"account_uuid": account_uuid}
         )
 
-        # sent 폴더 없으면 생성
+        # Create the sent folder if missing
         if not sent_folder:
             folder_uuid = str(uuid_lib.uuid4())
             db_instance.execute_query(
@@ -455,11 +455,11 @@ async def send_mail(
             logger.info(f"[Send Mail] sent 폴더 생성: {folder_uuid}")
 
         message_uuid = str(uuid_lib.uuid4())
-        timestamp = int(time.time() * 1000000)  # 마이크로초
+        timestamp = int(time.time() * 1000000)  # microseconds
         message_id = f"<{message_uuid}.{timestamp}@{account['email'].split('@')[1]}>"
-        uid = -timestamp  # ✅ 음수로 설정 (IMAP UID는 양수만 사용)
+        uid = -timestamp  # set negative (IMAP UIDs use positive values only)
 
-        # ✅ .eml 파일 생성
+        # Create .eml file
         msg = MIMEMultipart('alternative')
         msg['From'] = f"{account.get('account_name', '')} <{account['email']}>"
         msg['To'] = to_addresses
@@ -469,13 +469,13 @@ async def send_mail(
         msg['Date'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S %z')
         msg['Message-ID'] = message_id
 
-        # 본문 추가
+        # Add body
         if body_text:
             msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
         if body_html:
             msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # .eml 파일 저장 경로
+        # .eml file save path
         eml_dir = os.path.join(mail_storage_base(account_uuid=account_uuid), account_uuid, "messages")
         os.makedirs(eml_dir, exist_ok=True)
         eml_path = os.path.join(eml_dir, f"{message_uuid}.eml")
@@ -485,7 +485,7 @@ async def send_mail(
 
         logger.info(f"[Send Mail] .eml 파일 저장: {eml_path}")
 
-        # 메일 메시지 DB 저장
+        # Save the mail message to the DB
         db_instance.execute_query(
             """
             INSERT INTO mail_messages (
@@ -517,13 +517,13 @@ async def send_mail(
                 "bcc_emails": bcc_addresses or '',
                 "subject": subject,
                 "preview": make_preview(body_text, body_html, 200),
-                "sent_date": now_utc_naive(),       # naive-UTC 규약(0025.0003-NR)
+                "sent_date": now_utc_naive(),       # naive-UTC convention (0025.0003-NR)
                 "received_date": now_utc_naive(),
                 "is_read": True,
                 "is_starred": False,
                 "is_deleted": False,
                 "has_attachments": len(attachments) > 0,
-                "body_file_path": eml_path  # ✅ 추가
+                "body_file_path": eml_path  # added
             }
         )
 

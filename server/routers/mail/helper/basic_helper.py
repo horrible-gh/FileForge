@@ -10,7 +10,7 @@ def test_imap_connection(host, port, username, password, use_ssl=True):
             mail = imaplib.IMAP4(host, port)
         
         mail.login(username, password)
-        mail.select('INBOX')  # INBOX 접근 테스트
+        mail.select('INBOX')  # Test INBOX access
         mail.logout()
         
         return {"success": True, "message": "IMAP connection successful"}
@@ -18,23 +18,23 @@ def test_imap_connection(host, port, username, password, use_ssl=True):
         return {"success": False, "message": str(e)}
 
 def test_smtp_connection(host, port, username, password):
-    """Gmail SMTP 연결 테스트"""
+    """Gmail SMTP connection test"""
     try:
         context = ssl.create_default_context()
         
         if port == 465:
             with smtplib.SMTP_SSL(host, port, context=context, timeout=30) as server:
-                server.set_debuglevel(2)  # 상세 로그
-                server.ehlo('localhost')  # ← 이거 추가
+                server.set_debuglevel(2)  # verbose log
+                server.ehlo('localhost')  # ← add this
                 server.login(username, password)
             return {"success": True, "message": "SMTP SSL connection successful"}
         
         elif port == 587:
             with smtplib.SMTP(host, port, timeout=30) as server:
-                server.set_debuglevel(2)  # 상세 로그
-                server.ehlo('localhost')  # ← 이거 추가
+                server.set_debuglevel(2)  # verbose log
+                server.ehlo('localhost')  # ← add this
                 server.starttls(context=context)
-                server.ehlo('localhost')  # ← starttls 후에도 다시
+                server.ehlo('localhost')  # ← again after starttls
                 server.login(username, password)
             return {"success": True, "message": "SMTP TLS connection successful"}
         

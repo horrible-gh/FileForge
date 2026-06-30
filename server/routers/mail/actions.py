@@ -38,25 +38,25 @@ class MoveMailRequest(BaseModel):
 class DeleteMailRequest(BaseModel):
     message_uuids: List[str]
     user_uuid: str
-    permanent: bool = False  # True면 완전 삭제, False면 휴지통 이동
+    permanent: bool = False  # True = permanent delete, False = move to trash
 
 
 # ========================================
-# 읽음/안읽음 처리 API
+# Read/unread API
 # ========================================
 
 @router.post("/mark-read", dependencies=[Depends(verify_token)])
 async def mark_as_read(request: MarkReadRequest):
     """
-    메일 읽음 처리
-    
-    - 여러 메일을 한번에 처리 가능
+    Mark mail as read
+
+    - Can process multiple mails at once
     """
-    
+
     if not request.message_uuids:
         raise HTTPException(status_code=400, detail="message_uuids가 비어있음")
-    
-    # 메일 개수만큼 %s 생성
+
+    # Build %s placeholders for the number of mails
     placeholders = ','.join(['%s'] * len(request.message_uuids))
     
     query = f"""
@@ -79,7 +79,7 @@ async def mark_as_read(request: MarkReadRequest):
 @router.post("/mark-unread", dependencies=[Depends(verify_token)])
 async def mark_as_unread(request: MarkReadRequest):
     """
-    메일 안읽음 처리
+    Mark mail as unread
     """
     
     if not request.message_uuids:
@@ -106,9 +106,9 @@ async def mark_as_unread(request: MarkReadRequest):
 @router.post("/mark-all-read", dependencies=[Depends(verify_token)])
 async def mark_all_as_read(request: MarkReadAllRequest):
     """
-    받은편지함 전체 메일 읽음 처리
-    
-    - 해당 사용자의 받은편지함(inbox) 모든 메일을 읽음 처리
+    Mark all inbox mail as read
+
+    - Marks all mail in the user's inbox as read
     """
 
     user_uuid = request.user_uuid
@@ -136,13 +136,13 @@ async def mark_all_as_read(request: MarkReadAllRequest):
     }
 
 # ========================================
-# 별표 처리 API
+# Star API
 # ========================================
 
 @router.post("/star", dependencies=[Depends(verify_token)])
 async def add_star(request: MarkStarRequest):
     """
-    메일에 별표 추가
+    Add a star to a mail
     """
     
     query = """
@@ -165,7 +165,7 @@ async def add_star(request: MarkStarRequest):
 @router.post("/unstar", dependencies=[Depends(verify_token)])
 async def remove_star(request: MarkStarRequest):
     """
-    메일 별표 제거
+    Remove a star from a mail
     """
     
     query = """
@@ -186,22 +186,22 @@ async def remove_star(request: MarkStarRequest):
 
 
 # ========================================
-# 메일 이동 API
+# Mail move API
 # ========================================
 
 @router.post("/move", dependencies=[Depends(verify_token)])
 async def move_mails(request: MoveMailRequest):
     """
-    메일을 다른 폴더로 이동
-    
-    - 여러 메일을 한번에 이동 가능
-    - IMAP 서버와 동기화는 하지 않음 (로컬 DB만 변경)
+    Move mail to another folder
+
+    - Can move multiple mails at once
+    - Does not sync with the IMAP server (changes the local DB only)
     """
-    
+
     if not request.message_uuids:
         raise HTTPException(status_code=400, detail="message_uuids가 비어있음")
-    
-    # 대상 폴더 존재 확인
+
+    # Verify the target folder exists
     folder_check = db_instance.fetch_one(
         "SELECT folder_uuid FROM mail_folders WHERE folder_uuid = %s",
         (request.target_folder_uuid,)
@@ -232,32 +232,32 @@ async def move_mails(request: MoveMailRequest):
 
 
 # ========================================
-# 메일 삭제 API
+# Mail delete API
 # ========================================
 
 @router.post("/delete", dependencies=[Depends(verify_token)])
 async def delete_mails(request: DeleteMailRequest):
     """
-    메일 삭제
-    
-    - permanent=False: is_deleted 플래그만 설정 (휴지통 이동)
-    - permanent=True: DB에서 완전 삭제 (파일은 남겨둠)
+    Delete mail
+
+    - permanent=False: only sets the is_deleted flag (move to trash)
+    - permanent=True: permanently deletes from the DB (files are kept)
     """
-    
+
     if not request.message_uuids:
         raise HTTPException(status_code=400, detail="message_uuids가 비어있음")
-    
+
     placeholders = ','.join(['%s'] * len(request.message_uuids))
-    
+
     if request.permanent:
-        # 완전 삭제 (DB에서 삭제)
+        # Permanent delete (delete from DB)
         query = f"""
-            DELETE FROM mail_messages 
+            DELETE FROM mail_messages
             WHERE message_uuid IN ({placeholders})
         """
         action = "완전 삭제"
     else:
-        # 소프트 삭제 (is_deleted 플래그)
+        # Soft delete (is_deleted flag)
         query = f"""
             UPDATE mail_messages 
             SET is_deleted = TRUE, modified_at = CURRENT_TIMESTAMP
@@ -278,15 +278,15 @@ async def delete_mails(request: DeleteMailRequest):
 
 
 # ========================================
-# 메일 복원 API (휴지통에서 복원)
+# Mail restore API (restore from trash)
 # ========================================
 
 @router.post("/restore", dependencies=[Depends(verify_token)])
 async def restore_mails(request: MarkReadRequest):
     """
-    삭제된 메일 복원
-    
-    - is_deleted 플래그를 FALSE로 변경
+    Restore deleted mail
+
+    - Changes the is_deleted flag to FALSE
     """
     
     if not request.message_uuids:
@@ -311,13 +311,13 @@ async def restore_mails(request: MarkReadRequest):
     }
 
 # ========================================
-# 핀 고정 API
+# Pin API
 # ========================================
 
 @router.post("/pin", dependencies=[Depends(verify_token)])
 async def pin_mail(request: MarkStarRequest):
     """
-    메일 핀 고정
+    Pin a mail
     """
     
     query = """
@@ -339,7 +339,7 @@ async def pin_mail(request: MarkStarRequest):
 @router.post("/unpin", dependencies=[Depends(verify_token)])
 async def unpin_mail(request: MarkStarRequest):
     """
-    메일 핀 고정 해제
+    Unpin a mail
     """
     
     query = """

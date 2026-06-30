@@ -1,7 +1,7 @@
 """
 Gmail OAuth2 Service
-- OAuth2 토큰 관리
-- Gmail API 호출 (IMAP OAuth2 인증용)
+- OAuth2 token management
+- Gmail API calls (for IMAP OAuth2 authentication)
 """
 import httpx
 from urllib.parse import urlencode
@@ -11,17 +11,17 @@ import LogAssist.log as logger
 
 
 class GmailOAuthService:
-    """Gmail OAuth2 서비스"""
-    
-    # Google OAuth2 엔드포인트
+    """Gmail OAuth2 service"""
+
+    # Google OAuth2 endpoints
     AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
     TOKEN_URL = "https://oauth2.googleapis.com/token"
     USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
     REVOKE_URL = "https://oauth2.googleapis.com/revoke"
     
-    # Gmail IMAP/SMTP OAuth2용 스코프
+    # Scopes for Gmail IMAP/SMTP OAuth2
     SCOPES = [
-        "https://mail.google.com/",  # IMAP/SMTP 전체 권한
+        "https://mail.google.com/",  # full IMAP/SMTP permission
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
     ]
@@ -32,21 +32,21 @@ class GmailOAuthService:
         self.redirect_uri = f"{settings.GOOGLE_REDIRECT_URI}"
     
     def generate_auth_url(self, state: str) -> str:
-        """OAuth2 인증 URL 생성"""
+        """Generate the OAuth2 authentication URL."""
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "response_type": "code",
             "scope": " ".join(self.SCOPES),
-            "access_type": "offline",      # refresh_token 받기 위해 필수
-            "prompt": "consent",           # 매번 동의 화면 (refresh_token 보장)
+            "access_type": "offline",      # required to receive a refresh_token
+            "prompt": "consent",           # consent screen every time (guarantees refresh_token)
             "state": state,
         }
         logger.debug("OAuth Gmail params", params)
         return f"{self.AUTH_URL}?{urlencode(params)}"
     
     async def exchange_code_for_tokens(self, code: str) -> Dict[str, Any]:
-        """Authorization code → 토큰 교환"""
+        """Authorization code → token exchange"""
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.TOKEN_URL,
@@ -66,7 +66,7 @@ class GmailOAuthService:
             return response.json()
     
     async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
-        """Refresh token → 새 access token"""
+        """Refresh token → new access token"""
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.TOKEN_URL,
@@ -85,7 +85,7 @@ class GmailOAuthService:
             return response.json()
     
     async def get_user_info(self, access_token: str) -> Dict[str, Any]:
-        """사용자 정보 조회"""
+        """Fetch user info."""
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 self.USERINFO_URL,
@@ -98,7 +98,7 @@ class GmailOAuthService:
             return response.json()
     
     async def revoke_token(self, token: str) -> bool:
-        """토큰 폐기"""
+        """Revoke the token."""
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.REVOKE_URL,
@@ -108,9 +108,9 @@ class GmailOAuthService:
     
     def generate_oauth2_string(self, email: str, access_token: str) -> str:
         """
-        IMAP/SMTP XOAUTH2 인증 문자열 생성
-        
-        사용법:
+        Generate the IMAP/SMTP XOAUTH2 authentication string.
+
+        Usage:
             auth_string = gmail_oauth.generate_oauth2_string(email, access_token)
             imap_conn.authenticate('XOAUTH2', lambda x: auth_string)
         """
@@ -122,7 +122,7 @@ class GmailOAuthService:
 class GmailIMAPService:
     """
     Gmail IMAP with OAuth2
-    기존 IMAPService 확장 - OAuth2 인증 지원
+    Extends the existing IMAPService - adds OAuth2 authentication support
     """
     
     IMAP_HOST = "imap.gmail.com"
@@ -136,13 +136,13 @@ class GmailIMAPService:
         self.connection = None
     
     def connect(self) -> Dict[str, Any]:
-        """Gmail IMAP OAuth2 연결"""
+        """Gmail IMAP OAuth2 connection."""
         import imaplib
         
         try:
             self.connection = imaplib.IMAP4_SSL(self.IMAP_HOST, self.IMAP_PORT)
             
-            # XOAUTH2 인증
+            # XOAUTH2 authentication
             auth_string = self._generate_auth_string()
             self.connection.authenticate('XOAUTH2', lambda x: auth_string)
             
@@ -156,12 +156,12 @@ class GmailIMAPService:
             return {"success": False, "message": f"연결 실패: {str(e)}"}
     
     def _generate_auth_string(self) -> bytes:
-        """XOAUTH2 인증 문자열"""
+        """XOAUTH2 authentication string."""
         auth_string = f"user={self.email}\x01auth=Bearer {self.access_token}\x01\x01"
         return auth_string.encode()
     
     def disconnect(self):
-        """연결 종료"""
+        """Close the connection."""
         if self.connection:
             try:
                 self.connection.logout()
@@ -191,7 +191,7 @@ class GmailSMTPService:
         self.connection = None
     
     def connect(self) -> Dict[str, Any]:
-        """Gmail SMTP OAuth2 연결"""
+        """Gmail SMTP OAuth2 connection."""
         import smtplib
         import base64
         
@@ -201,14 +201,14 @@ class GmailSMTPService:
             # contains a space), which smtplib would send as the EHLO argument and
             # Gmail rejects with 501 syntax error → STARTTLS appears "unsupported"
             # → connect fails → caller returns 502. Mirrors smtp_service.py's
-            # `ehlo('localhost')  # 호스트네임 문제 해결`.
+            # `ehlo('localhost')  # hostname issue fix`.
             self.connection = smtplib.SMTP(
                 self.SMTP_HOST, self.SMTP_PORT, local_hostname="localhost")
             self.connection.ehlo("localhost")
             self.connection.starttls()
             self.connection.ehlo("localhost")
             
-            # XOAUTH2 인증
+            # XOAUTH2 authentication
             auth_string = f"user={self.email}\x01auth=Bearer {self.access_token}\x01\x01"
             auth_b64 = base64.b64encode(auth_string.encode()).decode()
             
@@ -222,7 +222,7 @@ class GmailSMTPService:
             return {"success": False, "message": f"SMTP 연결 실패: {str(e)}"}
     
     def disconnect(self):
-        """연결 종료"""
+        """Close the connection."""
         if self.connection:
             try:
                 self.connection.quit()
@@ -231,7 +231,7 @@ class GmailSMTPService:
             self.connection = None
     
     def send_mail(self, to: str, subject: str, body: str, html: bool = False) -> Dict[str, Any]:
-        """메일 발송"""
+        """Send mail."""
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         

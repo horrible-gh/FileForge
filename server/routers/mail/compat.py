@@ -205,7 +205,7 @@ def _extract_body_from_eml(raw_email: bytes) -> Tuple[str, str]:
 
     R0001 / 0006.0003-NR: the stored .eml is the **verbatim raw RFC822 message**
     (all transport/auth headers + MIME boundaries). Returning it as-is leaks the
-    whole envelope into the detail body ("과도한 정보"). Here we re-parse it and
+    whole envelope into the detail body ("excessive info"). Here we re-parse it and
     keep only the text/plain (preferred) and text/html body parts — the same rule
     the sync parser (sync.parse_email_message) and IMAPService._extract_body use.
     """
@@ -250,7 +250,7 @@ def _extract_body_from_eml(raw_email: bytes) -> Tuple[str, str]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Inline image surfacing (R0001 / 0007 group — "이미지 표시가 되지 않음")
+# Inline image surfacing (R0001 / 0007 group — "images not displaying")
 # ──────────────────────────────────────────────────────────────────────────────
 #
 # HTML mail embeds pictures as <img src="cid:ID">, where ID maps to a MIME part's
@@ -314,7 +314,7 @@ def _rewrite_cid_images(html: str, inline_images: dict) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Remote image proxy (R0001 / 0008.0007-NR — "원격 이미지 CORS 차단")
+# Remote image proxy (R0001 / 0008.0007-NR — "remote images CORS-blocked")
 # ──────────────────────────────────────────────────────────────────────────────
 #
 # HTML mail commonly sources its pictures from third-party servers
@@ -345,7 +345,7 @@ def _rewrite_cid_images(html: str, inline_images: dict) -> str:
 # (e.g. Google's `<img alt="" height=1 src=https://notifications.google.com/g/img/…>`
 # tracking pixels) routinely omits the quotes, and a quote-only matcher left those
 # remote images untouched so CanvasKit still hit them cross-origin and CORS-blocked
-# them — the "일부는 나오는데 일부는 막힘" rework. The `(?<![\w-])` lookbehind keeps
+# them — the "some show, some are blocked" rework. The `(?<![\w-])` lookbehind keeps
 # `\bsrc` from matching the tail of `data-src`. cid: images are already data: URIs
 # by this point, so they never match.
 _REMOTE_IMG_SRC_RE = re.compile(
@@ -366,7 +366,7 @@ _BG_ATTR_RE = re.compile(
 )
 
 # CSS `url( http(s)://… )` inside inline style= or <style> blocks, e.g.
-# `background:url(https://img1.kbcard.com/…/email_dot.jpg)` — the visible "안 나옴"
+# `background:url(https://img1.kbcard.com/…/email_dot.jpg)` — the visible "not showing"
 # in B0001. Quotes are optional in CSS. cid:/data: are not http(s):// so the
 # inlined images never match. The same-origin proxy URL we emit always lives inside
 # an `src="…"`/`background="…"`, never inside `url(…)`, so this pass never re-wraps it.
@@ -415,7 +415,7 @@ def _rewrite_remote_images(html: str, proxy_endpoint: Optional[str]) -> str:
 
     Responsive marketing mail (KB Card etc.) leans heavily on CSS background and the
     ``background`` attribute for layout images; the previous ``<img>``-only matcher
-    left those CORS-blocked on Flutter-Web CanvasKit — the visible "안 나옴" in B0001
+    left those CORS-blocked on Flutter-Web CanvasKit — the visible "not showing" in B0001
     (0015.0003-NR defect A). Attribute rewrites (``src=``/``background=``) emit the
     proxy URL double-quoted because they replace the whole attribute; the CSS
     ``url(…)`` rewrite emits it UNQUOTED because it is nested inside a (usually
@@ -720,7 +720,7 @@ async def list_mails(
     # B0001 (0028): the Drafts label is backed by the dialect-free on-disk JSON
     # draft store (save_draft writes ONLY there — see _drafts_dir), never
     # `mail_messages`. The integrated-mail SQL below can therefore never surface a
-    # saved draft, so 임시보관함 stayed empty and a draft could not be reopened.
+    # saved draft, so the Drafts box stayed empty and a draft could not be reopened.
     # Serve the label straight from that store instead.
     if label and label.strip().lower() in ("draft", "drafts"):
         return _list_drafts_summaries(user_uuid, offset, lim)

@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 # ========================================
-# 첨부파일 다운로드 API
+# Attachment download API
 # ========================================
 
 @router.get("/attachment/{message_uuid}/{attachment_uuid}")
@@ -26,15 +26,16 @@ async def download_attachment(
     user_uuid: str = Depends(current_user_uuid)
 ):
     """
-    첨부파일 다운로드
+    Download an attachment
 
-    - 인증 토큰에서 user_uuid를 도출(IDOR 차단): 호출자가 소유한 계정의
-      메일에 속한 첨부만 조회되도록 mail_accounts.user_uuid로 스코프.
-    - DB에서 첨부파일 정보 조회
-    - 파일 시스템에서 파일 읽어서 반환
+    - Derive user_uuid from the auth token (blocks IDOR): scope by
+      mail_accounts.user_uuid so only attachments on mail belonging to an
+      account the caller owns are retrievable.
+    - Look up attachment info from the DB
+    - Read the file from the filesystem and return it
     """
 
-    # 1. DB에서 첨부파일 정보 조회 (user 스코프 — IDOR 차단)
+    # 1. Look up attachment info from the DB (user-scoped — blocks IDOR)
     query = sqloader.load_sql("mail_anchor.json", "inbox.get_attachment_for_download")
 
     attachment = db_instance.fetch_one(query, (attachment_uuid, message_uuid, user_uuid))
@@ -42,14 +43,14 @@ async def download_attachment(
     if not attachment:
         raise HTTPException(status_code=404, detail="첨부파일을 찾을 수 없음")
     
-    # 2. 파일 경로 확인
+    # 2. Verify file path
     file_path = Path(attachment['file_path'])
-    
+
     if not file_path.exists():
         logger.error(f"[Attachment] 파일 없음: {file_path}")
         raise HTTPException(status_code=404, detail="첨부파일이 존재하지 않음")
-    
-    # 3. 파일 다운로드 응답
+
+    # 3. File download response
     return FileResponse(
         path=str(file_path),
         filename=attachment['filename'],
@@ -58,7 +59,7 @@ async def download_attachment(
 
 
 # ========================================
-# 메일 본문 전체 조회 API
+# Full mail body API
 # ========================================
 
 @router.get("/body/{message_uuid}", dependencies=[Depends(verify_token)])
@@ -67,25 +68,25 @@ async def get_mail_body(
     user_uuid: str
 ):
     """
-    메일 본문 전체 조회
-    
-    - DB에는 1000자만 저장되어 있음
-    - .eml 파일에서 전체 본문 파싱해서 반환
+    Get the full mail body
+
+    - Only 1000 chars are stored in the DB
+    - Parse and return the full body from the .eml file
     """
-    
-    # 1. DB에서 메시지 정보 조회
+
+    # 1. Look up message info from the DB
     query = "SELECT * FROM mail_messages WHERE message_uuid = %s"
     message = db_instance.fetch_one(query, (message_uuid,))
-    
+
     if not message:
         raise HTTPException(status_code=404, detail="메일을 찾을 수 없음")
-    
-    # 2. .eml 파일 경로 확인
+
+    # 2. Verify .eml file path
     file_path = Path(message['file_path'])
-    
+
     if not file_path.exists():
         logger.error(f"[Mail Body] 파일 없음: {file_path}")
-        # 파일이 없으면 DB에 저장된 부분 본문이라도 반환
+        # If the file is missing, return at least the partial body stored in the DB
         return {
             "success": True,
             "message_uuid": message_uuid,
@@ -94,7 +95,7 @@ async def get_mail_body(
             "from_file": False
         }
     
-    # 3. .eml 파일 파싱
+    # 3. Parse the .eml file
     try:
         with open(file_path, 'rb') as f:
             msg = email.message_from_binary_file(f, policy=policy.default)
@@ -107,11 +108,11 @@ async def get_mail_body(
                 content_type = part.get_content_type()
                 content_disposition = str(part.get("Content-Disposition", ""))
                 
-                # 첨부파일은 스킵
+                # Skip attachments
                 if "attachment" in content_disposition:
                     continue
-                
-                # 본문 추출
+
+                # Extract body
                 if content_type == "text/plain" and not body_text:
                     try:
                         body_text = part.get_content()
@@ -153,7 +154,7 @@ async def get_mail_body(
 
 
 # ========================================
-# 첨부파일 목록 조회 API
+# Attachment list API
 # ========================================
 
 @router.get("/attachments/{message_uuid}", dependencies=[Depends(verify_token)])
@@ -162,7 +163,7 @@ async def get_mail_attachments(
     user_uuid: str
 ):
     """
-    특정 메일의 첨부파일 목록 조회
+    Get the attachment list for a specific mail
     """
     
     query = """
@@ -183,7 +184,7 @@ async def get_mail_attachments(
 
 
 # ========================================
-# 메일 원본 다운로드 API (.eml)
+# Raw mail (.eml) download API
 # ========================================
 
 @router.get("/download/{message_uuid}", dependencies=[Depends(verify_token)])
@@ -192,32 +193,32 @@ async def download_mail_eml(
     user_uuid: str
 ):
     """
-    메일 원본 .eml 파일 다운로드
-    
-    - 이메일 클라이언트에서 열 수 있는 표준 RFC822 형식
+    Download the raw .eml mail file
+
+    - Standard RFC822 format that can be opened in an email client
     """
-    
-    # 1. DB에서 메시지 정보 조회
+
+    # 1. Look up message info from the DB
     query = "SELECT * FROM mail_messages WHERE message_uuid = %s"
     message = db_instance.fetch_one(query, (message_uuid,))
-    
+
     if not message:
         raise HTTPException(status_code=404, detail="메일을 찾을 수 없음")
-    
-    # 2. .eml 파일 경로 확인
+
+    # 2. Verify .eml file path
     file_path = Path(message['file_path'])
-    
+
     if not file_path.exists():
         logger.error(f"[EML Download] 파일 없음: {file_path}")
         raise HTTPException(status_code=404, detail="메일 파일이 존재하지 않음")
-    
-    # 3. 파일명 생성 (제목 기반)
+
+    # 3. Build filename (based on subject)
     subject = message.get('subject', 'mail')
-    # 파일명에 사용할 수 없는 문자 제거
+    # Remove characters that cannot be used in a filename
     safe_subject = "".join(c for c in subject if c.isalnum() or c in (' ', '-', '_')).strip()
     filename = f"{safe_subject[:50]}.eml" if safe_subject else f"{message_uuid}.eml"
-    
-    # 4. 파일 다운로드 응답
+
+    # 4. File download response
     return FileResponse(
         path=str(file_path),
         filename=filename,

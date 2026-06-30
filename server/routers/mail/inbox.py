@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 # ========================================
-# 통합 받은편지함 API
+# Unified inbox API
 # ========================================
 
 @router.get("/unified-inbox", dependencies=[Depends(verify_token)])
@@ -26,33 +26,33 @@ async def get_unified_inbox(
     user_uuid: str,
     page: int = 1,
     limit: int = 50,
-    folder_type: Optional[str] = None,  # ✅ 추가: 'inbox', 'sent', 'drafts', 'trash', 'spam'
+    folder_type: Optional[str] = None,  # added: 'inbox', 'sent', 'drafts', 'trash', 'spam'
     unread_only: bool = False,
     starred_only: bool = False
 ):
     """
-    모든 계정의 받은편지함을 통합 조회
-    
-    - 모든 계정의 INBOX 폴더 메일을 최신순으로 정렬
-    - 페이징 지원
-    - 읽지 않은 메일만 / 별표 메일만 필터링 가능
-    - folder_type으로 폴더 구분 가능 (inbox/sent/drafts/trash/spam)
+    Unified view across all accounts' inboxes
+
+    - Sorts INBOX folder mail from all accounts newest-first
+    - Supports paging
+    - Can filter to unread-only / starred-only
+    - folder_type can distinguish folders (inbox/sent/drafts/trash/spam)
     """
-    
+
     offset = (page - 1) * limit
-    
-    # WHERE 조건 구성
-    # ✅ 수정: 휴지통이면 is_deleted = TRUE, 아니면 FALSE
+
+    # Build WHERE conditions
+    # Fix: is_deleted = TRUE for trash, otherwise FALSE
     if folder_type == 'trash':
         where_conditions = ["m.is_deleted = TRUE"]
     else:
         where_conditions = ["m.is_deleted = FALSE"]
-    
-    # ✅ folder_type 필터 추가
+
+    # Add folder_type filter
     if folder_type:
         if folder_type == 'starred':
             where_conditions.append("m.is_starred = TRUE")
-        elif folder_type != 'trash':  # ✅ trash는 is_deleted로 필터링했으니 제외
+        elif folder_type != 'trash':  # trash is filtered by is_deleted, so exclude
             where_conditions.append("f.folder_type = %s")
     
     if unread_only:
@@ -66,16 +66,16 @@ async def get_unified_inbox(
     query_integrated_mail1 = sqloader.load_sql("mail_anchor.json", "inbox.get_integrated_mail1")
     query_integrated_mail2 = sqloader.load_sql("mail_anchor.json", "inbox.get_integrated_mail2")
 
-    # 통합 메일 조회 쿼리
+    # Unified mail query
     query = f"""
         {query_integrated_mail1}
           AND {where_clause}
         {query_integrated_mail2}
     """
     
-    # ✅ params 구성
+    # Build params
     params = [user_uuid]
-    if folder_type and folder_type not in ['starred', 'trash']:  # ✅ trash도 제외
+    if folder_type and folder_type not in ['starred', 'trash']:  # exclude trash too
         params.append(folder_type)
     params.extend([limit, offset])
     
@@ -83,15 +83,15 @@ async def get_unified_inbox(
 
     query_integrated_count = sqloader.load_sql("mail_anchor.json", "inbox.get_integrated_count")
 
-    # 전체 개수 조회
+    # Get total count
     count_query = f"""
         {query_integrated_count}
           AND {where_clause}
     """
-    
-    # ✅ count params (limit/offset 제외)
+
+    # count params (excluding limit/offset)
     count_params = [user_uuid]
-    if folder_type and folder_type not in ['starred', 'trash']:  # ✅ trash도 제외
+    if folder_type and folder_type not in ['starred', 'trash']:  # exclude trash too
         count_params.append(folder_type)
     
     total_result = db_instance.fetch_one(count_query, tuple(count_params))
@@ -113,7 +113,7 @@ async def get_unified_inbox(
 
 
 # ========================================
-# 메일 검색 API
+# Mail search API
 # ========================================
 
 @router.get("/search", dependencies=[Depends(verify_token)])
@@ -131,16 +131,16 @@ async def search_mails(
     limit: int = 50
 ):
     """
-    메일 검색
-    
-    - 제목, 발신자, 본문에서 검색
-    - 계정/폴더 필터링 가능
-    - 날짜 범위 지정 가능
+    Mail search
+
+    - Searches subject, sender, and body
+    - Can filter by account/folder
+    - Can specify a date range
     """
-    
+
     offset = (page - 1) * limit
-    
-    # WHERE 조건 구성
+
+    # Build WHERE conditions
     where_conditions = [
         "m.is_deleted = FALSE",
         "a.user_uuid = %s",
@@ -148,7 +148,7 @@ async def search_mails(
     ]
     params = [user_uuid]
     
-    # 검색어 조건 (제목, 발신자 이름, 발신자 이메일, 본문)
+    # Search-term condition (subject, sender name, sender email, body)
     search_condition = """
         (m.subject LIKE %s 
          OR m.from_name LIKE %s 
@@ -158,17 +158,17 @@ async def search_mails(
     where_conditions.append(search_condition)
     params.extend([search_pattern] * 3)
     
-    # 계정 필터
+    # Account filter
     if account_uuid:
         where_conditions.append("m.account_uuid = %s")
         params.append(account_uuid)
-    
-    # 폴더 필터
+
+    # Folder filter
     if folder_uuid:
         where_conditions.append("m.folder_uuid = %s")
         params.append(folder_uuid)
-    
-    # 날짜 범위 필터
+
+    # Date-range filter
     if date_from:
         where_conditions.append("m.sent_date >= %s")
         params.append(date_from)
@@ -177,12 +177,12 @@ async def search_mails(
         where_conditions.append("m.sent_date <= %s")
         params.append(date_to)
     
-    # 첨부파일 필터
+    # Attachment filter
     if has_attachments is not None:
         where_conditions.append("m.has_attachments = %s")
         params.append(has_attachments)
-    
-    # 읽음/별표 필터
+
+    # Read/starred filter
     if unread_only:
         where_conditions.append("m.is_read = FALSE")
     
@@ -191,7 +191,7 @@ async def search_mails(
     
     where_clause = " AND ".join(where_conditions)
     
-    # 검색 쿼리
+    # Search query
     search_query = f"""
         SELECT 
             m.message_uuid,
@@ -223,7 +223,7 @@ async def search_mails(
     params.extend([limit, offset])
     messages = db_instance.fetch_all(search_query, tuple(params))
     
-    # 전체 개수 조회
+    # Get total count
     count_query = f"""
         SELECT COUNT(*) as total
         FROM mail_messages m
@@ -231,8 +231,8 @@ async def search_mails(
         LEFT JOIN mail_folders f ON m.folder_uuid = f.folder_uuid
         WHERE {where_clause}
     """
-    
-    # limit, offset 제외한 params 사용
+
+    # Use params excluding limit, offset
     count_params = params[:-2]
     total_result = db_instance.fetch_one(count_query, tuple(count_params))
     total = total_result['total'] if total_result else 0
@@ -253,21 +253,21 @@ async def search_mails(
 
 
 # ========================================
-# 통계 API
+# Statistics API
 # ========================================
 @router.get("/stats", dependencies=[Depends(verify_token)])
 async def get_mail_stats(user_uuid: str):
     """
-    메일 통계 조회
-    
-    - 전체 메일 수
-    - 읽지 않은 메일 수
-    - 별표 메일 수
-    - 폴더별 통계
-    - 계정별 통계
+    Get mail statistics
+
+    - Total mail count
+    - Unread mail count
+    - Starred mail count
+    - Per-folder statistics
+    - Per-account statistics
     """
-    
-    # 전체 통계
+
+    # Overall statistics
     total_query = """
         SELECT 
             COUNT(*) as total_mails,
@@ -283,7 +283,7 @@ async def get_mail_stats(user_uuid: str):
     
     total_stats = db_instance.fetch_one(total_query, (user_uuid,))
     
-    # ✅ 폴더별 통계 추가
+    # Per-folder statistics
     folder_query = """
         SELECT 
             f.folder_type,
@@ -300,7 +300,7 @@ async def get_mail_stats(user_uuid: str):
     
     folder_stats_raw = db_instance.fetch_all(folder_query, (user_uuid,))
     
-    # ✅ 별표편지함 통계 (별도 처리)
+    # Starred-mailbox statistics (handled separately)
     starred_query = """
         SELECT 
             COUNT(*) as total_count,
@@ -315,7 +315,7 @@ async def get_mail_stats(user_uuid: str):
     
     starred_stats = db_instance.fetch_one(starred_query, (user_uuid,))
     
-    # ✅ 딕셔너리 형태로 변환
+    # Convert into dictionary form
     folder_stats = {}
     for row in folder_stats_raw:
         folder_stats[row['folder_type']] = {
@@ -323,13 +323,13 @@ async def get_mail_stats(user_uuid: str):
             'unread_count': row['unread_count'] or 0
         }
     
-    # 별표편지함 추가
+    # Add starred mailbox
     folder_stats['starred'] = {
         'total_count': starred_stats['total_count'] or 0,
         'unread_count': starred_stats['unread_count'] or 0
     }
     
-    # 휴지통 통계 (is_deleted = TRUE)
+    # Trash statistics (is_deleted = TRUE)
     trash_query = """
         SELECT 
             COUNT(*) as total_count
@@ -343,10 +343,10 @@ async def get_mail_stats(user_uuid: str):
     trash_stats = db_instance.fetch_one(trash_query, (user_uuid,))
     folder_stats['trash'] = {
         'total_count': trash_stats['total_count'] or 0,
-        'unread_count': 0  # 휴지통은 안읽은 수 표시 안 함
+        'unread_count': 0  # Trash does not show an unread count
     }
     
-    # 계정별 통계
+    # Per-account statistics
     account_query = """
         SELECT 
             a.account_uuid,
@@ -367,12 +367,12 @@ async def get_mail_stats(user_uuid: str):
     return {
         "success": True,
         "total_stats": total_stats,
-        "folder_stats": folder_stats,  # ✅ 추가
+        "folder_stats": folder_stats,  # added
         "account_stats": account_stats
     }
 
 # ========================================
-# 최근 메일 조회 API
+# Recent mail API
 # ========================================
 
 @router.get("/recent", dependencies=[Depends(verify_token)])
@@ -382,10 +382,10 @@ async def get_recent_mails(
     limit: int = 20
 ):
     """
-    최근 N시간 내 도착한 메일 조회
-    
-    - 기본: 최근 24시간
-    - 통합 받은편지함 + 시간 필터
+    Get mail that arrived within the last N hours
+
+    - Default: last 24 hours
+    - Unified inbox + time filter
     """
     
     since = datetime.now() - timedelta(hours=hours)
@@ -423,51 +423,51 @@ async def get_recent_mails(
     }
 
 # ========================================
-# 메일 상세 조회 API (DB 기반)
+# Mail detail API (DB-based)
 # ========================================
 
 @router.get("/messages/{message_uuid}", dependencies=[Depends(verify_token)])
 async def get_message_detail(message_uuid: str, user_uuid: str):
     """
-    메일 상세 조회
-    
-    - DB에서 메일 정보 조회
-    - body_file_path에서 .eml 파일 읽기
-    - 본문 HTML/텍스트 파싱
-    - 첨부파일 목록 포함
+    Get mail detail
+
+    - Look up mail info from the DB
+    - Read the .eml file at body_file_path
+    - Parse the body HTML/text
+    - Include the attachment list
     """
-    
-    # DB에서 메일 정보 조회
+
+    # Look up mail info from the DB
     query = sqloader.load_sql("mail_anchor.json", "inbox.get_mail")
     message = db_instance.fetch_one(query, (message_uuid, user_uuid))
     
     if not message:
         raise HTTPException(status_code=404, detail="메일을 찾을 수 없습니다")
     
-    # .eml 파일 읽기
+    # Read the .eml file
     body_html = None
     body_text = None
     attachments = []
-    
+
     if message['body_file_path'] and os.path.exists(message['body_file_path']):
         try:
             with open(message['body_file_path'], 'rb') as f:
                 msg = BytesParser(policy=policy.default).parse(f)
-                
-                # 본문 추출
+
+                # Extract body
                 if msg.is_multipart():
                     for part in msg.walk():
                         content_type = part.get_content_type()
                         content_disposition = str(part.get("Content-Disposition", ""))
-                        
-                        # 첨부파일이 아닌 경우
+
+                        # When it is not an attachment
                         if "attachment" not in content_disposition:
                             if content_type == "text/html":
                                 body_html = part.get_content()
                             elif content_type == "text/plain":
                                 body_text = part.get_content()
                 else:
-                    # 단일 파트
+                    # Single part
                     content_type = msg.get_content_type()
                     if content_type == "text/html":
                         body_html = msg.get_content()
@@ -478,7 +478,7 @@ async def get_message_detail(message_uuid: str, user_uuid: str):
             logger.error(f"[Message Detail] .eml 파일 읽기 실패: {str(e)}")
             body_text = "메일 본문을 불러올 수 없습니다."
     
-    # 첨부파일 정보 조회
+    # Look up attachment info
     attachment_query = sqloader.load_sql("mail_anchor.json", "inbox.get_attachment")
     attachments = db_instance.fetch_all(attachment_query, (message_uuid,))
     
@@ -493,16 +493,16 @@ async def get_message_detail(message_uuid: str, user_uuid: str):
     }
 
 # ========================================
-# 핀 고정 메일 조회 API
+# Pinned mail API
 # ========================================
 
 @router.get("/pinned", dependencies=[Depends(verify_token)])
 async def get_pinned_mails(user_uuid: str):
     """
-    핀 고정된 모든 메일 조회
-    
-    - 모든 폴더에서 is_pinned = TRUE인 메일만 조회
-    - 최신순 정렬
+    Get all pinned mail
+
+    - Only mail with is_pinned = TRUE across all folders
+    - Sorted newest-first
     """
     
     query = """
