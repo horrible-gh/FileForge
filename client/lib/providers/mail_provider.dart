@@ -281,6 +281,35 @@ class MailProvider extends ChangeNotifier {
     }
   }
 
+  /// Mark all read (R0001/0030) — "메일 전체 읽음처리". Asks the server to flip
+  /// every unread mail in the user's mailboxes to read, then reflects it locally
+  /// by setting `isRead = true` on every loaded summary (and the open detail, if
+  /// any) so the bold/dot unread cue clears immediately without a full reload.
+  /// Returns the number the server reported as updated (0 = nothing was unread).
+  /// On failure local state is left untouched and -1 is returned so the caller can
+  /// surface an error toast. The change is persisted server-side, so the 10s inbox
+  /// poll (loadInbox) will not revert it.
+  Future<int> markAllRead() async {
+    try {
+      final updated = await _service.markAllRead();
+      var changed = false;
+      for (var i = 0; i < _mails.length; i++) {
+        if (!_mails[i].isRead) {
+          _mails[i] = _mails[i].copyWithRead(true);
+          changed = true;
+        }
+      }
+      if (_detail != null && !_detail!.isRead) {
+        _detail = _detail!.copyWithRead(true);
+        changed = true;
+      }
+      if (changed || updated > 0) notifyListeners();
+      return updated;
+    } catch (_) {
+      return -1;
+    }
+  }
+
   /// Pin/unpin (R0001/0027) — optimistic update. Changes local state first so the
   /// toggle reflects in the UI immediately. Turning a pin on removes that mail from
   /// the chronological body list and moves it at once into the **"ピン留め" (pinned)

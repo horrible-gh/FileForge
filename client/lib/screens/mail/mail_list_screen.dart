@@ -699,6 +699,15 @@ class _MailListTile extends StatelessWidget {
     final pinned = summary.isPinned;
     return ListTile(
       onTap: onTap,
+      // R0001(0030) — read/unread was distinguished by font weight ALONE (bold vs
+      // not), which the user found too subtle. Reinforce unread with two extra
+      // always-visible cues on top of the bold: (1) a filled accent dot at the row
+      // head, (2) a faint surface tint behind the whole row. Read rows get neither
+      // (transparent dot placeholder keeps the text aligned), so the contrast
+      // between the two states is unmistakable at a glance.
+      tileColor: unread
+          ? theme.colorScheme.primary.withValues(alpha: 0.06)
+          : null,
       // Trailing pin toggle — filled pin = pinned, outline = unpinned. Operates
       // independently of the row-body tap (open detail) (the IconButton intercepts its own tap).
       trailing: IconButton(
@@ -710,10 +719,23 @@ class _MailListTile extends StatelessWidget {
         tooltip: pinned ? t.mailUnpin : t.mailPin,
         onPressed: onTogglePin,
       ),
-      // Left color bar + avatar — the bar color differs per account so you can tell at a glance which account.
+      // Unread dot + left color bar + avatar. The unread dot (R0001/0030) is the
+      // primary at-a-glance cue; the bar color differs per account so you can tell
+      // at a glance which account a mail arrived at.
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Filled accent dot when unread; a same-size transparent placeholder
+          // when read so sender/avatar stay vertically aligned across both states.
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: unread ? theme.colorScheme.primary : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
           Container(
             width: 4,
             height: 40,

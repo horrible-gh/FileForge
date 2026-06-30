@@ -878,7 +878,11 @@ async def set_mail_flags(mail_id: str, payload: dict = Body(default={}),
     if "is_read" in payload:
         is_read = 1 if payload.get("is_read") else 0
         sql = sqloader.load_sql(MAIL_JSON, "update_message_read")
-        db_instance.execute_query(sql, (is_read, mail_id))
+        # R0001 (0030): scope the read UPDATE to the caller's own mailboxes, same
+        # ownership subquery the pin UPDATE already used (mail_accounts.user_uuid).
+        # The legacy single-arg form (message_uuid only) let any authenticated user
+        # flip the read flag of an arbitrary message (IDOR) — closed here.
+        db_instance.execute_query(sql, (is_read, mail_id, user_uuid))
         result["is_read"] = bool(is_read)
     if "is_pinned" in payload:
         is_pinned = 1 if payload.get("is_pinned") else 0
@@ -886,6 +890,28 @@ async def set_mail_flags(mail_id: str, payload: dict = Body(default={}),
         db_instance.execute_query(sql, (is_pinned, mail_id, user_uuid))
         result["is_pinned"] = bool(is_pinned)
     return _ok(result)
+
+
+@router.post("/mails/mark-all-read")
+async def mark_all_read(user_uuid: str = Depends(current_user_uuid)):
+    """POST /mail/mails/mark-all-read — mark every unread mail in the caller's
+    mailboxes as read (R0001 / 0030: "메일 전체 읽음처리").
+
+    Scoped to the authenticated user's own accounts via the same ownership
+    subquery the per-mail flag UPDATEs use, so it never touches another user's
+    mail. A COUNT precedes the UPDATE so the response can report how many rows
+    were flipped — `execute_query` returns lastrowid (not rowcount) on SQLite, so
+    counting separately is the portable way to get an exact number across dialects.
+    The UPDATE only touches `is_read = 0` rows, so re-invoking on an already-read
+    box is a no-op (updated = 0).
+    """
+    cnt_sql = sqloader.load_sql(MAIL_JSON, "count_unread_for_user")
+    row = db_instance.fetch_one(cnt_sql, (user_uuid,))
+    updated = int((row or {}).get("cnt") or 0) if isinstance(row, dict) else 0
+    if updated:
+        upd_sql = sqloader.load_sql(MAIL_JSON, "mark_all_read_for_user")
+        db_instance.execute_query(upd_sql, (user_uuid,))
+    return _ok({"updated": updated})
 
 
 # ──────────────────────────────────────────────────────────────────────────────

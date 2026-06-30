@@ -88,6 +88,18 @@ class MailService {
     unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
   }
 
+  /// POST /mails/mark-all-read — mark every unread mail in the user's mailboxes
+  /// as read (R0001/0030: "메일 전체 읽음처리"). Returns how many were flipped
+  /// (`updated`), so the caller can surface a count and skip a no-op refresh. The
+  /// server scopes the UPDATE to the caller's own accounts, so this never touches
+  /// another user's mail.
+  Future<int> markAllRead() async {
+    final resp = await _dio.post('/mails/mark-all-read');
+    final data = unwrapEnvelope(resp.data, httpStatus: resp.statusCode);
+    final map = expectMapData(data, httpStatus: resp.statusCode);
+    return (map['updated'] as num?)?.toInt() ?? 0;
+  }
+
   /// PATCH /mails/{mail_id} {is_pinned} — pin/unpin (R0001/0027).
   /// The server accepts is_pinned on the same PATCH endpoint as is_read and
   /// updates only within the owner scope (authenticated user_uuid), avoiding the

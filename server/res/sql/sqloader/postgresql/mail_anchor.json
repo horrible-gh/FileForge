@@ -5,8 +5,10 @@
   "insert_folder": "INSERT INTO mail_folders (account_uuid, folder_name, folder_path, folder_type) VALUES (%s, %s, %s, %s)",
   "get_messages": "SELECT * FROM mail_messages WHERE account_uuid = %s AND folder_uuid = %s AND is_deleted = FALSE ORDER BY sent_date DESC LIMIT %s OFFSET %s",
   "get_message": "SELECT * FROM mail_messages WHERE message_uuid = %s",
-  "update_message_read": "UPDATE mail_messages SET is_read = %s, modified_at = CURRENT_TIMESTAMP WHERE message_uuid = %s",
+  "update_message_read": "UPDATE mail_messages SET is_read = %s, modified_at = CURRENT_TIMESTAMP WHERE message_uuid = %s AND account_uuid IN (SELECT account_uuid FROM mail_accounts WHERE user_uuid = %s)",
   "update_message_pinned": "UPDATE mail_messages SET is_pinned = %s, modified_at = CURRENT_TIMESTAMP WHERE message_uuid = %s AND account_uuid IN (SELECT account_uuid FROM mail_accounts WHERE user_uuid = %s)",
+  "count_unread_for_user": "SELECT COUNT(*) AS cnt FROM mail_messages WHERE is_read = 0 AND is_deleted = 0 AND account_uuid IN (SELECT account_uuid FROM mail_accounts WHERE user_uuid = %s)",
+  "mark_all_read_for_user": "UPDATE mail_messages SET is_read = 1, modified_at = CURRENT_TIMESTAMP WHERE is_read = 0 AND is_deleted = 0 AND account_uuid IN (SELECT account_uuid FROM mail_accounts WHERE user_uuid = %s)",
   "get_message_attachments": "SELECT * FROM mail_attachments WHERE message_uuid = %s",
   "accounts": {
     "get_accounts": "SELECT account_uuid, account_name, email, imap_host, imap_port, smtp_host, smtp_port, display_color, display_order, sync_enabled, last_sync_at, status, created_at FROM mail_accounts WHERE user_uuid = %(user_uuid)s AND status = 'active' ORDER BY display_order, created_at",

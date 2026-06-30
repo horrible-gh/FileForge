@@ -290,6 +290,23 @@ class MailDetail {
         attachments: attachments,
         labels: labels,
       );
+
+  /// A copy with only the read state changed (R0001/0030) — for markAllRead so the
+  /// open detail's state stays aligned with the list.
+  MailDetail copyWithRead(bool read) => MailDetail(
+        mailId: mailId,
+        threadId: threadId,
+        from: from,
+        to: to,
+        cc: cc,
+        subject: subject,
+        receivedAt: receivedAt,
+        isRead: read,
+        isPinned: isPinned,
+        body: body,
+        attachments: attachments,
+        labels: labels,
+      );
 }
 
 /// P0007 §4 — text translated text text text.
