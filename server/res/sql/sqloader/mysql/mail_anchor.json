@@ -62,5 +62,8 @@
         "update_access_token": "UPDATE mail_accounts SET access_token_encrypted = %(access_token_encrypted)s, token_expires_at = NOW() + INTERVAL %(token_expires_in)s SECOND, modified_at = NOW() WHERE account_uuid = %(account_uuid)s",
         "deactivate_account": "UPDATE mail_accounts SET status = 'inactive', access_token_encrypted = NULL, refresh_token_encrypted = NULL, modified_at = NOW() WHERE account_uuid = %(account_uuid)s",
         "check_token_expiry": "SELECT account_uuid, email, access_token_encrypted, refresh_token_encrypted, token_expires_at, token_expires_at <= NOW() AS is_expired, token_expires_at <= NOW() + INTERVAL 5 MINUTE AS needs_refresh FROM mail_accounts WHERE account_uuid = %(account_uuid)s AND status = 'active'"
+    },
+    "idle": {
+        "get_active_sync_accounts": "SELECT account_uuid, user_uuid, account_type, sync_enabled FROM mail_accounts WHERE status = 'active'"
     }
 }

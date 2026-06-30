@@ -104,6 +104,32 @@ app.add_middleware(
     expose_headers=["Content-Disposition"]  # 🔥 text core!
 )
 
+# ──────────────────────────────────────────────────────────────────────────────
+# IMAP IDLE real-time receive (R0001 / 0033, D0004 / T0005).
+# Start one supervised IDLE worker per sync-enabled account on boot; stop them on
+# shutdown. start()/stop() are non-blocking and fully self-guarded (config toggle
+# MAIL_IDLE_ENABLED + auto-skip under pytest), so they can never delay or break
+# startup. The unit-test suites build their own local FastAPI() and do not mount
+# these global-app hooks, so they are unaffected.
+# ──────────────────────────────────────────────────────────────────────────────
+@app.on_event("startup")
+async def _start_idle_manager():
+    try:
+        from services.idle_manager import manager as idle_manager
+        idle_manager.start()
+    except Exception as exc:  # noqa: BLE001 — never let IDLE startup kill the app
+        Logger.error(f"[IDLE] startup hook failed: {exc}")
+
+
+@app.on_event("shutdown")
+async def _stop_idle_manager():
+    try:
+        from services.idle_manager import manager as idle_manager
+        idle_manager.stop()
+    except Exception as exc:  # noqa: BLE001
+        Logger.error(f"[IDLE] shutdown hook failed: {exc}")
+
+
 @app.get(CONTEXT + "/")
 async def read_root():
     return {"message": "Hello FastAPI"}

@@ -71,6 +71,14 @@ class Settings(BaseSettings):
     #    The same scheme must be registered in the client (Android intent-filter / iOS CFBundleURLTypes).
     OAUTH_SUCCESS_DEEPLINK: str = "fileforge://oauth/gmail/success"
 
+    # 🔹 IMAP IDLE real-time receive (R0001 / 0033, D0004). When enabled, the
+    #    server keeps one long-lived IDLE connection per sync-enabled account and
+    #    wakes the existing incremental sync engine on a server push, instead of
+    #    relying solely on the client's ~10s poll (NR0003). Defaults ON; set to
+    #    false to fall back to pure pull. The manager is also auto-skipped under
+    #    pytest. Multi-worker single-owner election is DEFERRED (NR0003 G5).
+    MAIL_IDLE_ENABLED: bool = True
+
     RATE_LIMIT_DEFAULT: str = "100/hour"
     RATE_LIMIT_LOGIN: str = "5/minute"
     RATE_LIMIT_UPLOAD: str = "20/hour"
