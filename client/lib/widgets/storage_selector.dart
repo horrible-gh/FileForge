@@ -16,6 +16,22 @@ String _formatBytes(int bytes) {
   return '$bytes B';
 }
 
+/// Per-type leading glyph so a mail box / SecureBolt vault is visually distinct
+/// from a plain file storage in the switcher (NR0004 §3 — previously every type
+/// shared `storage_rounded`, erasing the distinction). All `_rounded` to match
+/// the house style.
+IconData _storageTypeIcon(String storageType) {
+  switch (storageType) {
+    case 'mail':
+      return Icons.mark_email_unread_rounded;
+    case 'password':
+      return Icons.lock_rounded;
+    case 'file':
+    default:
+      return Icons.storage_rounded;
+  }
+}
+
 /// Drawer text storage selection text
 /// L002 ST-02 Row2: storage text text file translated text FileProvidertext initializetext.
 class StorageSelector extends StatelessWidget {
@@ -68,7 +84,7 @@ class StorageSelector extends StatelessWidget {
               ListTile(
                 dense: true,
                 leading: Icon(
-                  Icons.storage_rounded,
+                  _storageTypeIcon(s.storageType),
                   color: isSelected ? Theme.of(context).colorScheme.primary : null,
                 ),
                 title: Text(
@@ -86,7 +102,7 @@ class StorageSelector extends StatelessWidget {
                     : null,
                 trailing: s.isDefault
                     ? Icon(
-                        Icons.star,
+                        Icons.star_rounded,
                         size: 16,
                         color: Theme.of(context).colorScheme.primary,
                       )

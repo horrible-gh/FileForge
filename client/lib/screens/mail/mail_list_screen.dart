@@ -238,6 +238,21 @@ class _MailListScreenState extends State<MailListScreen>
     }
   }
 
+  /// R0001(0030) — mark every unread mail as read. Relocated from the shared shell
+  /// AppBar into the mail tray (CH0007/NR0009). Delegates to MailProvider (which
+  /// persists via the server then clears the unread cue locally), then reports the
+  /// count; the server-side persistence means the 10s inbox poll will not revert it.
+  Future<void> _markAllRead() async {
+    final t = AppLocalizations.of(context);
+    final updated = await context.read<MailProvider>().markAllRead();
+    if (!mounted) return;
+    if (updated < 0) {
+      AppToast.error(context, t.mailMarkAllReadFailed);
+    } else {
+      AppToast.success(context, t.mailMarkedAllRead(updated));
+    }
+  }
+
   /// text text — text text text translated text text(translated text translated text text).
   void _switchLabel(String label) {
     final provider = context.read<MailProvider>();
@@ -264,21 +279,21 @@ class _MailListScreenState extends State<MailListScreen>
       return _buildOnboarding(context, t);
     }
 
-    // text(MainScreen) Bodytext compose FABtext translated text text text Scaffoldtext translated text
-    // (AppBartext text translated text text translated text).
+    // Embedded in the shared MainScreen Body (it provides the AppBar). The mail
+    // toolbar lives in the label-switcher tray below (CH0007/NR0009): the shell
+    // AppBar shows only [search][overflow] for mail, while the mail-specific
+    // actions — compose / mark-all-read / account — sit in this tray. Compose was
+    // a FloatingActionButton before; it is now the tray "+" so all mail actions
+    // are grouped in one place.
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _compose,
-        tooltip: t.mailComposeTooltip,
-        child: const Icon(Icons.edit_rounded),
-      ),
       body: Column(
         children: [
-          // A persistent account-management entry point to the right of the label
-          // switcher (R0001) — when accounts already exist the onboarding CTA does
-          // not appear, so this guarantees the only path to AccountConnectScreen
-          // (add/reconnect/disconnect).
+          // Mail toolbar tray (CH0007/NR0009): right of the label switcher, the
+          // three mail actions in the user-specified order — [+ compose] /
+          // [mark all read] / [account connect]. When accounts already exist the
+          // onboarding CTA does not appear, so the account button here also stays
+          // the guaranteed path to AccountConnectScreen (add/reconnect/disconnect).
           Row(
             children: [
               Expanded(
@@ -286,6 +301,16 @@ class _MailListScreenState extends State<MailListScreen>
                   current: context.watch<MailProvider>().currentLabel,
                   onSelected: _switchLabel,
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_rounded),
+                tooltip: t.mailComposeTooltip,
+                onPressed: _compose,
+              ),
+              IconButton(
+                icon: const Icon(Icons.mark_email_read_rounded),
+                tooltip: t.mailMarkAllRead,
+                onPressed: _markAllRead,
               ),
               IconButton(
                 icon: const Icon(Icons.manage_accounts_rounded),
@@ -712,7 +737,7 @@ class _MailListTile extends StatelessWidget {
       // independently of the row-body tap (open detail) (the IconButton intercepts its own tap).
       trailing: IconButton(
         icon: Icon(
-          pinned ? Icons.push_pin : Icons.push_pin_outlined,
+          pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
           size: 20,
           color: pinned ? theme.colorScheme.primary : null,
         ),

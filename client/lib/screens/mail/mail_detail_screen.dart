@@ -59,7 +59,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           if (detail != null)
             IconButton(
               icon: Icon(detail.isPinned
-                  ? Icons.push_pin
+                  ? Icons.push_pin_rounded
                   : Icons.push_pin_outlined),
               tooltip: detail.isPinned ? t.mailUnpin : t.mailPin,
               onPressed: () =>
@@ -190,7 +190,9 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
           const SizedBox(height: 8),
           ...detail.attachments.map((a) => ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.attach_file_rounded),
+                // An attached-file *row* uses the file glyph; `attach_file_rounded`
+                // is reserved for the attach *action*/badge (NR0004 §4).
+                leading: const Icon(Icons.description_rounded),
                 title: Text(a.filename),
                 subtitle: Text(_humanSize(a.sizeBytes)),
                 trailing: const Icon(Icons.download_rounded),
