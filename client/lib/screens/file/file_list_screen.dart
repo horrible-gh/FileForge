@@ -13,6 +13,7 @@ import '../../services/logger.dart';
 import '../../services/download_save_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/download_progress_overlay.dart';
 import '../../widgets/breadcrumb_nav.dart';
 import '../../widgets/file_list_item.dart';
 import '../../widgets/file_grid_item.dart';
@@ -235,12 +236,20 @@ class _FileListScreenState extends State<FileListScreen> {
   /// download — text file/folder
   Future<void> _handleDownload(Node node) async {
     final t = AppLocalizations.of(context);
+    // fileforge.ui.0002 ("고스트 다운로드"): show an in-flight indicator the
+    // moment the download starts so the screen is never silently unchanged.
+    final progress = DownloadProgressOverlay.show(
+      context,
+      label: t.fileDownloading,
+      percentLabel: t.fileDownloadingPercent,
+    );
     try {
       final response = await _storageService.download(
         storageUuid: _storageUuid,
         userUuid: _userUuid,
         groupUuid: _groupUuid,
         nodeUuid: node.nodeUuid!,
+        onReceiveProgress: progress.onProgress,
       );
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
@@ -258,6 +267,8 @@ class _FileListScreenState extends State<FileListScreen> {
     } on DioException catch (e) {
       AppLogger.error('FileListScreen', 'Download failed: ${e.response?.statusCode}');
       if (mounted) AppToast.error(context, t.fileDownloadFailed);
+    } finally {
+      progress.hide();
     }
   }
 

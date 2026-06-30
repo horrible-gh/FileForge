@@ -20,6 +20,7 @@ import '../../services/storage_service.dart';
 import '../../utils/file_type_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/download_progress_overlay.dart';
 import '../../widgets/error_retry.dart';
 import 'preview_web_interop.dart'
     if (dart.library.io) 'preview_web_interop_stub.dart';
@@ -233,6 +234,13 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
   /// text translated text _fileBytestext translated text translated text, translated text API translated text (unsupported text text).
   Future<void> _handleDownload() async {
     final t = AppLocalizations.of(context);
+    // fileforge.ui.0002 ("고스트 다운로드"): in-flight indicator so the
+    // download is never a silent no-feedback wait.
+    final progress = DownloadProgressOverlay.show(
+      context,
+      label: t.fileDownloading,
+      percentLabel: t.fileDownloadingPercent,
+    );
     try {
       List<int> bytes;
       String filename;
@@ -246,6 +254,7 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           userUuid: widget.userUuid,
           groupUuid: widget.groupUuid,
           nodeUuid: widget.node.nodeUuid!,
+          onReceiveProgress: progress.onProgress,
         );
         final data = response.data;
         if (data == null || data.isEmpty) {
@@ -265,6 +274,8 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
       AppLogger.error(
           'FilePreviewScreen', 'download failed: ${e.response?.statusCode}');
       if (mounted) AppToast.error(context, t.fileDownloadFailed);
+    } finally {
+      progress.hide();
     }
   }
 

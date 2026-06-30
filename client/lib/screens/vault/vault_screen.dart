@@ -393,6 +393,17 @@ class _VaultBody extends StatelessWidget {
                   itemBuilder: (context, i) {
                     final e = entries[i];
                     final cat = catById[e.category];
+                    // Tapping a tile copies the password (R0001: the default
+                    // tap used to open the editor — that moves to the explicit
+                    // edit button in the trailing row). The copy action is
+                    // shared by the tap and the trailing copy button.
+                    Future<void> copyPassword() async {
+                      await Clipboard.setData(ClipboardData(text: e.password));
+                      if (context.mounted) {
+                        AppToast.success(context, t.vaultPasswordCopied);
+                      }
+                    }
+
                     return ListTile(
                       leading: CircleAvatar(
                         child: Text(cat?.icon ?? '🔑'),
@@ -406,13 +417,12 @@ class _VaultBody extends StatelessWidget {
                           IconButton(
                             icon: const Icon(Icons.copy, size: 18),
                             tooltip: t.vaultCopyPassword,
-                            onPressed: () async {
-                              await Clipboard.setData(
-                                  ClipboardData(text: e.password));
-                              if (context.mounted) {
-                                AppToast.success(context, t.vaultPasswordCopied);
-                              }
-                            },
+                            onPressed: copyPassword,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            tooltip: t.commonEdit,
+                            onPressed: () => _openEditor(context, vault, e),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 18),
@@ -421,7 +431,7 @@ class _VaultBody extends StatelessWidget {
                           ),
                         ],
                       ),
-                      onTap: () => _openEditor(context, vault, e),
+                      onTap: copyPassword,
                     );
                   },
                 ),

@@ -14,6 +14,7 @@ import '../../models/node.dart';
 import '../../services/logger.dart';
 import '../../config/routes.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/download_progress_overlay.dart';
 import '../../widgets/storage_selector.dart';
 import '../../widgets/folder_tree_view.dart';
 import '../../widgets/file_operation_dialogs.dart';
@@ -543,11 +544,19 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _doBulkDownload(BuildContext ctx, Set<String> nodeUuids) async {
     final t = AppLocalizations.of(ctx);
+    // fileforge.ui.0002 ("고스트 다운로드"): in-flight indicator for the bulk
+    // (zip) download, which otherwise gave no feedback until completion.
+    final progress = DownloadProgressOverlay.show(
+      ctx,
+      label: t.fileDownloading,
+      percentLabel: t.fileDownloadingPercent,
+    );
     try {
       final authProvider = ctx.read<AuthProvider>();
       final service = StorageService(authProvider.dio);
       final response = await service.bulkDownload(
         nodeUuids: nodeUuids.toList(),
+        onReceiveProgress: progress.onProgress,
       );
       final bytes = response.data;
       if (bytes == null || bytes.isEmpty) {
@@ -563,6 +572,8 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       AppLogger.error('MainScreen', 'Bulk download failed: $e');
       if (ctx.mounted) AppToast.error(ctx, t.fileDownloadFailed);
+    } finally {
+      progress.hide();
     }
   }
 
