@@ -106,4 +106,56 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+      'R0001(0037 rev1) — two accounts get DISTINCT row colors (not one color)',
+      (tester) async {
+    // Both accounts ship an identical server `display_color` (#EA4335). The
+    // list must NOT collapse them to a single color: the avatar color is derived
+    // from the account's position in the linked-account list, so acc_work and
+    // acc_home end up on two different palette slots.
+    final mails = [
+      MailSummary.fromJson({
+        'mail_id': 'm1',
+        'from': {'name': 'Alice', 'address': 'alice@ext.com'},
+        'subject': 'Hello from work',
+        'account': {
+          'account_id': 'acc_work',
+          'email': 'work@gmail.com',
+          'name': 'Work Gmail',
+          'color': '#EA4335',
+        },
+      }),
+      MailSummary.fromJson({
+        'mail_id': 'm2',
+        'from': {'name': 'Bob', 'address': 'bob@ext.com'},
+        'subject': 'Hello from home',
+        'account': {
+          'account_id': 'acc_home',
+          'email': 'home@gmail.com',
+          'name': 'Personal Gmail',
+          'color': '#EA4335',
+        },
+      }),
+    ];
+
+    await tester.pumpWidget(harness(_FixedMailProvider(mails)));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    // The leading avatar of each row carries the account color.
+    final avatars = tester
+        .widgetList<CircleAvatar>(find.byType(CircleAvatar))
+        .toList();
+    expect(avatars.length, 2, reason: 'one avatar per mail row');
+    final colors = avatars.map((a) => a.backgroundColor).toSet();
+    expect(colors.length, 2,
+        reason: 'the two accounts must render in two DIFFERENT colors, '
+            'not collapse to one (the rejection)');
+    expect(colors.contains(null), isFalse,
+        reason: 'both accounts have identity so both get a real color');
+
+    await tester.pumpWidget(const SizedBox());
+  });
 }
