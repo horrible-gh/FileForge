@@ -355,4 +355,570 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get cancel => 'キャンセル';
+
+  @override
+  String get commonSave => '保存';
+
+  @override
+  String get commonSaved => '保存しました';
+
+  @override
+  String get commonDelete => '削除';
+
+  @override
+  String get commonConfirm => '確認';
+
+  @override
+  String get commonOk => 'OK';
+
+  @override
+  String get commonClose => '閉じる';
+
+  @override
+  String get commonCopy => 'コピー';
+
+  @override
+  String get commonCopied => 'コピーしました';
+
+  @override
+  String get commonDownload => 'ダウンロード';
+
+  @override
+  String get commonRename => '名前を変更';
+
+  @override
+  String get commonShare => '共有';
+
+  @override
+  String get commonCreate => '作成';
+
+  @override
+  String get commonRetry => '再試行';
+
+  @override
+  String get commonEdit => '編集';
+
+  @override
+  String get commonPassword => 'パスワード';
+
+  @override
+  String get commonUsername => 'ユーザー名';
+
+  @override
+  String get commonSearch => '検索';
+
+  @override
+  String get loginSignIn => 'サインイン';
+
+  @override
+  String get totpTitle => '二要素認証';
+
+  @override
+  String get totpCodeLabel => '認証コード';
+
+  @override
+  String get totpVerify => '確認';
+
+  @override
+  String get storageNotFound => 'ストレージが見つかりません。';
+
+  @override
+  String get listEmptyNoStorages => 'ストレージがありません';
+
+  @override
+  String get listLoadFailed => 'リストを読み込めませんでした';
+
+  @override
+  String get noteNew => '新規ノート';
+
+  @override
+  String get noteName => 'ノート名';
+
+  @override
+  String get noteCreateNew => '新規ノートを作成';
+
+  @override
+  String get notesEmpty => 'ノートがありません';
+
+  @override
+  String get folderNew => '新規フォルダー';
+
+  @override
+  String get folderName => 'フォルダー名';
+
+  @override
+  String get renameNewName => '新しい名前';
+
+  @override
+  String deleteConfirmName(String name) {
+    return '「$name」を削除しますか？';
+  }
+
+  @override
+  String get bulkDeleteTitle => '一括削除';
+
+  @override
+  String bulkDeleteConfirmCount(int count) {
+    return '$count件を削除しますか？';
+  }
+
+  @override
+  String get navSelectAll => 'すべて選択';
+
+  @override
+  String get navSelectionMode => '選択モード';
+
+  @override
+  String get navExitSearch => '検索を終了';
+
+  @override
+  String get navSearch => '検索';
+
+  @override
+  String get navSearchHint => '検索...';
+
+  @override
+  String get navLogout => 'ログアウト';
+
+  @override
+  String get navUploadFile => 'ファイルをアップロード';
+
+  @override
+  String get navManageShareLinks => '共有リンクを管理';
+
+  @override
+  String get navSecuritySettings => 'セキュリティ設定';
+
+  @override
+  String get navServerSettings => 'サーバー設定';
+
+  @override
+  String get previewUnsavedChanges => '保存されていない変更があります。';
+
+  @override
+  String get previewDontSave => '保存しない';
+
+  @override
+  String get previewRewind10 => '10秒戻る';
+
+  @override
+  String get previewPause => '一時停止';
+
+  @override
+  String get previewPlay => '再生';
+
+  @override
+  String get previewForward10 => '10秒進む';
+
+  @override
+  String get serverAddress => 'サーバーアドレス';
+
+  @override
+  String get serverAddressHint => '例: 192.168.1.10:8000';
+
+  @override
+  String get serverTestConnection => '接続をテスト';
+
+  @override
+  String get securityEnable2fa => '二段階認証を有効化';
+
+  @override
+  String get securityScanQr => '認証アプリで下のQRコードをスキャンしてください。';
+
+  @override
+  String get securityQrUnavailable => 'QR画像を表示できません';
+
+  @override
+  String get securityRecoveryInfo => 'アクセスできなくなった場合、リカバリーコードでアカウントに再アクセスできます。';
+
+  @override
+  String get securityAuthCode => '認証コード';
+
+  @override
+  String get securityEnable => '有効化';
+
+  @override
+  String get securityDisable2fa => '二段階認証を無効化';
+
+  @override
+  String get securityCurrentCode => '現在のコード';
+
+  @override
+  String get securityDisable => '無効化';
+
+  @override
+  String get securityRegenRecovery => 'リカバリーコードを再生成';
+
+  @override
+  String get securityRegenerate => '再生成';
+
+  @override
+  String get securityNewRecoveryInfo => '新しいリカバリーコードです。安全な場所に保管してください。';
+
+  @override
+  String get securityRecoveryCopied => 'リカバリーコードをコピーしました';
+
+  @override
+  String get shareDeleteLinkTitle => '共有リンクを削除';
+
+  @override
+  String shareDeleteLinkBody(String name) {
+    return '$nameのリンクを削除しますか？';
+  }
+
+  @override
+  String get shareNoLinks => '共有リンクがありません';
+
+  @override
+  String get sharedFileTitle => '共有ファイル';
+
+  @override
+  String get sharePasswordProtected => 'このリンクはパスワードで保護されています';
+
+  @override
+  String get shareLinkCopied => 'リンクをコピーしました';
+
+  @override
+  String get shareCopyLink => 'リンクをコピー';
+
+  @override
+  String get shareFolderEmpty => 'フォルダーは空です';
+
+  @override
+  String get shareSetPassword => 'パスワードを設定';
+
+  @override
+  String get shareEnterPassword => 'パスワードを入力';
+
+  @override
+  String get shareCreateLink => 'リンクを作成';
+
+  @override
+  String get actionPreview => 'プレビュー';
+
+  @override
+  String get storageNone => 'ストレージなし';
+
+  @override
+  String get uploadClearAll => 'すべてクリア';
+
+  @override
+  String get vaultOffline => 'オフライン';
+
+  @override
+  String get vaultSync => '同期';
+
+  @override
+  String get vaultLock => 'ロック';
+
+  @override
+  String get vaultUnlockTitle => 'ボルトのロックを解除';
+
+  @override
+  String get vaultUnlockDesc => 'ログインパスワードでボルトを開きます。パスワードはこの端末から外に出ません。';
+
+  @override
+  String get vaultUnlock => 'ロックを解除';
+
+  @override
+  String get vaultEmpty => '保存された項目はありません';
+
+  @override
+  String get vaultCopyPassword => 'パスワードをコピー';
+
+  @override
+  String get vaultPasswordCopied => 'パスワードをコピーしました';
+
+  @override
+  String get vaultSaved => '保存しました';
+
+  @override
+  String get vaultSaveFailed => '保存に失敗しました';
+
+  @override
+  String get vaultDeleted => '削除しました';
+
+  @override
+  String get vaultDeleteFailed => '削除に失敗しました';
+
+  @override
+  String vaultDeleteConfirm(String title) {
+    return '「$title」を削除しますか？';
+  }
+
+  @override
+  String get vaultEntryNew => '新規項目';
+
+  @override
+  String get vaultEntryEdit => '項目を編集';
+
+  @override
+  String get vaultFieldTitle => 'タイトル';
+
+  @override
+  String get vaultFieldCategory => '分類';
+
+  @override
+  String get vaultFieldNotes => 'メモ';
+
+  @override
+  String get vaultCategoryWork => '仕事';
+
+  @override
+  String get vaultCategoryPersonal => '個人';
+
+  @override
+  String get vaultCategoryEntertainment => 'エンターテインメント';
+
+  @override
+  String get vaultMsgDecryptBanner =>
+      'ボルトの復号に失敗しました。ログインパスワードが正しいか確認してから、もう一度ロックを解除してください。（保護: この状態では変更をサーバーに保存しません）';
+
+  @override
+  String get vaultMsgDecryptBlockedSave =>
+      '復号に失敗した状態では保存できません。既存のボルトを上書きしないようにブロックしました — パスワードを確認してもう一度ロックを解除してください。';
+
+  @override
+  String get vaultMsgOfflineMode =>
+      'オフラインモード: この端末に保存されたボルトを表示します。オンラインに戻ると同期されます。';
+
+  @override
+  String get vaultMsgOfflineSaved =>
+      'オフライン: 変更はこの端末にのみ保存しました。オンラインに戻るとサーバーと同期されます。';
+
+  @override
+  String get vaultMsgSessionExpired => 'セッションの有効期限が切れました。再度サインインしてください。';
+
+  @override
+  String get vaultMsgSyncFailed => 'ボルトの同期に失敗しました。';
+
+  @override
+  String get fileDownloadFailed => 'ダウンロードに失敗しました';
+
+  @override
+  String get fileDownloadComplete => 'ダウンロードが完了しました';
+
+  @override
+  String get fileRenamed => '名前を変更しました';
+
+  @override
+  String get fileNameExists => '同じ名前のファイルが既に存在します';
+
+  @override
+  String get fileRenameFailed => '名前の変更に失敗しました';
+
+  @override
+  String get fileDeleted => '削除しました';
+
+  @override
+  String get itemNotFound => '項目が見つかりません';
+
+  @override
+  String get fileDeleteFailed => '削除に失敗しました';
+
+  @override
+  String get noteNameExists => '同じ名前のノートが既に存在します';
+
+  @override
+  String get noteCreateFailed => 'ノートの作成に失敗しました';
+
+  @override
+  String get searchNoResults => '検索結果がありません';
+
+  @override
+  String get filesEmpty => 'ファイルがありません';
+
+  @override
+  String get folderCreated => 'フォルダーを作成しました';
+
+  @override
+  String get folderCreateFailed => 'フォルダーの作成に失敗しました';
+
+  @override
+  String get viewGrid => 'グリッド表示';
+
+  @override
+  String get viewList => 'リスト表示';
+
+  @override
+  String get totpEnterRecoveryCodeError => '8文字のリカバリーコードを入力してください';
+
+  @override
+  String get totpEnterCodeError => '6桁のコードを入力してください';
+
+  @override
+  String get totpRecoveryPrompt => 'リカバリーコードを入力してください';
+
+  @override
+  String get totpCodePrompt => '認証アプリの6桁のコードを入力してください';
+
+  @override
+  String get totpUseAuthCode => '認証コードを使う';
+
+  @override
+  String get totpUseRecovery => 'リカバリーコードを使う';
+
+  @override
+  String get previewFileNotFound => 'ファイルが見つかりません';
+
+  @override
+  String get previewAccessDenied => 'アクセスが拒否されました';
+
+  @override
+  String get previewLoadFailed => 'ファイルを読み込めません';
+
+  @override
+  String get previewSaveNoPermission => '保存する権限がありません';
+
+  @override
+  String get previewSaveFailed => '保存に失敗しました';
+
+  @override
+  String get previewImageFailed => '画像を表示できません';
+
+  @override
+  String get previewPdfFailed => 'PDFを表示できません';
+
+  @override
+  String get previewVideoFailed => '動画を再生できません';
+
+  @override
+  String get previewAudioFailed => '音声を再生できません';
+
+  @override
+  String get previewUnsupported => 'このファイル形式はプレビューに対応していません';
+
+  @override
+  String get securityTotpStatusFailed => 'TOTPの状態を取得できませんでした';
+
+  @override
+  String get securitySetupFailed => '設定に失敗しました。もう一度お試しください';
+
+  @override
+  String get security2faEnabled => '二段階認証を有効にしました';
+
+  @override
+  String get security2faDisabled => '二段階認証を無効にしました';
+
+  @override
+  String get securityRecoveryRegenerated => 'リカバリーコードを再生成しました';
+
+  @override
+  String get shareDeleteLinkFailed => 'リンクの削除に失敗しました';
+
+  @override
+  String shareCreateLinkFailed(String error) {
+    return 'リンクの作成に失敗しました: $error';
+  }
+
+  @override
+  String get loginSubtitle => 'ワークスペースに戻るにはアカウント情報を入力してください';
+
+  @override
+  String get loginUsernameRequired => 'ユーザー名を入力してください';
+
+  @override
+  String get loginPasswordRequired => 'パスワードを入力してください';
+
+  @override
+  String get totpInvalidCode => '認証コードが正しくありません';
+
+  @override
+  String get totpAuthError => '認証中にエラーが発生しました';
+
+  @override
+  String get securityInvalidCode => 'コードが正しくありません';
+
+  @override
+  String get securitySectionTitle => '二段階認証 (TOTP)';
+
+  @override
+  String get securitySectionDesc =>
+      'Google Authenticator などの認証アプリでセキュリティを強化します';
+
+  @override
+  String get securityStatusEnabled => '有効';
+
+  @override
+  String get securityStatusDisabled => '無効';
+
+  @override
+  String get securityStep1 => 'ステップ1. QRコードをスキャン';
+
+  @override
+  String get securityStep2 => 'ステップ2. リカバリーコードを保存';
+
+  @override
+  String get securityStep3 => 'ステップ3. 認証コードを入力';
+
+  @override
+  String get serverInvalidFormat => '形式が正しくありません';
+
+  @override
+  String get serverPortRequired => 'ポート番号が必要です (例: 192.168.1.10:8000)';
+
+  @override
+  String get serverPortNumeric => 'ポート番号は数値である必要があります';
+
+  @override
+  String get serverPortRange => 'ポートは1〜65535の範囲である必要があります';
+
+  @override
+  String get serverAddressDesc => '接続するサーバーのホストとポートを入力してください。';
+
+  @override
+  String get shareUnknownError => '不明なエラーが発生しました';
+
+  @override
+  String get shareCreateLinkTitle => '共有リンクを作成';
+
+  @override
+  String get navFoldersHeader => 'フォルダー';
+
+  @override
+  String get storageSectionLabel => 'ストレージ';
+
+  @override
+  String get uploadWaiting => '待機中';
+
+  @override
+  String get uploadDropHere => 'ここにファイルをドロップ';
+
+  @override
+  String selectedCount(int count) {
+    return '$count件選択中';
+  }
+
+  @override
+  String bulkDeleted(int count) {
+    return '$count件を削除しました';
+  }
+
+  @override
+  String bulkDeletePartial(int done, int total) {
+    return '一部の項目を削除できませんでした ($done/$total)';
+  }
+
+  @override
+  String get relativeJustNow => 'たった今';
+
+  @override
+  String relativeMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count分前',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count時間前',
+    );
+    return '$_temp0';
+  }
 }

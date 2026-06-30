@@ -358,4 +358,582 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cancel => 'Cancel';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get commonSaved => 'Saved';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get commonConfirm => 'Confirm';
+
+  @override
+  String get commonOk => 'OK';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get commonCopy => 'Copy';
+
+  @override
+  String get commonCopied => 'Copied';
+
+  @override
+  String get commonDownload => 'Download';
+
+  @override
+  String get commonRename => 'Rename';
+
+  @override
+  String get commonShare => 'Share';
+
+  @override
+  String get commonCreate => 'Create';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get commonPassword => 'Password';
+
+  @override
+  String get commonUsername => 'Username';
+
+  @override
+  String get commonSearch => 'Search';
+
+  @override
+  String get loginSignIn => 'Sign In';
+
+  @override
+  String get totpTitle => 'Two-Factor Authentication';
+
+  @override
+  String get totpCodeLabel => 'Authentication code';
+
+  @override
+  String get totpVerify => 'Verify';
+
+  @override
+  String get storageNotFound => 'Storage not found.';
+
+  @override
+  String get listEmptyNoStorages => 'No storages';
+
+  @override
+  String get listLoadFailed => 'Failed to load list';
+
+  @override
+  String get noteNew => 'New Note';
+
+  @override
+  String get noteName => 'Note name';
+
+  @override
+  String get noteCreateNew => 'Create New Note';
+
+  @override
+  String get notesEmpty => 'No notes';
+
+  @override
+  String get folderNew => 'New Folder';
+
+  @override
+  String get folderName => 'Folder name';
+
+  @override
+  String get renameNewName => 'New name';
+
+  @override
+  String deleteConfirmName(String name) {
+    return 'Delete \'$name\'?';
+  }
+
+  @override
+  String get bulkDeleteTitle => 'Bulk Delete';
+
+  @override
+  String bulkDeleteConfirmCount(int count) {
+    return 'Delete $count items?';
+  }
+
+  @override
+  String get navSelectAll => 'Select all';
+
+  @override
+  String get navSelectionMode => 'Selection mode';
+
+  @override
+  String get navExitSearch => 'Exit search';
+
+  @override
+  String get navSearch => 'Search';
+
+  @override
+  String get navSearchHint => 'Search...';
+
+  @override
+  String get navLogout => 'Logout';
+
+  @override
+  String get navUploadFile => 'Upload File';
+
+  @override
+  String get navManageShareLinks => 'Manage Share Links';
+
+  @override
+  String get navSecuritySettings => 'Security Settings';
+
+  @override
+  String get navServerSettings => 'Server Settings';
+
+  @override
+  String get previewUnsavedChanges => 'You have unsaved changes.';
+
+  @override
+  String get previewDontSave => 'Don\'t Save';
+
+  @override
+  String get previewRewind10 => 'Rewind 10s';
+
+  @override
+  String get previewPause => 'Pause';
+
+  @override
+  String get previewPlay => 'Play';
+
+  @override
+  String get previewForward10 => 'Forward 10s';
+
+  @override
+  String get serverAddress => 'Server Address';
+
+  @override
+  String get serverAddressHint => 'e.g., 192.168.1.10:8000';
+
+  @override
+  String get serverTestConnection => 'Test Connection';
+
+  @override
+  String get securityEnable2fa => 'Enable Two-Step Authentication';
+
+  @override
+  String get securityScanQr =>
+      'Scan the QR code below with your authenticator app.';
+
+  @override
+  String get securityQrUnavailable => 'Unable to display QR image';
+
+  @override
+  String get securityRecoveryInfo =>
+      'If you lose access, recovery codes can help you regain account access.';
+
+  @override
+  String get securityAuthCode => 'Authentication Code';
+
+  @override
+  String get securityEnable => 'Enable';
+
+  @override
+  String get securityDisable2fa => 'Disable Two-Step Authentication';
+
+  @override
+  String get securityCurrentCode => 'Current Code';
+
+  @override
+  String get securityDisable => 'Disable';
+
+  @override
+  String get securityRegenRecovery => 'Regenerate Recovery Codes';
+
+  @override
+  String get securityRegenerate => 'Regenerate';
+
+  @override
+  String get securityNewRecoveryInfo =>
+      'New recovery codes. Store them in a safe place.';
+
+  @override
+  String get securityRecoveryCopied => 'Recovery codes copied';
+
+  @override
+  String get shareDeleteLinkTitle => 'Delete Share Link';
+
+  @override
+  String shareDeleteLinkBody(String name) {
+    return 'Delete link for $name?';
+  }
+
+  @override
+  String get shareNoLinks => 'No shared links';
+
+  @override
+  String get sharedFileTitle => 'Shared File';
+
+  @override
+  String get sharePasswordProtected => 'This link is password protected';
+
+  @override
+  String get shareLinkCopied => 'Link copied';
+
+  @override
+  String get shareCopyLink => 'Copy Link';
+
+  @override
+  String get shareFolderEmpty => 'Folder is empty';
+
+  @override
+  String get shareSetPassword => 'Set Password';
+
+  @override
+  String get shareEnterPassword => 'Enter password';
+
+  @override
+  String get shareCreateLink => 'Create Link';
+
+  @override
+  String get actionPreview => 'Preview';
+
+  @override
+  String get storageNone => 'No Storage';
+
+  @override
+  String get uploadClearAll => 'Clear All';
+
+  @override
+  String get vaultOffline => 'Offline';
+
+  @override
+  String get vaultSync => 'Sync';
+
+  @override
+  String get vaultLock => 'Lock';
+
+  @override
+  String get vaultUnlockTitle => 'Unlock vault';
+
+  @override
+  String get vaultUnlockDesc =>
+      'Open the vault with your login password. Your password never leaves this device.';
+
+  @override
+  String get vaultUnlock => 'Unlock';
+
+  @override
+  String get vaultEmpty => 'No saved entries';
+
+  @override
+  String get vaultCopyPassword => 'Copy password';
+
+  @override
+  String get vaultPasswordCopied => 'Password copied';
+
+  @override
+  String get vaultSaved => 'Saved';
+
+  @override
+  String get vaultSaveFailed => 'Failed to save';
+
+  @override
+  String get vaultDeleted => 'Deleted';
+
+  @override
+  String get vaultDeleteFailed => 'Failed to delete';
+
+  @override
+  String vaultDeleteConfirm(String title) {
+    return 'Delete entry \'$title\'?';
+  }
+
+  @override
+  String get vaultEntryNew => 'New entry';
+
+  @override
+  String get vaultEntryEdit => 'Edit entry';
+
+  @override
+  String get vaultFieldTitle => 'Title';
+
+  @override
+  String get vaultFieldCategory => 'Category';
+
+  @override
+  String get vaultFieldNotes => 'Notes';
+
+  @override
+  String get vaultCategoryWork => 'Work';
+
+  @override
+  String get vaultCategoryPersonal => 'Personal';
+
+  @override
+  String get vaultCategoryEntertainment => 'Entertainment';
+
+  @override
+  String get vaultMsgDecryptBanner =>
+      'Vault decryption failed. Make sure your login password is correct, then unlock again. (Protection: changes are not saved to the server in this state.)';
+
+  @override
+  String get vaultMsgDecryptBlockedSave =>
+      'Can\'t save while decryption has failed. Saving was blocked to avoid overwriting your existing vault — check your password and unlock again.';
+
+  @override
+  String get vaultMsgOfflineMode =>
+      'Offline mode: showing the vault stored on this device. It will sync when you\'re back online.';
+
+  @override
+  String get vaultMsgOfflineSaved =>
+      'Offline: changes were saved only on this device. They\'ll sync with the server when you\'re back online.';
+
+  @override
+  String get vaultMsgSessionExpired =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String get vaultMsgSyncFailed => 'Failed to sync the vault.';
+
+  @override
+  String get fileDownloadFailed => 'Download failed';
+
+  @override
+  String get fileDownloadComplete => 'Download complete';
+
+  @override
+  String get fileRenamed => 'Renamed';
+
+  @override
+  String get fileNameExists => 'A file with this name already exists';
+
+  @override
+  String get fileRenameFailed => 'Failed to rename';
+
+  @override
+  String get fileDeleted => 'Deleted';
+
+  @override
+  String get itemNotFound => 'Item not found';
+
+  @override
+  String get fileDeleteFailed => 'Failed to delete';
+
+  @override
+  String get noteNameExists => 'A note with this name already exists';
+
+  @override
+  String get noteCreateFailed => 'Failed to create note';
+
+  @override
+  String get searchNoResults => 'No search results';
+
+  @override
+  String get filesEmpty => 'No files';
+
+  @override
+  String get folderCreated => 'Folder created';
+
+  @override
+  String get folderCreateFailed => 'Failed to create folder';
+
+  @override
+  String get viewGrid => 'Grid view';
+
+  @override
+  String get viewList => 'List view';
+
+  @override
+  String get totpEnterRecoveryCodeError => 'Enter 8-character recovery code';
+
+  @override
+  String get totpEnterCodeError => 'Enter 6-digit code';
+
+  @override
+  String get totpRecoveryPrompt => 'Enter your recovery code';
+
+  @override
+  String get totpCodePrompt => 'Enter 6-digit code from your authenticator app';
+
+  @override
+  String get totpUseAuthCode => 'Use authentication code';
+
+  @override
+  String get totpUseRecovery => 'Use recovery code';
+
+  @override
+  String get previewFileNotFound => 'File not found';
+
+  @override
+  String get previewAccessDenied => 'Access denied';
+
+  @override
+  String get previewLoadFailed => 'Unable to load file';
+
+  @override
+  String get previewSaveNoPermission => 'No permission to save';
+
+  @override
+  String get previewSaveFailed => 'Save failed';
+
+  @override
+  String get previewImageFailed => 'Unable to display image';
+
+  @override
+  String get previewPdfFailed => 'Unable to display PDF';
+
+  @override
+  String get previewVideoFailed => 'Unable to play video';
+
+  @override
+  String get previewAudioFailed => 'Unable to play audio';
+
+  @override
+  String get previewUnsupported =>
+      'This file type is not supported for preview';
+
+  @override
+  String get securityTotpStatusFailed => 'Failed to retrieve TOTP status';
+
+  @override
+  String get securitySetupFailed => 'Setup failed. Please try again';
+
+  @override
+  String get security2faEnabled => 'Two-step authentication has been enabled';
+
+  @override
+  String get security2faDisabled => 'Two-step authentication has been disabled';
+
+  @override
+  String get securityRecoveryRegenerated =>
+      'Recovery codes have been regenerated';
+
+  @override
+  String get shareDeleteLinkFailed => 'Failed to delete link';
+
+  @override
+  String shareCreateLinkFailed(String error) {
+    return 'Failed to create link: $error';
+  }
+
+  @override
+  String get loginSubtitle =>
+      'Enter your account information to return to your workspace';
+
+  @override
+  String get loginUsernameRequired => 'Please enter your username';
+
+  @override
+  String get loginPasswordRequired => 'Please enter your password';
+
+  @override
+  String get totpInvalidCode => 'Invalid authentication code';
+
+  @override
+  String get totpAuthError => 'Authentication error occurred';
+
+  @override
+  String get securityInvalidCode => 'Invalid code';
+
+  @override
+  String get securitySectionTitle => 'Two-Step Authentication (TOTP)';
+
+  @override
+  String get securitySectionDesc =>
+      'Extra security using authenticator apps like Google Authenticator';
+
+  @override
+  String get securityStatusEnabled => 'Enabled';
+
+  @override
+  String get securityStatusDisabled => 'Disabled';
+
+  @override
+  String get securityStep1 => 'Step 1. Scan QR Code';
+
+  @override
+  String get securityStep2 => 'Step 2. Save Recovery Codes';
+
+  @override
+  String get securityStep3 => 'Step 3. Enter Authentication Code';
+
+  @override
+  String get serverInvalidFormat => 'Invalid format';
+
+  @override
+  String get serverPortRequired =>
+      'Port number is required (e.g., 192.168.1.10:8000)';
+
+  @override
+  String get serverPortNumeric => 'Port number must be numeric';
+
+  @override
+  String get serverPortRange => 'Port must be between 1 and 65535';
+
+  @override
+  String get serverAddressDesc =>
+      'Enter the host and port of the server to connect to.';
+
+  @override
+  String get shareUnknownError => 'An unknown error occurred';
+
+  @override
+  String get shareCreateLinkTitle => 'Create Share Link';
+
+  @override
+  String get navFoldersHeader => 'Folders';
+
+  @override
+  String get storageSectionLabel => 'Storage';
+
+  @override
+  String get uploadWaiting => 'Waiting';
+
+  @override
+  String get uploadDropHere => 'Drop files here';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String bulkDeleted(int count) {
+    return '$count items deleted';
+  }
+
+  @override
+  String bulkDeletePartial(int done, int total) {
+    return 'Some items failed to delete ($done/$total)';
+  }
+
+  @override
+  String get relativeJustNow => 'Just now';
+
+  @override
+  String relativeMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes ago',
+      one: '1 minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours ago',
+      one: '1 hour ago',
+    );
+    return '$_temp0';
+  }
 }

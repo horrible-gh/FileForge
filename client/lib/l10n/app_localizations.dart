@@ -735,6 +735,1068 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get cancel;
+
+  /// No description provided for @commonSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get commonSave;
+
+  /// No description provided for @commonSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get commonSaved;
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get commonDelete;
+
+  /// No description provided for @commonConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get commonConfirm;
+
+  /// No description provided for @commonOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get commonOk;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
+  /// No description provided for @commonCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get commonCopy;
+
+  /// No description provided for @commonCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get commonCopied;
+
+  /// No description provided for @commonDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get commonDownload;
+
+  /// No description provided for @commonRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get commonRename;
+
+  /// No description provided for @commonShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get commonShare;
+
+  /// No description provided for @commonCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get commonCreate;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetry;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commonEdit;
+
+  /// No description provided for @commonPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get commonPassword;
+
+  /// No description provided for @commonUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get commonUsername;
+
+  /// No description provided for @commonSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get commonSearch;
+
+  /// No description provided for @loginSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign In'**
+  String get loginSignIn;
+
+  /// No description provided for @totpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-Factor Authentication'**
+  String get totpTitle;
+
+  /// No description provided for @totpCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication code'**
+  String get totpCodeLabel;
+
+  /// No description provided for @totpVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get totpVerify;
+
+  /// No description provided for @storageNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage not found.'**
+  String get storageNotFound;
+
+  /// No description provided for @listEmptyNoStorages.
+  ///
+  /// In en, this message translates to:
+  /// **'No storages'**
+  String get listEmptyNoStorages;
+
+  /// No description provided for @listLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load list'**
+  String get listLoadFailed;
+
+  /// No description provided for @noteNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New Note'**
+  String get noteNew;
+
+  /// No description provided for @noteName.
+  ///
+  /// In en, this message translates to:
+  /// **'Note name'**
+  String get noteName;
+
+  /// No description provided for @noteCreateNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create New Note'**
+  String get noteCreateNew;
+
+  /// No description provided for @notesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No notes'**
+  String get notesEmpty;
+
+  /// No description provided for @folderNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New Folder'**
+  String get folderNew;
+
+  /// No description provided for @folderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder name'**
+  String get folderName;
+
+  /// No description provided for @renameNewName.
+  ///
+  /// In en, this message translates to:
+  /// **'New name'**
+  String get renameNewName;
+
+  /// Confirm dialog body when deleting a single named item.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \'{name}\'?'**
+  String deleteConfirmName(String name);
+
+  /// No description provided for @bulkDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk Delete'**
+  String get bulkDeleteTitle;
+
+  /// Confirm dialog body when deleting multiple items.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} items?'**
+  String bulkDeleteConfirmCount(int count);
+
+  /// No description provided for @navSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get navSelectAll;
+
+  /// No description provided for @navSelectionMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Selection mode'**
+  String get navSelectionMode;
+
+  /// No description provided for @navExitSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit search'**
+  String get navExitSearch;
+
+  /// No description provided for @navSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get navSearch;
+
+  /// No description provided for @navSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search...'**
+  String get navSearchHint;
+
+  /// No description provided for @navLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get navLogout;
+
+  /// No description provided for @navUploadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload File'**
+  String get navUploadFile;
+
+  /// No description provided for @navManageShareLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Share Links'**
+  String get navManageShareLinks;
+
+  /// No description provided for @navSecuritySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Security Settings'**
+  String get navSecuritySettings;
+
+  /// No description provided for @navServerSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Server Settings'**
+  String get navServerSettings;
+
+  /// No description provided for @previewUnsavedChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'You have unsaved changes.'**
+  String get previewUnsavedChanges;
+
+  /// No description provided for @previewDontSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t Save'**
+  String get previewDontSave;
+
+  /// No description provided for @previewRewind10.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewind 10s'**
+  String get previewRewind10;
+
+  /// No description provided for @previewPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get previewPause;
+
+  /// No description provided for @previewPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get previewPlay;
+
+  /// No description provided for @previewForward10.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward 10s'**
+  String get previewForward10;
+
+  /// No description provided for @serverAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Server Address'**
+  String get serverAddress;
+
+  /// No description provided for @serverAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., 192.168.1.10:8000'**
+  String get serverAddressHint;
+
+  /// No description provided for @serverTestConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Test Connection'**
+  String get serverTestConnection;
+
+  /// No description provided for @securityEnable2fa.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Two-Step Authentication'**
+  String get securityEnable2fa;
+
+  /// No description provided for @securityScanQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR code below with your authenticator app.'**
+  String get securityScanQr;
+
+  /// No description provided for @securityQrUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to display QR image'**
+  String get securityQrUnavailable;
+
+  /// No description provided for @securityRecoveryInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'If you lose access, recovery codes can help you regain account access.'**
+  String get securityRecoveryInfo;
+
+  /// No description provided for @securityAuthCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication Code'**
+  String get securityAuthCode;
+
+  /// No description provided for @securityEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get securityEnable;
+
+  /// No description provided for @securityDisable2fa.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable Two-Step Authentication'**
+  String get securityDisable2fa;
+
+  /// No description provided for @securityCurrentCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Code'**
+  String get securityCurrentCode;
+
+  /// No description provided for @securityDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get securityDisable;
+
+  /// No description provided for @securityRegenRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate Recovery Codes'**
+  String get securityRegenRecovery;
+
+  /// No description provided for @securityRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Regenerate'**
+  String get securityRegenerate;
+
+  /// No description provided for @securityNewRecoveryInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'New recovery codes. Store them in a safe place.'**
+  String get securityNewRecoveryInfo;
+
+  /// No description provided for @securityRecoveryCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery codes copied'**
+  String get securityRecoveryCopied;
+
+  /// No description provided for @shareDeleteLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Share Link'**
+  String get shareDeleteLinkTitle;
+
+  /// Confirm dialog body when deleting a share link for a node.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete link for {name}?'**
+  String shareDeleteLinkBody(String name);
+
+  /// No description provided for @shareNoLinks.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared links'**
+  String get shareNoLinks;
+
+  /// No description provided for @sharedFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared File'**
+  String get sharedFileTitle;
+
+  /// No description provided for @sharePasswordProtected.
+  ///
+  /// In en, this message translates to:
+  /// **'This link is password protected'**
+  String get sharePasswordProtected;
+
+  /// No description provided for @shareLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get shareLinkCopied;
+
+  /// No description provided for @shareCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Link'**
+  String get shareCopyLink;
+
+  /// No description provided for @shareFolderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder is empty'**
+  String get shareFolderEmpty;
+
+  /// No description provided for @shareSetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Password'**
+  String get shareSetPassword;
+
+  /// No description provided for @shareEnterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password'**
+  String get shareEnterPassword;
+
+  /// No description provided for @shareCreateLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Link'**
+  String get shareCreateLink;
+
+  /// No description provided for @actionPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get actionPreview;
+
+  /// No description provided for @storageNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No Storage'**
+  String get storageNone;
+
+  /// No description provided for @uploadClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear All'**
+  String get uploadClearAll;
+
+  /// No description provided for @vaultOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get vaultOffline;
+
+  /// No description provided for @vaultSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get vaultSync;
+
+  /// No description provided for @vaultLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get vaultLock;
+
+  /// No description provided for @vaultUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock vault'**
+  String get vaultUnlockTitle;
+
+  /// No description provided for @vaultUnlockDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the vault with your login password. Your password never leaves this device.'**
+  String get vaultUnlockDesc;
+
+  /// No description provided for @vaultUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get vaultUnlock;
+
+  /// No description provided for @vaultEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved entries'**
+  String get vaultEmpty;
+
+  /// No description provided for @vaultCopyPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy password'**
+  String get vaultCopyPassword;
+
+  /// No description provided for @vaultPasswordCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Password copied'**
+  String get vaultPasswordCopied;
+
+  /// No description provided for @vaultSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get vaultSaved;
+
+  /// No description provided for @vaultSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save'**
+  String get vaultSaveFailed;
+
+  /// No description provided for @vaultDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted'**
+  String get vaultDeleted;
+
+  /// No description provided for @vaultDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete'**
+  String get vaultDeleteFailed;
+
+  /// Confirm dialog body when deleting a vault password entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete entry \'{title}\'?'**
+  String vaultDeleteConfirm(String title);
+
+  /// No description provided for @vaultEntryNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get vaultEntryNew;
+
+  /// No description provided for @vaultEntryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit entry'**
+  String get vaultEntryEdit;
+
+  /// No description provided for @vaultFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get vaultFieldTitle;
+
+  /// No description provided for @vaultFieldCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get vaultFieldCategory;
+
+  /// No description provided for @vaultFieldNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get vaultFieldNotes;
+
+  /// No description provided for @vaultCategoryWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get vaultCategoryWork;
+
+  /// No description provided for @vaultCategoryPersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal'**
+  String get vaultCategoryPersonal;
+
+  /// No description provided for @vaultCategoryEntertainment.
+  ///
+  /// In en, this message translates to:
+  /// **'Entertainment'**
+  String get vaultCategoryEntertainment;
+
+  /// No description provided for @vaultMsgDecryptBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault decryption failed. Make sure your login password is correct, then unlock again. (Protection: changes are not saved to the server in this state.)'**
+  String get vaultMsgDecryptBanner;
+
+  /// No description provided for @vaultMsgDecryptBlockedSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t save while decryption has failed. Saving was blocked to avoid overwriting your existing vault — check your password and unlock again.'**
+  String get vaultMsgDecryptBlockedSave;
+
+  /// No description provided for @vaultMsgOfflineMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline mode: showing the vault stored on this device. It will sync when you\'re back online.'**
+  String get vaultMsgOfflineMode;
+
+  /// No description provided for @vaultMsgOfflineSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline: changes were saved only on this device. They\'ll sync with the server when you\'re back online.'**
+  String get vaultMsgOfflineSaved;
+
+  /// No description provided for @vaultMsgSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again.'**
+  String get vaultMsgSessionExpired;
+
+  /// No description provided for @vaultMsgSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to sync the vault.'**
+  String get vaultMsgSyncFailed;
+
+  /// No description provided for @fileDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed'**
+  String get fileDownloadFailed;
+
+  /// No description provided for @fileDownloadComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Download complete'**
+  String get fileDownloadComplete;
+
+  /// No description provided for @fileRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed'**
+  String get fileRenamed;
+
+  /// No description provided for @fileNameExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A file with this name already exists'**
+  String get fileNameExists;
+
+  /// No description provided for @fileRenameFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename'**
+  String get fileRenameFailed;
+
+  /// No description provided for @fileDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted'**
+  String get fileDeleted;
+
+  /// No description provided for @itemNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Item not found'**
+  String get itemNotFound;
+
+  /// No description provided for @fileDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete'**
+  String get fileDeleteFailed;
+
+  /// No description provided for @noteNameExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A note with this name already exists'**
+  String get noteNameExists;
+
+  /// No description provided for @noteCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create note'**
+  String get noteCreateFailed;
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No search results'**
+  String get searchNoResults;
+
+  /// No description provided for @filesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No files'**
+  String get filesEmpty;
+
+  /// No description provided for @folderCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder created'**
+  String get folderCreated;
+
+  /// No description provided for @folderCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create folder'**
+  String get folderCreateFailed;
+
+  /// No description provided for @viewGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid view'**
+  String get viewGrid;
+
+  /// No description provided for @viewList.
+  ///
+  /// In en, this message translates to:
+  /// **'List view'**
+  String get viewList;
+
+  /// No description provided for @totpEnterRecoveryCodeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 8-character recovery code'**
+  String get totpEnterRecoveryCodeError;
+
+  /// No description provided for @totpEnterCodeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 6-digit code'**
+  String get totpEnterCodeError;
+
+  /// No description provided for @totpRecoveryPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your recovery code'**
+  String get totpRecoveryPrompt;
+
+  /// No description provided for @totpCodePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 6-digit code from your authenticator app'**
+  String get totpCodePrompt;
+
+  /// No description provided for @totpUseAuthCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Use authentication code'**
+  String get totpUseAuthCode;
+
+  /// No description provided for @totpUseRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Use recovery code'**
+  String get totpUseRecovery;
+
+  /// No description provided for @previewFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'File not found'**
+  String get previewFileNotFound;
+
+  /// No description provided for @previewAccessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Access denied'**
+  String get previewAccessDenied;
+
+  /// No description provided for @previewLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load file'**
+  String get previewLoadFailed;
+
+  /// No description provided for @previewSaveNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'No permission to save'**
+  String get previewSaveNoPermission;
+
+  /// No description provided for @previewSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Save failed'**
+  String get previewSaveFailed;
+
+  /// No description provided for @previewImageFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to display image'**
+  String get previewImageFailed;
+
+  /// No description provided for @previewPdfFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to display PDF'**
+  String get previewPdfFailed;
+
+  /// No description provided for @previewVideoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to play video'**
+  String get previewVideoFailed;
+
+  /// No description provided for @previewAudioFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to play audio'**
+  String get previewAudioFailed;
+
+  /// No description provided for @previewUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This file type is not supported for preview'**
+  String get previewUnsupported;
+
+  /// No description provided for @securityTotpStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retrieve TOTP status'**
+  String get securityTotpStatusFailed;
+
+  /// No description provided for @securitySetupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup failed. Please try again'**
+  String get securitySetupFailed;
+
+  /// No description provided for @security2faEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-step authentication has been enabled'**
+  String get security2faEnabled;
+
+  /// No description provided for @security2faDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-step authentication has been disabled'**
+  String get security2faDisabled;
+
+  /// No description provided for @securityRecoveryRegenerated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery codes have been regenerated'**
+  String get securityRecoveryRegenerated;
+
+  /// No description provided for @shareDeleteLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete link'**
+  String get shareDeleteLinkFailed;
+
+  /// Toast shown when creating a share link fails; error is the server message.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create link: {error}'**
+  String shareCreateLinkFailed(String error);
+
+  /// No description provided for @loginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your account information to return to your workspace'**
+  String get loginSubtitle;
+
+  /// No description provided for @loginUsernameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your username'**
+  String get loginUsernameRequired;
+
+  /// No description provided for @loginPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your password'**
+  String get loginPasswordRequired;
+
+  /// No description provided for @totpInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid authentication code'**
+  String get totpInvalidCode;
+
+  /// No description provided for @totpAuthError.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication error occurred'**
+  String get totpAuthError;
+
+  /// No description provided for @securityInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid code'**
+  String get securityInvalidCode;
+
+  /// No description provided for @securitySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-Step Authentication (TOTP)'**
+  String get securitySectionTitle;
+
+  /// No description provided for @securitySectionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra security using authenticator apps like Google Authenticator'**
+  String get securitySectionDesc;
+
+  /// No description provided for @securityStatusEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get securityStatusEnabled;
+
+  /// No description provided for @securityStatusDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get securityStatusDisabled;
+
+  /// No description provided for @securityStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 1. Scan QR Code'**
+  String get securityStep1;
+
+  /// No description provided for @securityStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 2. Save Recovery Codes'**
+  String get securityStep2;
+
+  /// No description provided for @securityStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 3. Enter Authentication Code'**
+  String get securityStep3;
+
+  /// No description provided for @serverInvalidFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid format'**
+  String get serverInvalidFormat;
+
+  /// No description provided for @serverPortRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Port number is required (e.g., 192.168.1.10:8000)'**
+  String get serverPortRequired;
+
+  /// No description provided for @serverPortNumeric.
+  ///
+  /// In en, this message translates to:
+  /// **'Port number must be numeric'**
+  String get serverPortNumeric;
+
+  /// No description provided for @serverPortRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Port must be between 1 and 65535'**
+  String get serverPortRange;
+
+  /// No description provided for @serverAddressDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the host and port of the server to connect to.'**
+  String get serverAddressDesc;
+
+  /// No description provided for @shareUnknownError.
+  ///
+  /// In en, this message translates to:
+  /// **'An unknown error occurred'**
+  String get shareUnknownError;
+
+  /// No description provided for @shareCreateLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Share Link'**
+  String get shareCreateLinkTitle;
+
+  /// No description provided for @navFoldersHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get navFoldersHeader;
+
+  /// No description provided for @storageSectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get storageSectionLabel;
+
+  /// No description provided for @uploadWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get uploadWaiting;
+
+  /// No description provided for @uploadDropHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop files here'**
+  String get uploadDropHere;
+
+  /// App bar title showing how many items are selected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(int count);
+
+  /// Toast after a bulk delete completes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items deleted'**
+  String bulkDeleted(int count);
+
+  /// Toast when only some of a bulk delete succeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Some items failed to delete ({done}/{total})'**
+  String bulkDeletePartial(int done, int total);
+
+  /// No description provided for @relativeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get relativeJustNow;
+
+  /// Relative time, minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String relativeMinutesAgo(int count);
+
+  /// Relative time, hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String relativeHoursAgo(int count);
 }
 
 class _AppLocalizationsDelegate

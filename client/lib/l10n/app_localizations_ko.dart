@@ -355,4 +355,569 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cancel => '취소';
+
+  @override
+  String get commonSave => '저장';
+
+  @override
+  String get commonSaved => '저장되었습니다';
+
+  @override
+  String get commonDelete => '삭제';
+
+  @override
+  String get commonConfirm => '확인';
+
+  @override
+  String get commonOk => '확인';
+
+  @override
+  String get commonClose => '닫기';
+
+  @override
+  String get commonCopy => '복사';
+
+  @override
+  String get commonCopied => '복사됨';
+
+  @override
+  String get commonDownload => '다운로드';
+
+  @override
+  String get commonRename => '이름 변경';
+
+  @override
+  String get commonShare => '공유';
+
+  @override
+  String get commonCreate => '만들기';
+
+  @override
+  String get commonRetry => '다시 시도';
+
+  @override
+  String get commonEdit => '편집';
+
+  @override
+  String get commonPassword => '비밀번호';
+
+  @override
+  String get commonUsername => '사용자명';
+
+  @override
+  String get commonSearch => '검색';
+
+  @override
+  String get loginSignIn => '로그인';
+
+  @override
+  String get totpTitle => '2단계 인증';
+
+  @override
+  String get totpCodeLabel => '인증 코드';
+
+  @override
+  String get totpVerify => '확인';
+
+  @override
+  String get storageNotFound => '스토리지를 찾을 수 없습니다.';
+
+  @override
+  String get listEmptyNoStorages => '스토리지가 없습니다';
+
+  @override
+  String get listLoadFailed => '목록을 불러오지 못했습니다';
+
+  @override
+  String get noteNew => '새 노트';
+
+  @override
+  String get noteName => '노트 이름';
+
+  @override
+  String get noteCreateNew => '새 노트 만들기';
+
+  @override
+  String get notesEmpty => '노트가 없습니다';
+
+  @override
+  String get folderNew => '새 폴더';
+
+  @override
+  String get folderName => '폴더 이름';
+
+  @override
+  String get renameNewName => '새 이름';
+
+  @override
+  String deleteConfirmName(String name) {
+    return '\'$name\'을(를) 삭제할까요?';
+  }
+
+  @override
+  String get bulkDeleteTitle => '일괄 삭제';
+
+  @override
+  String bulkDeleteConfirmCount(int count) {
+    return '$count개 항목을 삭제할까요?';
+  }
+
+  @override
+  String get navSelectAll => '전체 선택';
+
+  @override
+  String get navSelectionMode => '선택 모드';
+
+  @override
+  String get navExitSearch => '검색 종료';
+
+  @override
+  String get navSearch => '검색';
+
+  @override
+  String get navSearchHint => '검색...';
+
+  @override
+  String get navLogout => '로그아웃';
+
+  @override
+  String get navUploadFile => '파일 업로드';
+
+  @override
+  String get navManageShareLinks => '공유 링크 관리';
+
+  @override
+  String get navSecuritySettings => '보안 설정';
+
+  @override
+  String get navServerSettings => '서버 설정';
+
+  @override
+  String get previewUnsavedChanges => '저장하지 않은 변경 사항이 있습니다.';
+
+  @override
+  String get previewDontSave => '저장 안 함';
+
+  @override
+  String get previewRewind10 => '10초 뒤로';
+
+  @override
+  String get previewPause => '일시정지';
+
+  @override
+  String get previewPlay => '재생';
+
+  @override
+  String get previewForward10 => '10초 앞으로';
+
+  @override
+  String get serverAddress => '서버 주소';
+
+  @override
+  String get serverAddressHint => '예: 192.168.1.10:8000';
+
+  @override
+  String get serverTestConnection => '연결 테스트';
+
+  @override
+  String get securityEnable2fa => '2단계 인증 사용';
+
+  @override
+  String get securityScanQr => '인증 앱으로 아래 QR 코드를 스캔하세요.';
+
+  @override
+  String get securityQrUnavailable => 'QR 이미지를 표시할 수 없습니다';
+
+  @override
+  String get securityRecoveryInfo => '접근 권한을 잃었을 때 복구 코드로 계정에 다시 접근할 수 있습니다.';
+
+  @override
+  String get securityAuthCode => '인증 코드';
+
+  @override
+  String get securityEnable => '사용';
+
+  @override
+  String get securityDisable2fa => '2단계 인증 해제';
+
+  @override
+  String get securityCurrentCode => '현재 코드';
+
+  @override
+  String get securityDisable => '해제';
+
+  @override
+  String get securityRegenRecovery => '복구 코드 재생성';
+
+  @override
+  String get securityRegenerate => '재생성';
+
+  @override
+  String get securityNewRecoveryInfo => '새 복구 코드입니다. 안전한 곳에 보관하세요.';
+
+  @override
+  String get securityRecoveryCopied => '복구 코드를 복사했습니다';
+
+  @override
+  String get shareDeleteLinkTitle => '공유 링크 삭제';
+
+  @override
+  String shareDeleteLinkBody(String name) {
+    return '$name의 링크를 삭제할까요?';
+  }
+
+  @override
+  String get shareNoLinks => '공유된 링크가 없습니다';
+
+  @override
+  String get sharedFileTitle => '공유된 파일';
+
+  @override
+  String get sharePasswordProtected => '이 링크는 비밀번호로 보호되어 있습니다';
+
+  @override
+  String get shareLinkCopied => '링크를 복사했습니다';
+
+  @override
+  String get shareCopyLink => '링크 복사';
+
+  @override
+  String get shareFolderEmpty => '폴더가 비어 있습니다';
+
+  @override
+  String get shareSetPassword => '비밀번호 설정';
+
+  @override
+  String get shareEnterPassword => '비밀번호 입력';
+
+  @override
+  String get shareCreateLink => '링크 만들기';
+
+  @override
+  String get actionPreview => '미리보기';
+
+  @override
+  String get storageNone => '스토리지 없음';
+
+  @override
+  String get uploadClearAll => '모두 지우기';
+
+  @override
+  String get vaultOffline => '오프라인';
+
+  @override
+  String get vaultSync => '동기화';
+
+  @override
+  String get vaultLock => '잠금';
+
+  @override
+  String get vaultUnlockTitle => '볼트 잠금 해제';
+
+  @override
+  String get vaultUnlockDesc => '로그인 비밀번호로 볼트를 엽니다. 비밀번호는 기기 밖으로 나가지 않습니다.';
+
+  @override
+  String get vaultUnlock => '잠금 해제';
+
+  @override
+  String get vaultEmpty => '저장된 항목이 없습니다';
+
+  @override
+  String get vaultCopyPassword => '비밀번호 복사';
+
+  @override
+  String get vaultPasswordCopied => '비밀번호를 복사했습니다';
+
+  @override
+  String get vaultSaved => '저장되었습니다';
+
+  @override
+  String get vaultSaveFailed => '저장에 실패했습니다';
+
+  @override
+  String get vaultDeleted => '삭제되었습니다';
+
+  @override
+  String get vaultDeleteFailed => '삭제에 실패했습니다';
+
+  @override
+  String vaultDeleteConfirm(String title) {
+    return '\'$title\' 항목을 삭제할까요?';
+  }
+
+  @override
+  String get vaultEntryNew => '새 항목';
+
+  @override
+  String get vaultEntryEdit => '항목 편집';
+
+  @override
+  String get vaultFieldTitle => '제목';
+
+  @override
+  String get vaultFieldCategory => '분류';
+
+  @override
+  String get vaultFieldNotes => '메모';
+
+  @override
+  String get vaultCategoryWork => '업무';
+
+  @override
+  String get vaultCategoryPersonal => '개인';
+
+  @override
+  String get vaultCategoryEntertainment => '엔터테인먼트';
+
+  @override
+  String get vaultMsgDecryptBanner =>
+      '볼트 복호화에 실패했습니다. 로그인 비밀번호가 올바른지 확인한 뒤 다시 잠금 해제하세요. (보호: 이 상태에서는 변경 사항을 서버에 저장하지 않습니다)';
+
+  @override
+  String get vaultMsgDecryptBlockedSave =>
+      '복호화 실패 상태에서는 저장할 수 없습니다. 기존 볼트를 덮어쓰지 않도록 막았습니다 — 비밀번호를 확인해 다시 잠금 해제하세요.';
+
+  @override
+  String get vaultMsgOfflineMode =>
+      '오프라인 모드: 기기에 저장된 볼트를 표시합니다. 온라인이 되면 동기화됩니다.';
+
+  @override
+  String get vaultMsgOfflineSaved =>
+      '오프라인: 변경 사항을 기기에만 저장했습니다. 온라인이 되면 서버와 동기화됩니다.';
+
+  @override
+  String get vaultMsgSessionExpired => '세션이 만료되었습니다. 다시 로그인해 주세요.';
+
+  @override
+  String get vaultMsgSyncFailed => '볼트 동기화에 실패했습니다.';
+
+  @override
+  String get fileDownloadFailed => '다운로드에 실패했습니다';
+
+  @override
+  String get fileDownloadComplete => '다운로드 완료';
+
+  @override
+  String get fileRenamed => '이름을 변경했습니다';
+
+  @override
+  String get fileNameExists => '같은 이름의 파일이 이미 있습니다';
+
+  @override
+  String get fileRenameFailed => '이름 변경에 실패했습니다';
+
+  @override
+  String get fileDeleted => '삭제되었습니다';
+
+  @override
+  String get itemNotFound => '항목을 찾을 수 없습니다';
+
+  @override
+  String get fileDeleteFailed => '삭제에 실패했습니다';
+
+  @override
+  String get noteNameExists => '같은 이름의 노트가 이미 있습니다';
+
+  @override
+  String get noteCreateFailed => '노트 생성에 실패했습니다';
+
+  @override
+  String get searchNoResults => '검색 결과가 없습니다';
+
+  @override
+  String get filesEmpty => '파일이 없습니다';
+
+  @override
+  String get folderCreated => '폴더를 만들었습니다';
+
+  @override
+  String get folderCreateFailed => '폴더 생성에 실패했습니다';
+
+  @override
+  String get viewGrid => '그리드 보기';
+
+  @override
+  String get viewList => '목록 보기';
+
+  @override
+  String get totpEnterRecoveryCodeError => '8자리 복구 코드를 입력하세요';
+
+  @override
+  String get totpEnterCodeError => '6자리 코드를 입력하세요';
+
+  @override
+  String get totpRecoveryPrompt => '복구 코드를 입력하세요';
+
+  @override
+  String get totpCodePrompt => '인증 앱의 6자리 코드를 입력하세요';
+
+  @override
+  String get totpUseAuthCode => '인증 코드 사용';
+
+  @override
+  String get totpUseRecovery => '복구 코드 사용';
+
+  @override
+  String get previewFileNotFound => '파일을 찾을 수 없습니다';
+
+  @override
+  String get previewAccessDenied => '접근이 거부되었습니다';
+
+  @override
+  String get previewLoadFailed => '파일을 불러올 수 없습니다';
+
+  @override
+  String get previewSaveNoPermission => '저장 권한이 없습니다';
+
+  @override
+  String get previewSaveFailed => '저장에 실패했습니다';
+
+  @override
+  String get previewImageFailed => '이미지를 표시할 수 없습니다';
+
+  @override
+  String get previewPdfFailed => 'PDF를 표시할 수 없습니다';
+
+  @override
+  String get previewVideoFailed => '동영상을 재생할 수 없습니다';
+
+  @override
+  String get previewAudioFailed => '오디오를 재생할 수 없습니다';
+
+  @override
+  String get previewUnsupported => '이 파일 형식은 미리보기를 지원하지 않습니다';
+
+  @override
+  String get securityTotpStatusFailed => 'TOTP 상태를 가져오지 못했습니다';
+
+  @override
+  String get securitySetupFailed => '설정에 실패했습니다. 다시 시도해 주세요';
+
+  @override
+  String get security2faEnabled => '2단계 인증을 사용 설정했습니다';
+
+  @override
+  String get security2faDisabled => '2단계 인증을 해제했습니다';
+
+  @override
+  String get securityRecoveryRegenerated => '복구 코드를 재생성했습니다';
+
+  @override
+  String get shareDeleteLinkFailed => '링크 삭제에 실패했습니다';
+
+  @override
+  String shareCreateLinkFailed(String error) {
+    return '링크 생성 실패: $error';
+  }
+
+  @override
+  String get loginSubtitle => '워크스페이스로 돌아가려면 계정 정보를 입력하세요';
+
+  @override
+  String get loginUsernameRequired => '사용자명을 입력하세요';
+
+  @override
+  String get loginPasswordRequired => '비밀번호를 입력하세요';
+
+  @override
+  String get totpInvalidCode => '인증 코드가 올바르지 않습니다';
+
+  @override
+  String get totpAuthError => '인증 중 오류가 발생했습니다';
+
+  @override
+  String get securityInvalidCode => '코드가 올바르지 않습니다';
+
+  @override
+  String get securitySectionTitle => '2단계 인증 (TOTP)';
+
+  @override
+  String get securitySectionDesc => 'Google Authenticator 같은 인증 앱으로 보안을 강화합니다';
+
+  @override
+  String get securityStatusEnabled => '사용 중';
+
+  @override
+  String get securityStatusDisabled => '사용 안 함';
+
+  @override
+  String get securityStep1 => '1단계. QR 코드 스캔';
+
+  @override
+  String get securityStep2 => '2단계. 복구 코드 저장';
+
+  @override
+  String get securityStep3 => '3단계. 인증 코드 입력';
+
+  @override
+  String get serverInvalidFormat => '형식이 올바르지 않습니다';
+
+  @override
+  String get serverPortRequired => '포트 번호가 필요합니다 (예: 192.168.1.10:8000)';
+
+  @override
+  String get serverPortNumeric => '포트 번호는 숫자여야 합니다';
+
+  @override
+  String get serverPortRange => '포트는 1에서 65535 사이여야 합니다';
+
+  @override
+  String get serverAddressDesc => '연결할 서버의 호스트와 포트를 입력하세요.';
+
+  @override
+  String get shareUnknownError => '알 수 없는 오류가 발생했습니다';
+
+  @override
+  String get shareCreateLinkTitle => '공유 링크 만들기';
+
+  @override
+  String get navFoldersHeader => '폴더';
+
+  @override
+  String get storageSectionLabel => '스토리지';
+
+  @override
+  String get uploadWaiting => '대기 중';
+
+  @override
+  String get uploadDropHere => '여기에 파일을 놓으세요';
+
+  @override
+  String selectedCount(int count) {
+    return '$count개 선택됨';
+  }
+
+  @override
+  String bulkDeleted(int count) {
+    return '$count개 항목을 삭제했습니다';
+  }
+
+  @override
+  String bulkDeletePartial(int done, int total) {
+    return '일부 항목을 삭제하지 못했습니다 ($done/$total)';
+  }
+
+  @override
+  String get relativeJustNow => '방금 전';
+
+  @override
+  String relativeMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count분 전',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String relativeHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count시간 전',
+    );
+    return '$_temp0';
+  }
 }

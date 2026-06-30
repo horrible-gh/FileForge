@@ -143,5 +143,246 @@
     "placeholders": { "email": { "type": "String" } }
   },
   "accountReauthAction": "Reconnect",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+
+  "commonSave": "Save",
+  "commonSaved": "Saved",
+  "commonDelete": "Delete",
+  "commonConfirm": "Confirm",
+  "commonOk": "OK",
+  "commonClose": "Close",
+  "commonCopy": "Copy",
+  "commonCopied": "Copied",
+  "commonDownload": "Download",
+  "commonRename": "Rename",
+  "commonShare": "Share",
+  "commonCreate": "Create",
+  "commonRetry": "Retry",
+  "commonEdit": "Edit",
+  "commonPassword": "Password",
+  "commonUsername": "Username",
+  "commonSearch": "Search",
+
+  "loginSignIn": "Sign In",
+
+  "totpTitle": "Two-Factor Authentication",
+  "totpCodeLabel": "Authentication code",
+  "totpVerify": "Verify",
+
+  "storageNotFound": "Storage not found.",
+  "listEmptyNoStorages": "No storages",
+  "listLoadFailed": "Failed to load list",
+  "noteNew": "New Note",
+  "noteName": "Note name",
+  "noteCreateNew": "Create New Note",
+  "notesEmpty": "No notes",
+  "folderNew": "New Folder",
+  "folderName": "Folder name",
+  "renameNewName": "New name",
+  "deleteConfirmName": "Delete '{name}'?",
+  "@deleteConfirmName": {
+    "description": "Confirm dialog body when deleting a single named item.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "bulkDeleteTitle": "Bulk Delete",
+  "bulkDeleteConfirmCount": "Delete {count} items?",
+  "@bulkDeleteConfirmCount": {
+    "description": "Confirm dialog body when deleting multiple items.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "navSelectAll": "Select all",
+  "navSelectionMode": "Selection mode",
+  "navExitSearch": "Exit search",
+  "navSearch": "Search",
+  "navSearchHint": "Search...",
+  "navLogout": "Logout",
+  "navUploadFile": "Upload File",
+  "navManageShareLinks": "Manage Share Links",
+  "navSecuritySettings": "Security Settings",
+  "navServerSettings": "Server Settings",
+
+  "previewUnsavedChanges": "You have unsaved changes.",
+  "previewDontSave": "Don't Save",
+  "previewRewind10": "Rewind 10s",
+  "previewPause": "Pause",
+  "previewPlay": "Play",
+  "previewForward10": "Forward 10s",
+
+  "serverAddress": "Server Address",
+  "serverAddressHint": "e.g., 192.168.1.10:8000",
+  "serverTestConnection": "Test Connection",
+
+  "securityEnable2fa": "Enable Two-Step Authentication",
+  "securityScanQr": "Scan the QR code below with your authenticator app.",
+  "securityQrUnavailable": "Unable to display QR image",
+  "securityRecoveryInfo": "If you lose access, recovery codes can help you regain account access.",
+  "securityAuthCode": "Authentication Code",
+  "securityEnable": "Enable",
+  "securityDisable2fa": "Disable Two-Step Authentication",
+  "securityCurrentCode": "Current Code",
+  "securityDisable": "Disable",
+  "securityRegenRecovery": "Regenerate Recovery Codes",
+  "securityRegenerate": "Regenerate",
+  "securityNewRecoveryInfo": "New recovery codes. Store them in a safe place.",
+  "securityRecoveryCopied": "Recovery codes copied",
+
+  "shareDeleteLinkTitle": "Delete Share Link",
+  "shareDeleteLinkBody": "Delete link for {name}?",
+  "@shareDeleteLinkBody": {
+    "description": "Confirm dialog body when deleting a share link for a node.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "shareNoLinks": "No shared links",
+  "sharedFileTitle": "Shared File",
+  "sharePasswordProtected": "This link is password protected",
+  "shareLinkCopied": "Link copied",
+  "shareCopyLink": "Copy Link",
+  "shareFolderEmpty": "Folder is empty",
+  "shareSetPassword": "Set Password",
+  "shareEnterPassword": "Enter password",
+  "shareCreateLink": "Create Link",
+
+  "actionPreview": "Preview",
+  "storageNone": "No Storage",
+  "uploadClearAll": "Clear All",
+
+  "vaultOffline": "Offline",
+  "vaultSync": "Sync",
+  "vaultLock": "Lock",
+  "vaultUnlockTitle": "Unlock vault",
+  "vaultUnlockDesc": "Open the vault with your login password. Your password never leaves this device.",
+  "vaultUnlock": "Unlock",
+  "vaultEmpty": "No saved entries",
+  "vaultCopyPassword": "Copy password",
+  "vaultPasswordCopied": "Password copied",
+  "vaultSaved": "Saved",
+  "vaultSaveFailed": "Failed to save",
+  "vaultDeleted": "Deleted",
+  "vaultDeleteFailed": "Failed to delete",
+  "vaultDeleteConfirm": "Delete entry '{title}'?",
+  "@vaultDeleteConfirm": {
+    "description": "Confirm dialog body when deleting a vault password entry.",
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "vaultEntryNew": "New entry",
+  "vaultEntryEdit": "Edit entry",
+  "vaultFieldTitle": "Title",
+  "vaultFieldCategory": "Category",
+  "vaultFieldNotes": "Notes",
+  "vaultCategoryWork": "Work",
+  "vaultCategoryPersonal": "Personal",
+  "vaultCategoryEntertainment": "Entertainment",
+  "vaultMsgDecryptBanner": "Vault decryption failed. Make sure your login password is correct, then unlock again. (Protection: changes are not saved to the server in this state.)",
+  "vaultMsgDecryptBlockedSave": "Can't save while decryption has failed. Saving was blocked to avoid overwriting your existing vault — check your password and unlock again.",
+  "vaultMsgOfflineMode": "Offline mode: showing the vault stored on this device. It will sync when you're back online.",
+  "vaultMsgOfflineSaved": "Offline: changes were saved only on this device. They'll sync with the server when you're back online.",
+  "vaultMsgSessionExpired": "Your session has expired. Please sign in again.",
+  "vaultMsgSyncFailed": "Failed to sync the vault.",
+
+  "fileDownloadFailed": "Download failed",
+  "fileDownloadComplete": "Download complete",
+  "fileRenamed": "Renamed",
+  "fileNameExists": "A file with this name already exists",
+  "fileRenameFailed": "Failed to rename",
+  "fileDeleted": "Deleted",
+  "itemNotFound": "Item not found",
+  "fileDeleteFailed": "Failed to delete",
+  "noteNameExists": "A note with this name already exists",
+  "noteCreateFailed": "Failed to create note",
+  "searchNoResults": "No search results",
+  "filesEmpty": "No files",
+  "folderCreated": "Folder created",
+  "folderCreateFailed": "Failed to create folder",
+  "viewGrid": "Grid view",
+  "viewList": "List view",
+
+  "totpEnterRecoveryCodeError": "Enter 8-character recovery code",
+  "totpEnterCodeError": "Enter 6-digit code",
+  "totpRecoveryPrompt": "Enter your recovery code",
+  "totpCodePrompt": "Enter 6-digit code from your authenticator app",
+  "totpUseAuthCode": "Use authentication code",
+  "totpUseRecovery": "Use recovery code",
+
+  "previewFileNotFound": "File not found",
+  "previewAccessDenied": "Access denied",
+  "previewLoadFailed": "Unable to load file",
+  "previewSaveNoPermission": "No permission to save",
+  "previewSaveFailed": "Save failed",
+  "previewImageFailed": "Unable to display image",
+  "previewPdfFailed": "Unable to display PDF",
+  "previewVideoFailed": "Unable to play video",
+  "previewAudioFailed": "Unable to play audio",
+  "previewUnsupported": "This file type is not supported for preview",
+
+  "securityTotpStatusFailed": "Failed to retrieve TOTP status",
+  "securitySetupFailed": "Setup failed. Please try again",
+  "security2faEnabled": "Two-step authentication has been enabled",
+  "security2faDisabled": "Two-step authentication has been disabled",
+  "securityRecoveryRegenerated": "Recovery codes have been regenerated",
+
+  "shareDeleteLinkFailed": "Failed to delete link",
+  "shareCreateLinkFailed": "Failed to create link: {error}",
+  "@shareCreateLinkFailed": {
+    "description": "Toast shown when creating a share link fails; error is the server message.",
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "loginSubtitle": "Enter your account information to return to your workspace",
+  "loginUsernameRequired": "Please enter your username",
+  "loginPasswordRequired": "Please enter your password",
+
+  "totpInvalidCode": "Invalid authentication code",
+  "totpAuthError": "Authentication error occurred",
+
+  "securityInvalidCode": "Invalid code",
+  "securitySectionTitle": "Two-Step Authentication (TOTP)",
+  "securitySectionDesc": "Extra security using authenticator apps like Google Authenticator",
+  "securityStatusEnabled": "Enabled",
+  "securityStatusDisabled": "Disabled",
+  "securityStep1": "Step 1. Scan QR Code",
+  "securityStep2": "Step 2. Save Recovery Codes",
+  "securityStep3": "Step 3. Enter Authentication Code",
+
+  "serverInvalidFormat": "Invalid format",
+  "serverPortRequired": "Port number is required (e.g., 192.168.1.10:8000)",
+  "serverPortNumeric": "Port number must be numeric",
+  "serverPortRange": "Port must be between 1 and 65535",
+  "serverAddressDesc": "Enter the host and port of the server to connect to.",
+
+  "shareUnknownError": "An unknown error occurred",
+  "shareCreateLinkTitle": "Create Share Link",
+
+  "navFoldersHeader": "Folders",
+  "storageSectionLabel": "Storage",
+  "uploadWaiting": "Waiting",
+  "uploadDropHere": "Drop files here",
+
+  "selectedCount": "{count} selected",
+  "@selectedCount": {
+    "description": "App bar title showing how many items are selected.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "bulkDeleted": "{count} items deleted",
+  "@bulkDeleted": {
+    "description": "Toast after a bulk delete completes.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "bulkDeletePartial": "Some items failed to delete ({done}/{total})",
+  "@bulkDeletePartial": {
+    "description": "Toast when only some of a bulk delete succeeded.",
+    "placeholders": { "done": { "type": "int" }, "total": { "type": "int" } }
+  },
+
+  "relativeJustNow": "Just now",
+  "relativeMinutesAgo": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@relativeMinutesAgo": {
+    "description": "Relative time, minutes.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "relativeHoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@relativeHoursAgo": {
+    "description": "Relative time, hours.",
+    "placeholders": { "count": { "type": "int" } }
+  }
 }
