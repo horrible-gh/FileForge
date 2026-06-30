@@ -23,6 +23,47 @@ import '../../services/storage_service.dart';
 import '../preview/file_preview_screen.dart';
 import '../../l10n/app_localizations.dart';
 
+/// Resolve the active storage type from the CURRENT ROUTE, mirroring how
+/// [StorageDispatcher] picks MailListScreen vs FileListScreen vs the vault, so
+/// the shell AppBar's action set never diverges from the body it sits above.
+///
+/// CH0007 (TR0011 rev0 rejection): the mail `[+]` and `[multi-select]` AppBar
+/// actions are guarded with `storageType != 'mail'`, but the AppBar read the
+/// type from `StorageProvider.currentStorage` — which is only set by the drawer
+/// flow (`selectStorage`) and otherwise defaults to the first/default (file)
+/// storage. The dispatcher, by contrast, renders MailListScreen from the
+/// route's `storageUuid`. On a Flutter Web URL reload while on mail the two
+/// diverged: route = a mail storage, `currentStorage` = the default file
+/// storage → `storageType` resolved to `'file'` → the guards passed and the two
+/// actions stayed visible on mail. Keying off the route (the same source the
+/// dispatcher uses) keeps them in lockstep. Falls back to `currentStorage`,
+/// then `'file'`, for routes that carry no storageUuid (home, share-links,
+/// settings) or an unknown uuid (mid-load).
+@visibleForTesting
+String resolveStorageTypeForLocation(
+  String location,
+  List<Storage> storages,
+  Storage? currentStorage,
+) {
+  // Shell child routes that are NOT `/:storageUuid` — never treat their first
+  // segment as a storage id (routes.dart). Keep in sync with the ShellRoute.
+  const nonStorageRoots = {
+    'share-links',
+    'settings',
+    'share',
+    'vault',
+    'splash',
+    'login',
+  };
+  final segments = location.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.isNotEmpty && !nonStorageRoots.contains(segments.first)) {
+    final uuid = segments.first;
+    final matches = storages.where((s) => s.storageUuid == uuid);
+    if (matches.isNotEmpty) return matches.first.storageType;
+  }
+  return currentStorage?.storageType ?? 'file';
+}
+
 /// authentication text translated text text Scaffold — Drawer + AppBar + Body(child)
 /// GoRouter ShellRoutetext shell translated text text.
 class MainScreen extends StatefulWidget {
@@ -82,7 +123,11 @@ class _MainScreenState extends State<MainScreen> {
   /// the results never appeared on screen (= no response).
   void _onSearchSubmitted(String query, BuildContext context) {
     final storageProvider = context.read<StorageProvider>();
-    final storageType = storageProvider.currentStorage?.storageType ?? 'file';
+    final storageType = resolveStorageTypeForLocation(
+      GoRouterState.of(context).matchedLocation,
+      storageProvider.storages,
+      storageProvider.currentStorage,
+    );
     if (storageType == 'mail') {
       final mailProvider = context.read<MailProvider>();
       if (query.trim().isEmpty) {
@@ -106,7 +151,11 @@ class _MainScreenState extends State<MainScreen> {
     final storageProvider = context.read<StorageProvider>();
     final fileProvider = context.read<FileProvider>();
     _searchController.clear();
-    final storageType = storageProvider.currentStorage?.storageType ?? 'file';
+    final storageType = resolveStorageTypeForLocation(
+      GoRouterState.of(context).matchedLocation,
+      storageProvider.storages,
+      storageProvider.currentStorage,
+    );
     if (storageType == 'mail') {
       // End mail search — close only the UI toggle (no file-API re-call) and restore the mail list.
       fileProvider.exitSearchModeUiOnly();
@@ -137,11 +186,19 @@ class _MainScreenState extends State<MainScreen> {
                 ? t.navSearch
                 : fileProvider.currentNode.name;
 
-    final storageType = storageProvider.currentStorage?.storageType ?? 'file';
-
     final location = GoRouterState.of(context).matchedLocation;
     final isShareLinks = location == '/share-links';
     final isSettings = location == AppRoutes.settings;
+
+    // CH0007 — derive the action set from the route (what StorageDispatcher
+    // renders), not from the drawer-selected currentStorage, so the mail
+    // [+]/[multi-select] guards below actually fire on web URL reload. See
+    // resolveStorageTypeForLocation.
+    final storageType = resolveStorageTypeForLocation(
+      location,
+      storageProvider.storages,
+      storageProvider.currentStorage,
+    );
     if (selectionProvider.isSelectionMode) {
       return PopScope(
         canPop: false,
