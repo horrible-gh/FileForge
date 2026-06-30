@@ -151,13 +151,13 @@ class _MainScreenState extends State<MainScreen> {
         child: Scaffold(
           appBar: AppBar(
             leading: IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(Icons.close_rounded),
               onPressed: () => selectionProvider.exitSelectionMode(),
             ),
             title: Text(t.selectedCount(selectionProvider.selectedCount)),
             actions: [
               IconButton(
-                icon: const Icon(Icons.select_all),
+                icon: const Icon(Icons.select_all_rounded),
                 tooltip: t.navSelectAll,
                 onPressed: () {
                   final allUuids = fileProvider.children
@@ -211,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
           if (!isShareLinks && !isSettings) ...[
             if (fileProvider.isSearchMode)
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close_rounded),
                 tooltip: t.navExitSearch,
                 onPressed: () => _exitSearchMode(context),
               )
@@ -219,19 +219,16 @@ class _MainScreenState extends State<MainScreen> {
             // from the embedded VaultStorageView — keep the shell AppBar clean
             // (only the overflow menu) for it (NR0003 §6.2).
             else if (storageType != 'password') ...[
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: t.addLabel,
-                onPressed: () => _showFabMenu(context, storageType),
-              ),
-              // R0001(0030) — "메일 전체 읽음처리". MailListScreen has no AppBar of
-              // its own (it is an embedded transparent Scaffold with only a compose
-              // FAB), so the mail-only bulk-read action lives here in the shared shell bar.
-              if (storageType == 'mail')
+              // CH0007/NR0009 — mail carries its own toolbar (compose + /
+              // mark-all-read / account) in the label-switcher tray of
+              // MailListScreen, and the shell AppBar shows only [search][overflow]
+              // for it. So the generic add and the selection-mode entry below are
+              // file/note-only here (the mark-all-read action moved to the tray).
+              if (storageType != 'mail')
                 IconButton(
-                  icon: const Icon(Icons.mark_email_read_rounded),
-                  tooltip: t.mailMarkAllRead,
-                  onPressed: () => _markAllRead(context),
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: t.addLabel,
+                  onPressed: () => _showFabMenu(context, storageType),
                 ),
               if (storageType == 'file')
                 IconButton(
@@ -245,13 +242,14 @@ class _MainScreenState extends State<MainScreen> {
                       : t.viewList,
                   onPressed: () => fileProvider.toggleFileViewMode(),
                 ),
+              if (storageType != 'mail')
+                IconButton(
+                  icon: const Icon(Icons.checklist_rounded),
+                  tooltip: t.navSelectionMode,
+                  onPressed: () => selectionProvider.enterSelectionMode(),
+                ),
               IconButton(
-                icon: const Icon(Icons.checklist_rounded),
-                tooltip: t.navSelectionMode,
-                onPressed: () => selectionProvider.enterSelectionMode(),
-              ),
-              IconButton(
-                icon: const Icon(Icons.search),
+                icon: const Icon(Icons.search_rounded),
                 tooltip: t.navSearch,
                 onPressed: () {
                   fileProvider.enterSearchMode();
@@ -287,21 +285,6 @@ class _MainScreenState extends State<MainScreen> {
       drawer: _buildDrawer(context, authProvider, storageProvider, fileProvider),
       body: widget.child,
     );
-  }
-
-  /// R0001(0030) — mark every unread mail as read. Delegates to MailProvider
-  /// (which persists via the server then clears the unread cue locally), then
-  /// reports the count. The server-side persistence means the 10s inbox poll
-  /// will not revert the change.
-  Future<void> _markAllRead(BuildContext context) async {
-    final t = AppLocalizations.of(context);
-    final updated = await context.read<MailProvider>().markAllRead();
-    if (!context.mounted) return;
-    if (updated < 0) {
-      AppToast.error(context, t.mailMarkAllReadFailed);
-    } else {
-      AppToast.success(context, t.mailMarkedAllRead(updated));
-    }
   }
 
   void _showFabMenu(BuildContext context, String storageType) {

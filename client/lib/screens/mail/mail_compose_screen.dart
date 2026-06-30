@@ -307,7 +307,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           IconButton(
             tooltip: t.saveDraftTooltip,
             onPressed: _sending ? null : _saveDraft,
-            icon: const Icon(Icons.drafts_outlined),
+            icon: const Icon(Icons.drafts_rounded),
           ),
           IconButton(
             tooltip: t.sendTooltip,
@@ -333,7 +333,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: () => setState(() => _showCcBcc = true),
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(t.ccBccToggle),
                 ),
               ),
@@ -425,7 +425,8 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.insert_drive_file_outlined),
+            // Matches the detail-view attachment row glyph (NR0004 §4).
+            leading: const Icon(Icons.description_rounded),
             title: Text(_attachments[i].filename, maxLines: 1),
             subtitle: Text(_humanSize(_attachments[i].sizeBytes)),
             trailing: IconButton(
@@ -438,7 +439,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.upload_file_outlined),
+            leading: const Icon(Icons.upload_file_rounded),
             title: Text(task.filename, maxLines: 1),
             subtitle: LinearProgressIndicator(
               value: task.progress > 0 ? task.progress : null,
