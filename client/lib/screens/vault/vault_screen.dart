@@ -94,6 +94,12 @@ class VaultScreen extends StatelessWidget {
                 tooltip: t.vaultSync,
                 onPressed: () => vault.refresh(),
               ),
+            if (!vault.hasDecryptError)
+              IconButton(
+                icon: const Icon(Icons.folder_outlined),
+                tooltip: t.vaultManageCategories,
+                onPressed: () => _openCategoryManager(context, vault),
+              ),
             IconButton(
               icon: const Icon(Icons.lock_outline),
               tooltip: t.vaultLock,
@@ -194,6 +200,12 @@ class _VaultToolbar extends StatelessWidget {
               icon: const Icon(Icons.refresh),
               tooltip: t.vaultSync,
               onPressed: () => vault.refresh(),
+            ),
+          if (!vault.hasDecryptError)
+            IconButton(
+              icon: const Icon(Icons.folder_outlined),
+              tooltip: t.vaultManageCategories,
+              onPressed: () => _openCategoryManager(context, vault),
             ),
           IconButton(
             icon: const Icon(Icons.lock_outline),
@@ -335,6 +347,7 @@ class _VaultBody extends StatelessWidget {
             onChanged: vault.setQuery,
           ),
         ),
+        _CategoryFilterBar(vault: vault),
         if (vault.error != null)
           Container(
             width: double.infinity,
@@ -571,6 +584,387 @@ class _EntryEditorDialogState extends State<_EntryEditorDialog> {
           isDense: true,
         ),
       ),
+    );
+  }
+}
+
+// ── Category-based viewing + management (R0001 / NR0003) ────────────────────
+
+/// Curated emoji/color palettes for custom categories (legacy SecureBolt
+/// parity — `js/managers/categoryManager.js` predefined sets).
+const List<String> kVaultCategoryIcons = [
+  '📁', '💼', '👤', '🎮', '🏦', '🛒', '✉️', '🌐',
+  '🔐', '⚙️', '📱', '🎵', '📷', '🎬', '✈️', '🏠',
+];
+const List<String> kVaultCategoryColors = [
+  '#667eea', '#48bb78', '#ed8936', '#e53e3e',
+  '#38b2ac', '#9f7aea', '#ed64a6', '#718096',
+];
+
+/// Parse a `#RRGGBB` (or `#AARRGGBB`) hex color, falling back on bad input.
+Color vaultParseHexColor(String hex, Color fallback) {
+  var h = hex.replaceFirst('#', '').trim();
+  if (h.length == 6) h = 'FF$h';
+  final v = int.tryParse(h, radix: 16);
+  return v == null ? fallback : Color(v);
+}
+
+/// Horizontal category filter chips with live count badges: "전체 (N)" plus one
+/// chip per category. Tapping scopes the list to that category (R0001:
+/// "분류별로도 볼 수 있게"). Replaces the legacy sidebar navigator.
+class _CategoryFilterBar extends StatelessWidget {
+  const _CategoryFilterBar({required this.vault});
+
+  final VaultProvider vault;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final counts = vault.categoryCounts;
+    final selected = vault.categoryFilter;
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(
+                  '${t.vaultCategoryAll} (${counts[VaultProvider.allCategoryFilter] ?? 0})'),
+              selected: selected == VaultProvider.allCategoryFilter,
+              onSelected: (_) =>
+                  vault.setCategoryFilter(VaultProvider.allCategoryFilter),
+            ),
+          ),
+          for (final c in vault.categories)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                avatar: Text(c.icon),
+                label: Text(
+                    '${vaultCategoryName(t, c)} (${counts[c.id] ?? 0})'),
+                selected: selected == c.id,
+                onSelected: (_) => vault.setCategoryFilter(c.id),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _openCategoryManager(
+    BuildContext context, VaultProvider vault) async {
+  await showDialog<void>(
+    context: context,
+    builder: (_) => _CategoryManagerDialog(vault: vault),
+  );
+}
+
+/// Lists categories with per-category counts. Default categories are locked
+/// (shown with a lock badge); custom categories can be edited or deleted.
+/// "Add" opens the [_CategoryEditorDialog]. Watches the provider so it reflects
+/// add/rename/delete immediately.
+class _CategoryManagerDialog extends StatelessWidget {
+  const _CategoryManagerDialog({required this.vault});
+
+  final VaultProvider vault;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final v = context.watch<VaultProvider>();
+    final cats = v.categories;
+    final counts = v.categoryCounts;
+    return AlertDialog(
+      title: Text(t.vaultManageCategories),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: cats.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, i) {
+                  final c = cats[i];
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: vaultParseHexColor(
+                          c.color, Theme.of(context).colorScheme.primary),
+                      child: Text(c.icon,
+                          style: const TextStyle(fontSize: 14)),
+                    ),
+                    title: Text(vaultCategoryName(t, c)),
+                    subtitle: Text('${counts[c.id] ?? 0}'),
+                    trailing: c.isDefault
+                        ? Tooltip(
+                            message: t.vaultCategoryDefaultLocked,
+                            child: const Icon(Icons.lock_outline, size: 16),
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                tooltip: t.vaultCategoryEdit,
+                                onPressed: () =>
+                                    _openCategoryEditor(context, vault, c),
+                              ),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.delete_outline, size: 18),
+                                tooltip: t.commonDelete,
+                                onPressed: () =>
+                                    _confirmDeleteCategory(context, vault, c),
+                              ),
+                            ],
+                          ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton.icon(
+          onPressed: () => _openCategoryEditor(context, vault, null),
+          icon: const Icon(Icons.add),
+          label: Text(t.vaultCategoryNew),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(t.commonClose),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _confirmDeleteCategory(
+  BuildContext context,
+  VaultProvider vault,
+  VaultCategory c,
+) async {
+  final t = AppLocalizations.of(context);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text(t.commonDelete),
+      content: Text(t.vaultCategoryDeleteConfirm(vaultCategoryName(t, c))),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(t.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(t.commonDelete),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+  final done = await vault.deleteCategory(c.id);
+  if (!context.mounted) return;
+  if (done) {
+    AppToast.success(context, t.vaultCategoryDeleted);
+  } else {
+    AppToast.error(
+        context, localizedVaultMessage(t, vault) ?? t.vaultCategoryActionFailed);
+  }
+}
+
+Future<void> _openCategoryEditor(
+  BuildContext context,
+  VaultProvider vault,
+  VaultCategory? existing,
+) async {
+  final t = AppLocalizations.of(context);
+  final result = await showDialog<VaultCategory>(
+    context: context,
+    builder: (_) => _CategoryEditorDialog(existing: existing),
+  );
+  if (result == null || !context.mounted) return;
+  final isEdit = existing != null;
+  final done = isEdit
+      ? await vault.updateCategory(result)
+      : await vault.addCategory(result);
+  if (!context.mounted) return;
+  if (done) {
+    AppToast.success(
+        context, isEdit ? t.vaultCategoryUpdated : t.vaultCategoryAdded);
+  } else {
+    AppToast.error(
+        context, localizedVaultMessage(t, vault) ?? t.vaultCategoryActionFailed);
+  }
+}
+
+/// Add/edit a custom category: name + emoji picker + color picker + live
+/// preview (legacy SecureBolt "카테고리 관리 모달" parity). Returns a built
+/// [VaultCategory] (a new `cat_<ts>` id when adding; the existing id when
+/// editing, so entry references stay valid).
+class _CategoryEditorDialog extends StatefulWidget {
+  const _CategoryEditorDialog({required this.existing});
+
+  final VaultCategory? existing;
+
+  @override
+  State<_CategoryEditorDialog> createState() => _CategoryEditorDialogState();
+}
+
+class _CategoryEditorDialogState extends State<_CategoryEditorDialog> {
+  late final TextEditingController _name;
+  late String _icon;
+  late String _color;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _name = TextEditingController(text: e?.name ?? '');
+    _icon = e?.icon ?? kVaultCategoryIcons.first;
+    _color = e?.color ?? kVaultCategoryColors.first;
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final name = _name.text.trim();
+    if (name.isEmpty) return;
+    final existing = widget.existing;
+    final id = existing?.id ??
+        'cat_${DateTime.now().millisecondsSinceEpoch}';
+    Navigator.pop(
+      context,
+      VaultCategory(
+        id: id,
+        name: name,
+        icon: _icon,
+        color: _color,
+        isDefault: false,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final previewName =
+        _name.text.trim().isEmpty ? t.vaultCategoryNew : _name.text.trim();
+    return AlertDialog(
+      title: Text(
+          widget.existing == null ? t.vaultCategoryNew : t.vaultCategoryEdit),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Live preview chip.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Chip(
+                avatar: Text(_icon),
+                label: Text(previewName),
+                backgroundColor:
+                    vaultParseHexColor(_color, Theme.of(context).colorScheme.surface)
+                        .withValues(alpha: 0.25),
+              ),
+            ),
+            TextField(
+              controller: _name,
+              autofocus: true,
+              maxLength: 20,
+              decoration: InputDecoration(
+                labelText: t.vaultCategoryName,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _save(),
+            ),
+            const SizedBox(height: 8),
+            Text(t.vaultCategoryIcon,
+                style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final icon in kVaultCategoryIcons)
+                  InkWell(
+                    onTap: () => setState(() => _icon = icon),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _icon == icon
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).dividerColor,
+                          width: _icon == icon ? 2 : 1,
+                        ),
+                      ),
+                      child: Text(icon, style: const TextStyle(fontSize: 18)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(t.vaultCategoryColor,
+                style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final color in kVaultCategoryColors)
+                  InkWell(
+                    onTap: () => setState(() => _color = color),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: vaultParseHexColor(color, Colors.grey),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _color == color
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                      child: _color == color
+                          ? const Icon(Icons.check,
+                              size: 16, color: Colors.white)
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(t.cancel),
+        ),
+        FilledButton(onPressed: _save, child: Text(t.commonSave)),
+      ],
     );
   }
 }

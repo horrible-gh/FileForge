@@ -224,6 +224,15 @@ class _MainScreenState extends State<MainScreen> {
                 tooltip: t.addLabel,
                 onPressed: () => _showFabMenu(context, storageType),
               ),
+              // R0001(0030) — "메일 전체 읽음처리". MailListScreen has no AppBar of
+              // its own (it is an embedded transparent Scaffold with only a compose
+              // FAB), so the mail-only bulk-read action lives here in the shared shell bar.
+              if (storageType == 'mail')
+                IconButton(
+                  icon: const Icon(Icons.mark_email_read_rounded),
+                  tooltip: t.mailMarkAllRead,
+                  onPressed: () => _markAllRead(context),
+                ),
               if (storageType == 'file')
                 IconButton(
                   icon: Icon(
@@ -278,6 +287,21 @@ class _MainScreenState extends State<MainScreen> {
       drawer: _buildDrawer(context, authProvider, storageProvider, fileProvider),
       body: widget.child,
     );
+  }
+
+  /// R0001(0030) — mark every unread mail as read. Delegates to MailProvider
+  /// (which persists via the server then clears the unread cue locally), then
+  /// reports the count. The server-side persistence means the 10s inbox poll
+  /// will not revert the change.
+  Future<void> _markAllRead(BuildContext context) async {
+    final t = AppLocalizations.of(context);
+    final updated = await context.read<MailProvider>().markAllRead();
+    if (!context.mounted) return;
+    if (updated < 0) {
+      AppToast.error(context, t.mailMarkAllReadFailed);
+    } else {
+      AppToast.success(context, t.mailMarkedAllRead(updated));
+    }
   }
 
   void _showFabMenu(BuildContext context, String storageType) {

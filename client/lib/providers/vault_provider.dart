@@ -34,6 +34,13 @@ enum VaultMessage {
 class VaultProvider extends ChangeNotifier {
   final VaultService _service;
 
+  /// Sentinel for "show all categories" in [categoryFilter] / [categoryCounts].
+  static const String allCategoryFilter = 'all';
+
+  /// Where entries of a deleted category are re-homed (legacy parity: the
+  /// 'personal' default is always present and never deletable).
+  static const String _orphanFallbackCategory = 'personal';
+
   VaultProvider(Dio dio, {VaultLocalStore? localStore})
       : _service = VaultService(dio, localStore: localStore);
 
@@ -67,6 +74,9 @@ class VaultProvider extends ChangeNotifier {
   String? _error;
   VaultMessage _messageCode = VaultMessage.none;
   String _query = '';
+  // Category-based viewing (R0001): 'all' shows every entry, otherwise the
+  // selected category id scopes the list. Reset on lock.
+  String _categoryFilter = allCategoryFilter;
 
   VaultState get state => _state;
   bool get isUnlocked => _state != VaultState.locked;
@@ -85,20 +95,52 @@ class VaultProvider extends ChangeNotifier {
 
   List<VaultCategory> get categories => List.unmodifiable(_data.categories);
 
-  /// Password entries filtered by the current search query (title/username/url).
+  /// The active category filter id, or [allCategoryFilter] for "show all".
+  String get categoryFilter => _categoryFilter;
+
+  /// Entry counts per category over the FULL (unfiltered) vault, plus an
+  /// [allCategoryFilter] total — drives the category chip-bar count badges
+  /// (R0001: "분류별로 볼 수 있게"). Every known category id is present (0 when
+  /// empty); entries whose category id no longer exists are not counted under
+  /// any chip (delete re-homes them, so this is the orphan-free common case).
+  Map<String, int> get categoryCounts {
+    final counts = <String, int>{allCategoryFilter: _data.passwords.length};
+    for (final c in _data.categories) {
+      counts[c.id] = 0;
+    }
+    for (final p in _data.passwords) {
+      if (counts.containsKey(p.category)) {
+        counts[p.category] = counts[p.category]! + 1;
+      }
+    }
+    return counts;
+  }
+
+  /// Password entries scoped by the active category filter, then narrowed by
+  /// the current search query (title/username/url).
   List<VaultPasswordEntry> get passwords {
-    if (_query.isEmpty) return List.unmodifiable(_data.passwords);
-    final q = _query.toLowerCase();
-    return _data.passwords
-        .where((p) =>
-            p.title.toLowerCase().contains(q) ||
-            p.username.toLowerCase().contains(q) ||
-            p.url.toLowerCase().contains(q))
-        .toList();
+    Iterable<VaultPasswordEntry> list = _data.passwords;
+    if (_categoryFilter != allCategoryFilter) {
+      list = list.where((p) => p.category == _categoryFilter);
+    }
+    if (_query.isNotEmpty) {
+      final q = _query.toLowerCase();
+      list = list.where((p) =>
+          p.title.toLowerCase().contains(q) ||
+          p.username.toLowerCase().contains(q) ||
+          p.url.toLowerCase().contains(q));
+    }
+    return List.unmodifiable(list.toList());
   }
 
   void setQuery(String q) {
     _query = q;
+    notifyListeners();
+  }
+
+  /// Scope the list to a single category id, or [allCategoryFilter] for all.
+  void setCategoryFilter(String id) {
+    _categoryFilter = id;
     notifyListeners();
   }
 
@@ -137,6 +179,7 @@ class VaultProvider extends ChangeNotifier {
     _state = VaultState.locked;
     _data = VaultData.empty();
     _query = '';
+    _categoryFilter = allCategoryFilter;
     _localMode = false;
     _decryptError = false;
     _error = null;
@@ -223,17 +266,41 @@ class VaultProvider extends ChangeNotifier {
     return _commit(_data.copyWith(passwords: next));
   }
 
-  /// Add a custom category (default ids are reserved), then push.
+  /// Add a custom category (default ids are reserved, no duplicate id), push.
   Future<bool> addCategory(VaultCategory category) async {
+    if (category.id.isEmpty || category.name.trim().isEmpty) return false;
     if (kDefaultVaultCategories.any((d) => d.id == category.id)) return false;
+    if (_data.categories.any((c) => c.id == category.id)) return false;
     final next = [..._data.categories, category];
     return _commit(_data.copyWith(categories: next));
   }
 
+  /// Rename / recolor an existing custom category (id is immutable, so entries
+  /// keep referencing it). Default categories cannot be edited (R0001 parity).
+  Future<bool> updateCategory(VaultCategory updated) async {
+    if (kDefaultVaultCategories.any((d) => d.id == updated.id)) return false;
+    if (updated.name.trim().isEmpty) return false;
+    final next = [..._data.categories];
+    final idx = next.indexWhere((c) => c.id == updated.id);
+    if (idx < 0) return false;
+    next[idx] = updated;
+    return _commit(_data.copyWith(categories: next));
+  }
+
+  /// Delete a custom category and re-home its entries to the 'personal' default
+  /// (legacy SecureBolt parity — entries are kept, not lost). Default categories
+  /// are undeletable. Clears the filter if it pointed at the deleted category.
   Future<bool> deleteCategory(String id) async {
     if (kDefaultVaultCategories.any((d) => d.id == id)) return false; // undeletable
-    final next = _data.categories.where((c) => c.id != id).toList();
-    return _commit(_data.copyWith(categories: next));
+    if (!_data.categories.any((c) => c.id == id)) return false;
+    final nextCategories = _data.categories.where((c) => c.id != id).toList();
+    final nextPasswords = _data.passwords
+        .map((p) =>
+            p.category == id ? p.copyWith(category: _orphanFallbackCategory) : p)
+        .toList();
+    if (_categoryFilter == id) _categoryFilter = allCategoryFilter;
+    return _commit(
+        _data.copyWith(categories: nextCategories, passwords: nextPasswords));
   }
 
   /// Apply a new local state and push it; rolls the UI error on failure.
