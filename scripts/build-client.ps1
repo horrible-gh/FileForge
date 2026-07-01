@@ -37,3 +37,14 @@ if ($Target -eq 'web' -and (Test-Path $Config)) {
 
 Write-Host "[build-client] flutter build $Target --release ($Config)" -ForegroundColor Cyan
 flutter build $Target --release --dart-define-from-file=$Config
+
+# Android builds spin up a Gradle daemon (OpenJDK JVM) that stays resident after the
+# build finishes and holds several GB of heap. Stop it so it doesn't linger while the
+# build script is left open in the background.
+if ($Target -in 'apk','appbundle','aab') {
+  $gradlew = Join-Path $Root 'client\android\gradlew.bat'
+  if (Test-Path $gradlew) {
+    Write-Host "[build-client] stopping gradle daemon" -ForegroundColor Cyan
+    & $gradlew --stop
+  }
+}
