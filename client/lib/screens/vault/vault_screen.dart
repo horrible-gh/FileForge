@@ -550,7 +550,7 @@ class _EntryEditorDialogState extends State<_EntryEditorDialog> {
             _field(_title, t.vaultFieldTitle),
             _field(_username, t.commonUsername),
             _field(_password, t.commonPassword, obscure: true),
-            _field(_url, 'URL'),
+            _field(_url, t.vaultFieldUrl),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue:
@@ -619,9 +619,9 @@ Color vaultParseHexColor(String hex, Color fallback) {
   return v == null ? fallback : Color(v);
 }
 
-/// Horizontal category filter chips with live count badges: "전체 (N)" plus one
+/// Horizontal category filter chips with live count badges: "All (N)" plus one
 /// chip per category. Tapping scopes the list to that category (R0001:
-/// "분류별로도 볼 수 있게"). Replaces the legacy sidebar navigator.
+/// "view entries by category"). Replaces the legacy sidebar navigator.
 class _CategoryFilterBar extends StatelessWidget {
   const _CategoryFilterBar({required this.vault});
 
@@ -818,7 +818,7 @@ Future<void> _openCategoryEditor(
 }
 
 /// Add/edit a custom category: name + emoji picker + color picker + live
-/// preview (legacy SecureBolt "카테고리 관리 모달" parity). Returns a built
+/// preview (legacy SecureBolt "category management modal" parity). Returns a built
 /// [VaultCategory] (a new `cat_<ts>` id when adding; the existing id when
 /// editing, so entry references stay valid).
 class _CategoryEditorDialog extends StatefulWidget {

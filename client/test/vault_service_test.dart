@@ -144,7 +144,7 @@ void main() {
     });
   });
 
-  group('local storage / LOCAL_MODE (L0006 §1.2/§2.4/§2.5/§3.1, P0005 시나리오 7)', () {
+  group('local storage / LOCAL_MODE (L0006 §1.2/§2.4/§2.5/§3.1, P0005 scenario 7)', () {
     test('deviceVaultKey matches legacy generateVaultKey shape', () {
       final key = VaultCrypto.deviceVaultKey(_masterHash);
       expect(key.startsWith('vault_'), isTrue);

@@ -48,21 +48,25 @@ class VaultProvider extends ChangeNotifier {
   @visibleForTesting
   VaultProvider.withService(this._service);
 
-  // On a wrong-key pull the existing server vault must not be mistaken for an
-  // empty one and overwritten; these messages drive that guard (L0006 §5-B).
+  // Internal (non-displayed) status sentinels. These drive the anti-clobber
+  // guard on a wrong-key pull (L0006 §5-B) and back the `error != null` banner
+  // visibility gate; the user-facing text is rendered from [messageCode] via
+  // localizedVaultMessage() (t.vaultMsg*), so these values are never shown and
+  // are kept in English as locale-independent sentinels / test guards.
   static const String decryptBannerMessage =
-      '볼트 복호화에 실패했습니다. 로그인 비밀번호가 올바른지 확인한 뒤 다시 잠금 해제하세요. '
-      '(보호: 이 상태에서는 변경 사항을 서버에 저장하지 않습니다)';
+      'vault decrypt failed — verify your login password and unlock again '
+      '(protected: changes are not saved to the server in this state)';
   static const String decryptBlockedSaveMessage =
-      '복호화 실패 상태에서는 저장할 수 없습니다. 기존 볼트를 덮어쓰지 않도록 막았습니다 — '
-      '비밀번호를 확인해 다시 잠금 해제하세요.';
+      'cannot save while decryption is failing — blocked to avoid overwriting '
+      'the existing vault; verify your password and unlock again';
   static const String offlineModeMessage =
-      '오프라인 모드: 기기에 저장된 볼트를 표시합니다. 온라인이 되면 동기화됩니다.';
+      'offline mode: showing the device-stored vault; will sync when online';
   static const String offlineSavedMessage =
-      '오프라인: 변경 사항을 기기에만 저장했습니다. 온라인이 되면 서버와 동기화됩니다.';
+      'offline: changes saved to this device only; will sync with the server '
+      'when online';
   static const String sessionExpiredMessage =
-      '세션이 만료되었습니다. 다시 로그인해 주세요.';
-  static const String syncFailedMessage = '볼트 동기화에 실패했습니다.';
+      'session expired — please sign in again';
+  static const String syncFailedMessage = 'vault sync failed';
 
   // master hash lives ONLY in memory (L0006 §2.1) — cleared on lock/reset.
   String? _masterHash;
@@ -100,7 +104,7 @@ class VaultProvider extends ChangeNotifier {
 
   /// Entry counts per category over the FULL (unfiltered) vault, plus an
   /// [allCategoryFilter] total — drives the category chip-bar count badges
-  /// (R0001: "분류별로 볼 수 있게"). Every known category id is present (0 when
+  /// (R0001: "view entries by category"). Every known category id is present (0 when
   /// empty); entries whose category id no longer exists are not counted under
   /// any chip (delete re-homes them, so this is the orphan-free common case).
   Map<String, int> get categoryCounts {

@@ -12,7 +12,7 @@ import 'package:file_forge_app/services/vault_local_store.dart';
 import 'package:file_forge_app/services/vault_service.dart';
 import 'package:file_forge_app/screens/vault/vault_screen.dart';
 
-/// SecureBolt fileforge.securebolt.0005 / R0001 ("기능을 반대로") — load-bearing.
+/// SecureBolt fileforge.securebolt.0005 / R0001 ("invert the behavior") — load-bearing.
 ///
 /// R0001 reverses the entry-tile interaction:
 ///   1) tapping a tile must COPY the password (it used to open the editor);
@@ -124,7 +124,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // load-bearing for R0001 requirement (1): tap → password on the clipboard,
-    // and the editor dialog ("항목 편집") did NOT open.
+    // and the editor dialog (vaultEntryEdit, ko: "항목 편집") did NOT open.
     expect(clipboardText, 's3cr3t-pw');
     expect(find.text('항목 편집'), findsNothing);
 

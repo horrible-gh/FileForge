@@ -5,7 +5,7 @@ import 'package:file_forge_app/providers/vault_provider.dart';
 import 'package:file_forge_app/services/vault_local_store.dart';
 import 'package:file_forge_app/services/vault_service.dart';
 
-/// SecureBolt fileforge.securebolt.0004 / R0001 — category (분류) add/manage +
+/// SecureBolt fileforge.securebolt.0004 / R0001 — category add/manage +
 /// category-based viewing. Guards the provider behaviors the new UI relies on:
 /// category CRUD, count badges, the active filter, and (legacy parity) re-homing
 /// a deleted category's entries to the 'personal' default rather than losing them.
