@@ -704,6 +704,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vaultFieldTitle => 'Title';
 
   @override
+  String get vaultFieldUrl => 'URL';
+
+  @override
   String get vaultFieldCategory => 'Category';
 
   @override

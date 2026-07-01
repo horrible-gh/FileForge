@@ -696,6 +696,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get vaultFieldTitle => '제목';
 
   @override
+  String get vaultFieldUrl => 'URL';
+
+  @override
   String get vaultFieldCategory => '분류';
 
   @override

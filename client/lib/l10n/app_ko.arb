@@ -247,6 +247,7 @@
   "vaultEntryNew": "새 항목",
   "vaultEntryEdit": "항목 편집",
   "vaultFieldTitle": "제목",
+  "vaultFieldUrl": "URL",
   "vaultFieldCategory": "분류",
   "vaultFieldNotes": "메모",
   "vaultCategoryWork": "업무",

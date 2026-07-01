@@ -247,6 +247,7 @@
   "vaultEntryNew": "新規項目",
   "vaultEntryEdit": "項目を編集",
   "vaultFieldTitle": "タイトル",
+  "vaultFieldUrl": "URL",
   "vaultFieldCategory": "分類",
   "vaultFieldNotes": "メモ",
   "vaultCategoryWork": "仕事",

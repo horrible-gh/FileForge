@@ -1366,6 +1366,12 @@ abstract class AppLocalizations {
   /// **'Title'**
   String get vaultFieldTitle;
 
+  /// No description provided for @vaultFieldUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get vaultFieldUrl;
+
   /// No description provided for @vaultFieldCategory.
   ///
   /// In en, this message translates to:

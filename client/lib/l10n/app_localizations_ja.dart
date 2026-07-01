@@ -696,6 +696,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get vaultFieldTitle => 'タイトル';
 
   @override
+  String get vaultFieldUrl => 'URL';
+
+  @override
   String get vaultFieldCategory => '分類';
 
   @override

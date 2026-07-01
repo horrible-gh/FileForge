@@ -284,6 +284,7 @@
   "vaultEntryNew": "New entry",
   "vaultEntryEdit": "Edit entry",
   "vaultFieldTitle": "Title",
+  "vaultFieldUrl": "URL",
   "vaultFieldCategory": "Category",
   "vaultFieldNotes": "Notes",
   "vaultCategoryWork": "Work",
