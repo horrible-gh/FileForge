@@ -46,7 +46,7 @@ import uuid as uuid_lib
 
 import httpx
 
-from config import settings, db, mail_storage_base, DBType
+from config import settings, db, mail_storage_base, DBType, adapt_query
 from routers.login.auth import current_user_uuid
 from .sync import strip_html_to_text, make_preview
 
@@ -1011,8 +1011,135 @@ def _addrs_to_strings(items) -> list:
     return out
 
 
+def _compose_attachment_dir(user_uuid: str) -> str:
+    return os.path.join(mail_storage_base(user_uuid=user_uuid),
+                        "_compose_attachments", user_uuid)
+
+
+def _safe_attachment_id(value) -> Optional[str]:
+    if not value:
+        return None
+    safe = os.path.basename(str(value))
+    return safe if safe == str(value) else None
+
+
+def _attachment_ids_from_payload(payload: dict) -> list:
+    ids = list(payload.get("attachment_ids") or [])
+    for item in (payload.get("attachments") or []):
+        if isinstance(item, dict) and item.get("attachment_id"):
+            ids.append(item["attachment_id"])
+    seen = set()
+    out = []
+    for raw in ids:
+        value = str(raw or "")
+        if value and value not in seen:
+            seen.add(value)
+            out.append(value)
+    return out
+
+
+def _read_staged_attachment_meta(user_uuid: str, attachment_id: str) -> dict:
+    path = os.path.join(_compose_attachment_dir(user_uuid), attachment_id)
+    meta = {
+        "attachment_id": attachment_id,
+        "filename": "attachment",
+        "content_type": "application/octet-stream",
+        "size_bytes": os.path.getsize(path) if os.path.exists(path) else 0,
+    }
+    meta_path = f"{path}.json"
+    try:
+        with open(meta_path, "r", encoding="utf-8") as fh:
+            loaded = json.load(fh)
+        if isinstance(loaded, dict):
+            meta.update({
+                "filename": loaded.get("filename") or meta["filename"],
+                "content_type": loaded.get("content_type") or meta["content_type"],
+                "size_bytes": int(loaded.get("size_bytes") or meta["size_bytes"]),
+            })
+    except (OSError, ValueError, TypeError):
+        pass
+    return meta
+
+
+def _load_staged_attachments(
+    user_uuid: str,
+    attachment_ids: list,
+) -> Tuple[Optional[list], Optional[JSONResponse]]:
+    attachments = []
+    base_dir = _compose_attachment_dir(user_uuid)
+    for attachment_id in attachment_ids:
+        safe = _safe_attachment_id(attachment_id)
+        if not safe:
+            return None, _err("VALIDATION_FAILED", "invalid attachment id", 400,
+                              {"field": "attachment_ids"})
+        path = os.path.join(base_dir, safe)
+        if not os.path.exists(path):
+            return None, _err("VALIDATION_FAILED", "attachment not found", 400,
+                              {"field": "attachment_ids", "attachment_id": safe})
+        meta = _read_staged_attachment_meta(user_uuid, safe)
+        try:
+            with open(path, "rb") as fh:
+                content = fh.read()
+        except OSError as exc:
+            logger.error(f"[compat attachment] read failed {safe}: {exc}")
+            return None, _err("UPSTREAM_UNAVAILABLE", "attachment read failed", 503,
+                              {"attachment_id": safe})
+        meta.update({
+            "attachment_id": safe,
+            "content": content,
+            "filepath": path,
+            "size_bytes": len(content),
+        })
+        attachments.append(meta)
+    return attachments, None
+
+
+def _attachment_public_records(user_uuid: str, attachment_ids: list) -> list:
+    records = []
+    for attachment_id in attachment_ids:
+        safe = _safe_attachment_id(attachment_id)
+        if not safe:
+            continue
+        path = os.path.join(_compose_attachment_dir(user_uuid), safe)
+        if not os.path.exists(path):
+            continue
+        meta = _read_staged_attachment_meta(user_uuid, safe)
+        records.append({
+            "attachment_id": safe,
+            "filename": meta.get("filename") or "",
+            "size_bytes": int(meta.get("size_bytes") or 0),
+            "content_type": meta.get("content_type") or "application/octet-stream",
+        })
+    return records
+
+
+def _attach_mime_files(msg, attachments: list) -> None:
+    from email import encoders
+    from email.mime.base import MIMEBase
+
+    for attachment in attachments or []:
+        content = attachment.get("content") or b""
+        if not content:
+            continue
+        content_type = attachment.get("content_type") or "application/octet-stream"
+        maintype, subtype = (
+            content_type.split("/", 1)
+            if "/" in content_type else ("application", "octet-stream")
+        )
+        part = MIMEBase(maintype, subtype)
+        part.set_payload(content)
+        encoders.encode_base64(part)
+        part.add_header(
+            "Content-Disposition",
+            "attachment",
+            filename=("utf-8", "", attachment.get("filename") or "attachment"),
+        )
+        msg.attach(part)
+
+
 def _persist_sent_message(user_uuid: str, account: dict, *, to_list, cc_list,
-                          bcc_list, subject, body_text, body_html) -> str:
+                          bcc_list, subject, body_text, body_html,
+                          attachments: Optional[list] = None) -> str:
     """Store a copy of a just-sent message in the account's Sent folder (B0001 / 0038).
 
     The previous compat send transmitted over SMTP/Gmail and returned a throwaway
@@ -1056,16 +1183,24 @@ def _persist_sent_message(user_uuid: str, account: dict, *, to_list, cc_list,
         message_id = f"<{message_uuid}.{timestamp}@{domain}>"
         uid = -timestamp
 
-        msg = MIMEMultipart("alternative")
+        if attachments:
+            msg = MIMEMultipart("mixed")
+            body_part = MIMEMultipart("alternative")
+        else:
+            msg = MIMEMultipart("alternative")
+            body_part = msg
         msg["From"] = f"{account.get('account_name', email_addr)} <{email_addr}>"
         msg["To"] = ", ".join(to_list)
         if cc_list:
             msg["Cc"] = ", ".join(cc_list)
         msg["Subject"] = subject
         if body_text:
-            msg.attach(MIMEText(body_text, "plain", "utf-8"))
+            body_part.attach(MIMEText(body_text, "plain", "utf-8"))
         if body_html:
-            msg.attach(MIMEText(body_html, "html", "utf-8"))
+            body_part.attach(MIMEText(body_html, "html", "utf-8"))
+        if attachments:
+            msg.attach(body_part)
+            _attach_mime_files(msg, attachments)
         eml_str = msg.as_string()
         size_bytes = len(eml_str.encode("utf-8"))
 
@@ -1092,12 +1227,45 @@ def _persist_sent_message(user_uuid: str, account: dict, *, to_list, cc_list,
                 email_addr, account.get("account_name", "") or "",
                 ", ".join(to_list), ", ".join(cc_list or []), ", ".join(bcc_list or []),
                 subject, make_preview(body_text, body_html, 200), sent_at, sent_at,
-                1, 0, 0, 0, body_file_path, size_bytes,
+                1, 0, 0, 1 if attachments else 0, body_file_path, size_bytes,
             ))
+        if attachments:
+            _persist_sent_attachments(message_uuid, account_uuid, attachments)
         logger.info(f"[compat send/store] sent copy stored: {message_uuid}")
     except Exception as exc:  # noqa: BLE001 — never fail an already-sent message
         logger.error(f"[compat send/store] failed to store sent copy: {exc}")
     return message_uuid
+
+
+def _persist_sent_attachments(message_uuid: str, account_uuid: str, attachments: list) -> None:
+    base_dir = os.path.join(mail_storage_base(account_uuid=account_uuid),
+                            account_uuid, "attachments")
+    for attachment in attachments or []:
+        attachment_uuid = str(uuid_lib.uuid4())
+        filename = os.path.basename(attachment.get("filename") or "attachment")
+        content = attachment.get("content") or b""
+        subdir = attachment_uuid[:2]
+        file_dir = os.path.join(base_dir, subdir)
+        try:
+            os.makedirs(file_dir, exist_ok=True)
+            file_path = os.path.join(file_dir, f"{attachment_uuid}_{filename}")
+            with open(file_path, "wb") as fh:
+                fh.write(content)
+            db_instance.execute_query(
+                adapt_query(
+                    "INSERT INTO mail_attachments "
+                    "(attachment_uuid, message_uuid, filename, content_type, "
+                    "size_bytes, file_path, is_inline, content_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, 0, NULL)"
+                ),
+                (
+                    attachment_uuid, message_uuid, filename,
+                    attachment.get("content_type") or "application/octet-stream",
+                    len(content), file_path,
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"[compat send/store] attachment persist failed: {exc}")
 
 
 @router.post("/mails")
@@ -1113,6 +1281,10 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
     subject = payload.get("subject") or ""
     body_text = body.get("content", "") if body.get("format") != "html" else ""
     body_html = body.get("content", "") if body.get("format") == "html" else ""
+    attachment_ids = _attachment_ids_from_payload(payload)
+    attachments, attachment_error = _load_staged_attachments(user_uuid, attachment_ids)
+    if attachment_error is not None:
+        return attachment_error
 
     accounts = _resolve_accounts(user_uuid)
     if not accounts:
@@ -1172,13 +1344,15 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
                     msg.attach(MIMEText(body_html, "html", "utf-8"))
                 elif body_text:
                     msg.attach(MIMEText(body_text, "plain", "utf-8"))
+                _attach_mime_files(msg, attachments or [])
                 all_recipients = to_list + (cc_list or []) + (bcc_list or [])
                 smtp.connection.sendmail(account["email"], all_recipients, msg.as_string())
             finally:
                 smtp.disconnect()
             mid = _persist_sent_message(
                 user_uuid, account, to_list=to_list, cc_list=cc_list, bcc_list=bcc_list,
-                subject=subject, body_text=body_text, body_html=body_html)
+                subject=subject, body_text=body_text, body_html=body_html,
+                attachments=attachments)
             return _ok({"mail_id": mid, "status": "sent"})
         from services.smtp_service import SMTPService
         smtp_password = decrypt_password(
@@ -1202,7 +1376,7 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
                 body_html=body_html,
                 cc_addresses=cc_list,
                 bcc_addresses=bcc_list,
-                attachments=None,
+                attachments=attachments or None,
             )
         finally:
             smtp.disconnect()
@@ -1214,7 +1388,8 @@ def send_mail(payload: dict = Body(default={}), user_uuid: str = Depends(current
 
     mid = _persist_sent_message(
         user_uuid, account, to_list=to_list, cc_list=cc_list, bcc_list=bcc_list,
-        subject=subject, body_text=body_text, body_html=body_html)
+        subject=subject, body_text=body_text, body_html=body_html,
+        attachments=attachments)
     return _ok({"mail_id": mid, "status": "sent"})
 
 
@@ -1247,8 +1422,13 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _draft_from_payload(payload: dict, draft_id: str, updated_at: str) -> dict:
+def _draft_from_payload(payload: dict, draft_id: str, updated_at: str,
+                        user_uuid: Optional[str] = None) -> dict:
     body = payload.get("body") or {}
+    attachments = payload.get("attachments") or []
+    if not attachments and user_uuid:
+        attachments = _attachment_public_records(
+            user_uuid, _attachment_ids_from_payload(payload))
     return {
         "draft_id": draft_id,
         "to": payload.get("to") or [],
@@ -1256,7 +1436,7 @@ def _draft_from_payload(payload: dict, draft_id: str, updated_at: str) -> dict:
         "bcc": payload.get("bcc") or [],
         "subject": payload.get("subject") or "",
         "body": {"format": body.get("format", "text"), "content": body.get("content", "")},
-        "attachments": payload.get("attachments") or [],
+        "attachments": attachments,
         "updated_at": updated_at,
     }
 
@@ -1355,7 +1535,7 @@ async def save_draft(payload: dict = Body(default={}), user_uuid: str = Depends(
     """POST /mail/drafts — create a draft, return its id + updated_at."""
     draft_id = str(uuid_lib.uuid4())
     updated_at = _now_iso()
-    record = _draft_from_payload(payload, draft_id, updated_at)
+    record = _draft_from_payload(payload, draft_id, updated_at, user_uuid)
     try:
         os.makedirs(_drafts_dir(user_uuid), exist_ok=True)
         with open(_draft_path(user_uuid, draft_id), "w", encoding="utf-8") as fh:
@@ -1398,7 +1578,7 @@ async def update_draft(draft_id: str, payload: dict = Body(default={}),
         except (OSError, json.JSONDecodeError):
             pass
     updated_at = _now_iso()
-    record = _draft_from_payload(payload, draft_id, updated_at)
+    record = _draft_from_payload(payload, draft_id, updated_at, user_uuid)
     try:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(record, fh, ensure_ascii=False)
@@ -1430,16 +1610,19 @@ async def upload_attachment(file: UploadFile = File(...),
     content = await file.read()
     base = mail_storage_base(user_uuid=user_uuid)
     dest_dir = os.path.join(base, "_compose_attachments", user_uuid)
-    try:
-        os.makedirs(dest_dir, exist_ok=True)
-        with open(os.path.join(dest_dir, attachment_id), "wb") as fh:
-            fh.write(content)
-    except OSError as exc:
-        logger.error(f"[compat attachment] store failed: {exc}")
-        return _err("UPSTREAM_UNAVAILABLE", "attachment store failed", 503)
-    return _ok({
+    meta = {
         "attachment_id": attachment_id,
         "filename": file.filename or "",
         "size_bytes": len(content),
         "content_type": file.content_type or "application/octet-stream",
-    })
+    }
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        with open(os.path.join(dest_dir, attachment_id), "wb") as fh:
+            fh.write(content)
+        with open(os.path.join(dest_dir, f"{attachment_id}.json"), "w", encoding="utf-8") as fh:
+            json.dump(meta, fh, ensure_ascii=False)
+    except OSError as exc:
+        logger.error(f"[compat attachment] store failed: {exc}")
+        return _err("UPSTREAM_UNAVAILABLE", "attachment store failed", 503)
+    return _ok(meta)
