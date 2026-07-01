@@ -17,7 +17,7 @@ class _CountingMailProvider extends MailProvider {
   int syncs = 0;
 
   @override
-  Future<void> syncInbox({String label = 'inbox'}) async {
+  Future<void> syncInbox({String label = 'inbox', bool quiet = false}) async {
     syncs++;
     notifyListeners();
   }

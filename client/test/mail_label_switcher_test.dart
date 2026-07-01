@@ -27,7 +27,8 @@ class _FakeMailProvider extends MailProvider {
   // R0001(TR0005): screen entry/refresh now calls syncInbox. Delegate to local load
   // (loadInbox) only, with no network, to preserve the existing regression intent.
   @override
-  Future<void> syncInbox({String label = 'inbox'}) => loadInbox(label: label);
+  Future<void> syncInbox({String label = 'inbox', bool quiet = false}) =>
+      loadInbox(label: label);
 }
 
 /// account 1text translated text translated text translated text fake(no network).

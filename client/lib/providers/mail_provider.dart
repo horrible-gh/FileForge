@@ -147,10 +147,22 @@ class MailProvider extends ChangeNotifier {
   /// other labels (sent/drafts) just reload locally. Sync is best-effort: even on
   /// failure (network/re-auth) the local mails are still shown, and if re-auth is
   /// needed it is surfaced via [reauthRequired].
-  Future<void> syncInbox({String label = 'inbox'}) async {
+  Future<void> syncInbox({String label = 'inbox', bool quiet = false}) async {
+    // R0001/0039 — the 10s background poll fires a *quiet* sync. A quiet refresh
+    // must NEVER reset a deeply-scrolled list back to page 1: doing so was the core
+    // "scroll → refresh that fetches a few items yet takes forever" complaint (the
+    // list snapped back to ~20 items every 10s, throwing away every already-loaded
+    // page and the scroll position, then re-paging from the top). So a quiet sync
+    // never runs while another load/search is in flight, stays invisible (no
+    // full-screen spinner, no _isLoading that would also stall the user's scroll via
+    // loadMore's guard), and reconciles by *merging* the fresh head into the loaded
+    // list ([_mergeInboxHead]) instead of clear+reload.
+    if (quiet && (_isLoading || _isLoadingMore || _isSyncing || isSearchMode)) {
+      return;
+    }
     if (label == 'inbox' && !_isSyncing) {
       _isSyncing = true;
-      _isLoading = true; // keep the spinner for the whole sync~reload span
+      if (!quiet) _isLoading = true; // full-screen spinner span only for explicit refresh
       _error = null;
       notifyListeners();
       try {
@@ -168,7 +180,51 @@ class MailProvider extends ChangeNotifier {
         _isSyncing = false;
       }
     }
-    await loadInbox(label: label);
+    if (quiet) {
+      await _mergeInboxHead(label: label);
+    } else {
+      await loadInbox(label: label);
+    }
+  }
+
+  /// R0001/0039 — reconcile the freshest server page into the *head* of the already
+  /// loaded list without resetting pagination. Used only by the quiet background
+  /// poll. Unlike [loadInbox] it does not `clear()` the whole list or rewind the
+  /// cursor: it replaces the head with the server's fresh first page (so new mail
+  /// and read/pin flag changes show up), and keeps every already-loaded deeper page
+  /// as the tail — so the user's scroll position and load-more cursor survive a
+  /// background refresh. On an empty/failed fetch the current list is left intact.
+  Future<void> _mergeInboxHead({String label = 'inbox'}) async {
+    // A concurrent explicit reload/search may have started during the POST /sync
+    // await above; do not clobber it.
+    if (isSearchMode || _isLoading) {
+      notifyListeners();
+      return;
+    }
+    try {
+      final page = await _service.listMails(label: label);
+      final fresh = page.items;
+      if (fresh.isNotEmpty) {
+        final freshIds = {for (final m in fresh) m.mailId};
+        // Everything already loaded that the fresh first page does not cover = the
+        // deeper pages (2..N) the user scrolled into. Keep them, in order, as the tail.
+        final tail = _mails.where((m) => !freshIds.contains(m.mailId)).toList();
+        _mails
+          ..clear()
+          ..addAll(fresh)
+          ..addAll(tail);
+      }
+      // Keep the deep cursor from the last loadMore so continued scrolling still
+      // advances; only seed pagination from page 1 if nothing has been paged yet.
+      if (_nextCursor == null || _nextCursor!.isEmpty) {
+        _nextCursor = page.nextCursor;
+        _hasMore = page.hasMore;
+      }
+    } catch (_) {
+      // best-effort: keep the currently displayed list on a failed refresh.
+    } finally {
+      notifyListeners();
+    }
   }
 
   /// Called on pull-to-refresh / inbox entry — [syncInbox] with the current label.

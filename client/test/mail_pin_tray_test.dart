@@ -21,7 +21,7 @@ class _FixedMailProvider extends MailProvider {
   List<MailSummary> get mails => _fixed;
 
   @override
-  Future<void> syncInbox({String label = 'inbox'}) async {}
+  Future<void> syncInbox({String label = 'inbox', bool quiet = false}) async {}
 
   @override
   Future<void> loadInbox({String label = 'inbox'}) async {}

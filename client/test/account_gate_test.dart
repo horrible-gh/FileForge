@@ -26,7 +26,8 @@ class _SpyMailProvider extends MailProvider {
   // R0001(TR0005): screen entry now calls syncInbox. Delegate to local load only
   // (no network) so the "load inbox when an account exists" regression intent holds.
   @override
-  Future<void> syncInbox({String label = 'inbox'}) => loadInbox(label: label);
+  Future<void> syncInbox({String label = 'inbox', bool quiet = false}) =>
+      loadInbox(label: label);
 }
 
 /// translated text statetext translated text fake(no network).

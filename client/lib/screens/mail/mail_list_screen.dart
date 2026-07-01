@@ -125,9 +125,15 @@ class _MailListScreenState extends State<MailListScreen>
     // While searching, skip so the auto-sync does not overwrite search results (B0001/0026).
     // Because syncInbox→loadInbox clears the query and reloads the full list.
     if (mail.isSearchMode) return;
-    if (mail.isSyncing || mail.isLoading) return;
-    // If the list is not empty, syncInbox refreshes quietly without a full-screen spinner.
-    mail.syncInbox();
+    // R0001/0039 — also skip while a scroll load-more is in flight: otherwise the
+    // poll's sync+reload would discard the fetched page (stale _loadSeq) and snap the
+    // list back to page 1, which is exactly the "scroll refresh takes forever / gets
+    // a few items" symptom. loadMore already blocks on _isLoading; this makes the
+    // guard symmetric so a running load-more also blocks the poll.
+    if (mail.isSyncing || mail.isLoading || mail.isLoadingMore) return;
+    // Quiet background refresh: merges new mail into the head without clearing the
+    // loaded pages or resetting the scroll position (see MailProvider.syncInbox).
+    mail.syncInbox(quiet: true);
   }
 
   @override
