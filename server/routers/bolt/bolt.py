@@ -9,11 +9,11 @@ stores and returns verbatim — it is never decrypted or structurally validated.
 Absorption follows the MailAnchor precedent (NR0003 §3, D0004):
   * Identity is the RS256 access token; ``current_user_uuid`` resolves the JWT
     subject (string user_id) to ``users.user_uuid`` — the FK key on ``bolt_data``
-    (avoids the 1452 FK misuse of the mail subsystem, 0004 선례).
+    (avoids the 1452 FK misuse of the mail subsystem, 0004 precedent).
   * SecureBolt's own login/logout/register/users/groups are NOT ported; FileForge
     identity is the single source (NR0003 §3-B).
   * The legacy ``?user_id=`` query / body ``user_id``/``group_id``/``timestamp``
-    fields are dropped (P0005 부록 A); identity always comes from the token.
+    fields are dropped (P0005 appendix A); identity always comes from the token.
 
 Response envelope mirrors the legacy SecureBolt shape the client consumes
 (``{status, data, message}``), NOT the P0007 mail envelope.
@@ -63,7 +63,7 @@ def push_bolt(body: PushRequest, user_uuid: str = Depends(current_user_uuid)):
 
     ``data_type``/``content`` are Optional in :class:`PushRequest` so a *missing*
     field is caught here and rendered as the legacy 400 envelope, rather than
-    leaking FastAPI's 422 (L0006 §4.2 / P0005 부록 A — uniform error contract for
+    leaking FastAPI's 422 (L0006 §4.2 / P0005 appendix A — uniform error contract for
     absent vs blank).
     """
     if body.data_type not in ALLOWED_DATA_TYPES:
