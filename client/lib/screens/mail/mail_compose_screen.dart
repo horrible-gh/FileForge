@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -10,6 +13,9 @@ import '../../services/mail_compose.dart';
 import '../../services/mail_envelope.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/recipient_field.dart';
+
+import 'package:flutter_dropzone/flutter_dropzone.dart'
+    if (dart.library.io) '../../utils/dropzone_stub.dart';
 
 /// text compose screen — NR0003 §7 text text(text translated text translated text). P0007 §7.5~§7.11.
 ///
@@ -69,7 +75,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
   final List<_UploadTask> _uploads = [];
 
   bool _sending = false;
+  bool _isDraggingAttachment = false;
   String? _toError;
+  DropzoneViewController? _dropController;
 
   // Draft translated text state.
   String? _draftId;
@@ -156,14 +164,14 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final task = _UploadTask(filename);
     setState(() => _uploads.add(task));
     final meta = await context.read<MailProvider>().uploadAttachment(
-          filename: filename,
-          bytes: bytes,
-          onProgress: (sent, total) {
-            if (total > 0 && mounted) {
-              setState(() => task.progress = sent / total);
-            }
-          },
-        );
+      filename: filename,
+      bytes: bytes,
+      onProgress: (sent, total) {
+        if (total > 0 && mounted) {
+          setState(() => task.progress = sent / total);
+        }
+      },
+    );
     if (!mounted) return;
     setState(() {
       _uploads.remove(task);
@@ -171,7 +179,44 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     });
     if (meta == null) {
       AppToast.error(
-          context, AppLocalizations.of(context).attachFailed(filename));
+        context,
+        AppLocalizations.of(context).attachFailed(filename),
+      );
+    }
+  }
+
+  void _handleAttachmentDrop(List<dynamic>? files) {
+    if (!kIsWeb || _sending) return;
+    if (_dropController == null || files == null || files.isEmpty) return;
+    unawaited(_processDroppedAttachments(files));
+  }
+
+  Future<void> _processDroppedAttachments(List<dynamic> files) async {
+    if (mounted) {
+      setState(() => _isDraggingAttachment = false);
+    }
+
+    final droppedFiles = <({String filename, List<int> bytes})>[];
+    final controller = _dropController;
+    if (controller == null) return;
+
+    for (final file in files) {
+      if (file == null) continue;
+      try {
+        final filename = await controller.getFilename(file);
+        final bytes = await controller.getFileData(file);
+        droppedFiles.add((
+          filename: filename.isEmpty ? 'attachment' : filename,
+          bytes: bytes,
+        ));
+      } catch (_) {
+        // Ignore unreadable drag items and keep valid files from the same drop.
+      }
+    }
+
+    if (!mounted) return;
+    for (final file in droppedFiles) {
+      unawaited(_startUpload(file.filename, file.bytes));
     }
   }
 
@@ -254,8 +299,11 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     }
 
     // text Draft refresh(translated text text, §7.10).
-    final result =
-        await provider.updateDraft(_draftId!, payload, _baseUpdatedAt ?? '');
+    final result = await provider.updateDraft(
+      _draftId!,
+      payload,
+      _baseUpdatedAt ?? '',
+    );
     if (!mounted) return;
     setState(() => _sending = false);
     switch (result.status) {
@@ -335,70 +383,134 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           ),
         ],
       ),
-      body: AbsorbPointer(
-        absorbing: _sending,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _senderField(t),
+      body: _composeBody(context, t),
+    );
+  }
+
+  Widget _composeBody(BuildContext context, AppLocalizations t) {
+    final content = AbsorbPointer(
+      absorbing: _sending,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _senderField(t),
+          RecipientField(
+            label: t.fieldTo,
+            addresses: _to,
+            errorText: _toError,
+            onChanged: (xs) => setState(() => _to = xs),
+          ),
+          const SizedBox(height: 8),
+          if (!_showCcBcc)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _showCcBcc = true),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(t.ccBccToggle),
+              ),
+            ),
+          if (_showCcBcc) ...[
             RecipientField(
-              label: t.fieldTo,
-              addresses: _to,
-              errorText: _toError,
-              onChanged: (xs) => setState(() => _to = xs),
+              label: t.fieldCc,
+              addresses: _cc,
+              onChanged: (xs) => setState(() => _cc = xs),
             ),
             const SizedBox(height: 8),
-            if (!_showCcBcc)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => _showCcBcc = true),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(t.ccBccToggle),
+            RecipientField(
+              label: t.fieldBcc,
+              addresses: _bcc,
+              onChanged: (xs) => setState(() => _bcc = xs),
+            ),
+            const SizedBox(height: 8),
+          ],
+          TextField(
+            controller: _subject,
+            decoration: InputDecoration(labelText: t.subjectLabel),
+          ),
+          const SizedBox(height: 8),
+          _formatToggle(t),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _body,
+            minLines: 8,
+            maxLines: null,
+            keyboardType: TextInputType.multiline,
+            decoration: InputDecoration(
+              labelText: t.messageLabel,
+              alignLabelWithHint: true,
+              hintText: _format == 'html' ? t.htmlSourceHint : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _attachmentsSection(context),
+          if (_sending)
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ),
+    );
+
+    if (!kIsWeb) return content;
+
+    return Stack(
+      children: [
+        content,
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: !_isDraggingAttachment,
+            child: DropzoneView(
+              operation: DragOperation.copy,
+              cursor: CursorType.Default,
+              onCreated: (ctrl) => _dropController = ctrl,
+              onHover: () {
+                if (!_sending && !_isDraggingAttachment) {
+                  setState(() => _isDraggingAttachment = true);
+                }
+              },
+              onLeave: () {
+                if (_isDraggingAttachment) {
+                  setState(() => _isDraggingAttachment = false);
+                }
+              },
+              onDropFiles: _handleAttachmentDrop,
+            ),
+          ),
+        ),
+        if (_isDraggingAttachment)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.14),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.upload_file_rounded,
+                        size: 64,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        t.uploadDropHere,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            if (_showCcBcc) ...[
-              RecipientField(
-                label: t.fieldCc,
-                addresses: _cc,
-                onChanged: (xs) => setState(() => _cc = xs),
-              ),
-              const SizedBox(height: 8),
-              RecipientField(
-                label: t.fieldBcc,
-                addresses: _bcc,
-                onChanged: (xs) => setState(() => _bcc = xs),
-              ),
-              const SizedBox(height: 8),
-            ],
-            TextField(
-              controller: _subject,
-              decoration: InputDecoration(labelText: t.subjectLabel),
             ),
-            const SizedBox(height: 8),
-            _formatToggle(t),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _body,
-              minLines: 8,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              decoration: InputDecoration(
-                labelText: t.messageLabel,
-                alignLabelWithHint: true,
-                hintText: _format == 'html' ? t.htmlSourceHint : null,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _attachmentsSection(context),
-            if (_sending)
-              const Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
@@ -423,12 +535,14 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
           for (final a in accounts)
             DropdownMenuItem<String>(
               value: a.accountId,
-              child: Text(a.email, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                a.email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
         ],
-        onChanged: _sending
-            ? null
-            : (v) => setState(() => _fromAccountId = v),
+        onChanged: _sending ? null : (v) => setState(() => _fromAccountId = v),
       ),
     );
   }
