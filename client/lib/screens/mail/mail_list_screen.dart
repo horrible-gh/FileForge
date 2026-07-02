@@ -57,6 +57,14 @@ class _MailListScreenState extends State<MailListScreen>
   /// different account or message) changes the signature and re-shows the banner.
   String? _dismissedSyncErrorSig;
 
+  /// R0001(0042, rev1) — busy state for the *manual* sync button only. The button
+  /// must spin ONLY in response to the user's own tap ("동기버튼은 내가 누를때만 돌았으면
+  /// 좋겠다"). Watching the provider's global [MailProvider.isSyncing] made it animate
+  /// on every background 10s poll and the on-mount sync too, so it appeared to "run
+  /// on its own". This local flag is raised solely inside [_syncNow] (the button
+  /// handler) and never by the background poll / on-mount / pull-to-refresh paths.
+  bool _manualSyncing = false;
+
   /// R0001(0022) realtime receive — while the inbox is on screen, periodically
   /// pull a server sync (POST /sync) to auto-reflect externally arriving mail.
   /// NR0003 direction A: server unchanged (the absence of a background worker is
@@ -272,13 +280,23 @@ class _MailListScreenState extends State<MailListScreen>
   /// the 10s poll both call syncInbox), so this just gives it an explicit affordance
   /// in the toolbar. Delegates to [MailProvider.syncRefresh] (server POST /sync then
   /// reload of the current label); reports success/failure with a toast since an
-  /// explicit tap is a deliberate user action. Re-tapping while a sync is in flight
-  /// is blocked at the button (onPressed null when isSyncing) and idempotently by the
-  /// provider's _isSyncing guard.
+  /// explicit tap is a deliberate user action.
+  ///
+  /// rev1 — the button's spinner is driven by the local [_manualSyncing] flag
+  /// (raised here, around the tap only) rather than the provider's global
+  /// isSyncing, so the button animates ONLY while the user's own tap is in flight
+  /// and stays idle during the background poll / on-mount sync. The flag also
+  /// guards against a double-tap while this tap is still running.
   Future<void> _syncNow() async {
+    if (_manualSyncing) return;
     final t = AppLocalizations.of(context);
     final mail = context.read<MailProvider>();
-    await mail.syncRefresh();
+    setState(() => _manualSyncing = true);
+    try {
+      await mail.syncRefresh();
+    } finally {
+      if (mounted) setState(() => _manualSyncing = false);
+    }
     if (!mounted) return;
     if (mail.error != null) {
       AppToast.error(context, t.mailSyncFailed);
@@ -346,24 +364,24 @@ class _MailListScreenState extends State<MailListScreen>
                 tooltip: t.mailMarkAllRead,
                 onPressed: _markAllRead,
               ),
-              // R0001(0042) — manual sync/refresh, between mark-all-read and
-              // account-connect as requested. While a sync is running the icon is
-              // replaced by a same-size spinner and the button is disabled so it
-              // cannot be double-fired.
-              Builder(builder: (context) {
-                final syncing = context.watch<MailProvider>().isSyncing;
-                return IconButton(
-                  icon: syncing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sync_rounded),
-                  tooltip: t.mailSyncTooltip,
-                  onPressed: syncing ? null : _syncNow,
-                );
-              }),
+              // R0001(0042, rev1) — manual sync/refresh, between mark-all-read and
+              // account-connect as requested. The spinner reflects ONLY the user's
+              // own tap (_manualSyncing), not the provider's global isSyncing, so the
+              // button no longer animates on its own during the background 10s poll
+              // or the on-mount sync ("동기버튼은 내가 누를때만 돌았으면 좋겠다"). While the
+              // user's tap is in flight the icon is a same-size spinner and the button
+              // is disabled so it cannot be double-fired.
+              IconButton(
+                icon: _manualSyncing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync_rounded),
+                tooltip: t.mailSyncTooltip,
+                onPressed: _manualSyncing ? null : _syncNow,
+              ),
               IconButton(
                 icon: const Icon(Icons.manage_accounts_rounded),
                 tooltip: t.accountManageTooltip,

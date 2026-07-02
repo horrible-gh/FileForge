@@ -114,6 +114,44 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpWidget(const SizedBox());
   });
+
+  // R0001(0042, rev1) — "동기버튼은 내가 누를때만 돌았으면 좋겠다": the sync button must
+  // spin ONLY in response to the user's own tap, never on its own during the
+  // background 10s poll / on-mount sync. This pins that the button stays the idle
+  // sync icon (not a spinner) even while the provider's global isSyncing is true.
+  // Load-bearing: if the button reverts to watching MailProvider.isSyncing, the
+  // idle icon disappears (replaced by a spinner) and this fails.
+  testWidgets(
+      'sync button stays idle while a background/global sync is in flight',
+      (tester) async {
+    final mail = _AlwaysSyncingMailProvider();
+    await tester.pumpWidget(_harness(mail, _ConnectedAccountProvider()));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    // The provider reports isSyncing == true the whole time, yet because no tap
+    // occurred the button shows the plain sync icon and is NOT a spinner.
+    expect(mail.isSyncing, isTrue);
+    expect(find.byIcon(Icons.sync_rounded), findsOneWidget,
+        reason: 'button must stay idle during background sync (not spin)');
+
+    await tester.pumpWidget(const SizedBox());
+  });
+}
+
+/// A MailProvider whose global sync state is permanently "in flight" but whose
+/// sync methods are inert — used to prove the tray button does not spin off the
+/// global isSyncing (only off its own tap).
+class _AlwaysSyncingMailProvider extends MailProvider {
+  _AlwaysSyncingMailProvider() : super(Dio());
+
+  @override
+  bool get isSyncing => true;
+
+  @override
+  Future<void> syncInbox({String label = 'inbox', bool quiet = false}) async {}
+
+  @override
+  Future<void> syncRefresh() async {}
 }
 
 class _ConnectedAccountProvider extends AccountProvider {
