@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +52,9 @@ class MailComposeScreen extends StatefulWidget {
 /// text text text upload text text(filetext + 0..1 translated text).
 class _UploadTask {
   final String filename;
+  final CancelToken cancelToken = CancelToken();
   double progress = 0;
+  bool cancelled = false;
   _UploadTask(this.filename);
 }
 
@@ -166,8 +169,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     final meta = await context.read<MailProvider>().uploadAttachment(
       filename: filename,
       bytes: bytes,
+      cancelToken: task.cancelToken,
       onProgress: (sent, total) {
-        if (total > 0 && mounted) {
+        if (total > 0 && mounted && !task.cancelled) {
           setState(() => task.progress = sent / total);
         }
       },
@@ -175,9 +179,9 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     if (!mounted) return;
     setState(() {
       _uploads.remove(task);
-      if (meta != null) _attachments.add(meta);
+      if (!task.cancelled && meta != null) _attachments.add(meta);
     });
-    if (meta == null) {
+    if (!task.cancelled && meta == null) {
       AppToast.error(
         context,
         AppLocalizations.of(context).attachFailed(filename),
@@ -222,6 +226,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
 
   void _removeAttachment(int index) {
     setState(() => _attachments.removeAt(index));
+  }
+
+  void _cancelUpload(_UploadTask task) {
+    task.cancelled = true;
+    task.cancelToken.cancel('attachment upload cancelled');
+    if (!mounted) return;
+    setState(() => _uploads.remove(task));
   }
 
   bool get _uploadsInFlight => _uploads.isNotEmpty;
@@ -608,6 +619,11 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
             title: Text(task.filename, maxLines: 1),
             subtitle: LinearProgressIndicator(
               value: task.progress > 0 ? task.progress : null,
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.close_rounded),
+              tooltip: t.cancel,
+              onPressed: () => _cancelUpload(task),
             ),
           ),
       ],

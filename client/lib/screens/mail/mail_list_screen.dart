@@ -266,6 +266,27 @@ class _MailListScreenState extends State<MailListScreen>
     }
   }
 
+  /// R0001(0042) — manual sync button (placed in the tray between mark-all-read
+  /// and account-connect). The title "리프레시는 어디서..." asked for a discoverable
+  /// refresh action: the sync behaviour itself already exists (pull-to-refresh and
+  /// the 10s poll both call syncInbox), so this just gives it an explicit affordance
+  /// in the toolbar. Delegates to [MailProvider.syncRefresh] (server POST /sync then
+  /// reload of the current label); reports success/failure with a toast since an
+  /// explicit tap is a deliberate user action. Re-tapping while a sync is in flight
+  /// is blocked at the button (onPressed null when isSyncing) and idempotently by the
+  /// provider's _isSyncing guard.
+  Future<void> _syncNow() async {
+    final t = AppLocalizations.of(context);
+    final mail = context.read<MailProvider>();
+    await mail.syncRefresh();
+    if (!mounted) return;
+    if (mail.error != null) {
+      AppToast.error(context, t.mailSyncFailed);
+    } else {
+      AppToast.success(context, t.mailSynced);
+    }
+  }
+
   /// text text — text text text translated text text(translated text translated text text).
   void _switchLabel(String label) {
     final provider = context.read<MailProvider>();
@@ -325,6 +346,24 @@ class _MailListScreenState extends State<MailListScreen>
                 tooltip: t.mailMarkAllRead,
                 onPressed: _markAllRead,
               ),
+              // R0001(0042) — manual sync/refresh, between mark-all-read and
+              // account-connect as requested. While a sync is running the icon is
+              // replaced by a same-size spinner and the button is disabled so it
+              // cannot be double-fired.
+              Builder(builder: (context) {
+                final syncing = context.watch<MailProvider>().isSyncing;
+                return IconButton(
+                  icon: syncing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync_rounded),
+                  tooltip: t.mailSyncTooltip,
+                  onPressed: syncing ? null : _syncNow,
+                );
+              }),
               IconButton(
                 icon: const Icon(Icons.manage_accounts_rounded),
                 tooltip: t.accountManageTooltip,

@@ -508,12 +508,14 @@ class MailProvider extends ChangeNotifier {
     required String filename,
     required List<int> bytes,
     void Function(int sent, int total)? onProgress,
+    CancelToken? cancelToken,
   }) async {
     try {
       return await _service.uploadAttachment(
         filename: filename,
         bytes: bytes,
         onSendProgress: onProgress,
+        cancelToken: cancelToken,
       );
     } catch (_) {
       return null;
