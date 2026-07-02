@@ -171,6 +171,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get mailMarkAllReadFailed => 'すべて既読にできませんでした';
 
   @override
+  String get mailSyncTooltip => '同期';
+
+  @override
+  String get mailSynced => '同期しました';
+
+  @override
+  String get mailSyncFailed => '同期に失敗しました';
+
+  @override
   String mailSyncAccountFailed(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

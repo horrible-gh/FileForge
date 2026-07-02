@@ -63,6 +63,9 @@
     "placeholders": { "count": { "type": "int" } }
   },
   "mailMarkAllReadFailed": "모두 읽음 처리에 실패했습니다",
+  "mailSyncTooltip": "동기화",
+  "mailSynced": "동기화됨",
+  "mailSyncFailed": "동기화 실패",
   "mailSyncAccountFailed": "{count, plural, =1{계정 1개가 동기화되지 않았습니다} other{계정 {count}개가 동기화되지 않았습니다}}",
   "@mailSyncAccountFailed": {
     "description": "Warning banner when some accounts failed to sync during the last refresh; count is how many.",

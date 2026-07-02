@@ -394,6 +394,24 @@ abstract class AppLocalizations {
   /// **'Failed to mark all as read'**
   String get mailMarkAllReadFailed;
 
+  /// No description provided for @mailSyncTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get mailSyncTooltip;
+
+  /// No description provided for @mailSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get mailSynced;
+
+  /// No description provided for @mailSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed'**
+  String get mailSyncFailed;
+
   /// Warning banner when some accounts failed to sync during the last refresh; count is how many.
   ///
   /// In en, this message translates to:

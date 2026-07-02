@@ -63,6 +63,9 @@
     "placeholders": { "count": { "type": "int" } }
   },
   "mailMarkAllReadFailed": "すべて既読にできませんでした",
+  "mailSyncTooltip": "同期",
+  "mailSynced": "同期しました",
+  "mailSyncFailed": "同期に失敗しました",
   "mailSyncAccountFailed": "{count, plural, =1{1件のアカウントを同期できませんでした} other{{count}件のアカウントを同期できませんでした}}",
   "@mailSyncAccountFailed": {
     "description": "Warning banner when some accounts failed to sync during the last refresh; count is how many.",
