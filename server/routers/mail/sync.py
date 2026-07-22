@@ -191,6 +191,10 @@ def parse_email_message(raw_email: bytes) -> dict:
     # Parse Cc (fills the cc field of the compat detail response)
     cc_emails = decode_address_list(msg.get('Cc', ''))
 
+    # Parse Bcc — normally absent on received mail, kept for symmetry with the
+    # sent-mail insert so the sync path never drops a header it did parse.
+    bcc_emails = decode_address_list(msg.get('Bcc', ''))
+
     # Parse Subject
     subject = parse_email_header(msg.get('Subject', '(제목없음)'))
 
@@ -256,6 +260,7 @@ def parse_email_message(raw_email: bytes) -> dict:
         "from_name": from_name,
         "to_emails": to_emails,
         "cc_emails": cc_emails,
+        "bcc_emails": bcc_emails,
         "subject": subject,
         "sent_date": sent_date,
         "body_text": body_text,
@@ -533,6 +538,11 @@ def sync_account_mails(account_uuid: str, user_uuid: str, folder: str = "INBOX")
                     "from_email": parsed['from_email'],
                     "from_name": parsed['from_name'],
                     "to_emails": parsed['to_emails'],
+                    # B0001 (0043) — Cc/Bcc were parsed but never bound, so every
+                    # synced mail landed with an empty cc_emails and "reply all"
+                    # degraded to a plain reply. Bind them alongside to_emails.
+                    "cc_emails": parsed['cc_emails'],
+                    "bcc_emails": parsed['bcc_emails'],
                     "subject": parsed['subject'],
                     "preview": parsed['preview'],
                     "sent_date": parsed['sent_date'],

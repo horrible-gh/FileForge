@@ -17,7 +17,7 @@
     "remove_account": "UPDATE mail_accounts SET status = 'inactive' WHERE account_uuid = :account_uuid"
   },
   "sync": {
-    "insert_message": "INSERT INTO mail_messages (message_uuid, account_uuid, folder_uuid, message_id, uid, from_email, from_name, to_emails, subject, preview, sent_date, has_attachments, body_file_path, size_bytes) VALUES (:message_uuid, :account_uuid, :folder_uuid, :message_id, :uid, :from_email, :from_name, :to_emails, :subject, :preview, :sent_date, :has_attachments, :body_file_path, :size_bytes)",
+    "insert_message": "INSERT INTO mail_messages (message_uuid, account_uuid, folder_uuid, message_id, uid, from_email, from_name, to_emails, cc_emails, bcc_emails, subject, preview, sent_date, has_attachments, body_file_path, size_bytes) VALUES (:message_uuid, :account_uuid, :folder_uuid, :message_id, :uid, :from_email, :from_name, :to_emails, :cc_emails, :bcc_emails, :subject, :preview, :sent_date, :has_attachments, :body_file_path, :size_bytes)",
     "insert_sync_log": "INSERT INTO sync_logs (log_uuid, account_uuid, sync_type, status, messages_fetched, messages_updated) VALUES (:log_uuid, :account_uuid, :sync_type, :status, :messages_fetched, :messages_updated)"
   },
   "inbox": {

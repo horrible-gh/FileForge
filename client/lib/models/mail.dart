@@ -225,6 +225,11 @@ class MailDetail {
   final MailAddress from;
   final List<MailAddress> to;
   final List<MailAddress> cc;
+
+  /// F6 (B0001/0043) — hidden recipients. The server fills this for the Sent
+  /// folder only (so the sender can verify their own Bcc); on received mail it
+  /// is always empty by design.
+  final List<MailAddress> bcc;
   final String subject;
   final String receivedAt;
   final bool isRead;
@@ -242,6 +247,7 @@ class MailDetail {
     required this.from,
     this.to = const [],
     this.cc = const [],
+    this.bcc = const [],
     this.subject = '',
     this.receivedAt = '',
     this.isRead = false,
@@ -265,6 +271,7 @@ class MailDetail {
           (json['from'] as Map?)?.cast<String, dynamic>() ?? const {}),
       to: addrs('to'),
       cc: addrs('cc'),
+      bcc: addrs('bcc'),
       subject: json['subject'] as String? ?? '',
       receivedAt: json['received_at'] as String? ?? '',
       isRead: json['is_read'] as bool? ?? false,
@@ -289,6 +296,7 @@ class MailDetail {
         from: from,
         to: to,
         cc: cc,
+        bcc: bcc,
         subject: subject,
         receivedAt: receivedAt,
         isRead: isRead,
@@ -307,6 +315,7 @@ class MailDetail {
         from: from,
         to: to,
         cc: cc,
+        bcc: bcc,
         subject: subject,
         receivedAt: receivedAt,
         isRead: read,

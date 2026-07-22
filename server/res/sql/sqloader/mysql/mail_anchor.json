@@ -28,7 +28,7 @@
         "remove_account": "UPDATE mail_accounts SET status = 'inactive' WHERE account_uuid = %(account_uuid)s"
     },
     "sync": {
-        "insert_message": "INSERT INTO mail_messages (message_uuid, account_uuid, folder_uuid, message_id, uid, from_email, from_name, to_emails, subject, preview, sent_date, has_attachments, body_file_path, size_bytes) VALUES (%(message_uuid)s, %(account_uuid)s, %(folder_uuid)s, %(message_id)s, %(uid)s, %(from_email)s, %(from_name)s, %(to_emails)s, %(subject)s, %(preview)s, %(sent_date)s, %(has_attachments)s, %(body_file_path)s, %(size_bytes)s)",
+        "insert_message": "INSERT INTO mail_messages (message_uuid, account_uuid, folder_uuid, message_id, uid, from_email, from_name, to_emails, cc_emails, bcc_emails, subject, preview, sent_date, has_attachments, body_file_path, size_bytes) VALUES (%(message_uuid)s, %(account_uuid)s, %(folder_uuid)s, %(message_id)s, %(uid)s, %(from_email)s, %(from_name)s, %(to_emails)s, %(cc_emails)s, %(bcc_emails)s, %(subject)s, %(preview)s, %(sent_date)s, %(has_attachments)s, %(body_file_path)s, %(size_bytes)s)",
         "insert_sync_log": "INSERT INTO sync_logs (account_uuid, sync_type, status, messages_fetched, messages_updated) VALUES (%(account_uuid)s, %(sync_type)s, %(status)s, %(messages_fetched)s, %(messages_updated)s)"
     },
     "inbox": {

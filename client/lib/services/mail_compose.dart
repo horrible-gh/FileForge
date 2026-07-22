@@ -166,12 +166,19 @@ SendPayload composeFrom(
         fromAccountId: replyFrom,
       );
     case ComposeMode.replyAll:
-      final cc = [...original.to, ...original.cc]
-          .where((a) =>
-              a.address.isNotEmpty &&
-              a.address != selfAddress &&
-              a.address != original.from.address)
-          .toList();
+      // B0001 (0043) — addresses are compared case-insensitively (mailbox domains
+      // are case-insensitive and servers echo mixed case), and duplicates across
+      // To/Cc are collapsed so the same person is not Cc'd twice.
+      final self = selfAddress.trim().toLowerCase();
+      final sender = original.from.address.trim().toLowerCase();
+      final seen = <String>{};
+      final cc = <MailAddress>[];
+      for (final a in [...original.to, ...original.cc]) {
+        final key = a.address.trim().toLowerCase();
+        if (key.isEmpty || key == self || key == sender) continue;
+        if (!seen.add(key)) continue;
+        cc.add(a);
+      }
       return SendPayload(
         to: [original.from],
         cc: cc,

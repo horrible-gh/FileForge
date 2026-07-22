@@ -150,6 +150,46 @@ void main() {
       expect(ccAddrs.contains('cc@example.com'), true);
     });
 
+    // B0001 (0043) — every test above passes selfAddress explicitly, which is
+    // exactly why the real call site forgetting it went unnoticed. These pin the
+    // behaviour the app actually depends on.
+    test('reply_all → self text text text text cc text text (B0001/0043)', () {
+      final r = composeFrom(ComposeMode.replyAll, original);
+      final ccAddrs = r.cc.map((a) => a.address).toList();
+      // No selfAddress → nothing to exclude beyond the sender, so both peers stay.
+      expect(ccAddrs.contains('billing@shop.com'), false);
+      expect(ccAddrs.contains('me@example.com'), true);
+      expect(ccAddrs.contains('peer@example.com'), true);
+      expect(ccAddrs.contains('cc@example.com'), true);
+    });
+
+    test('reply_all → self·from text text text text text (B0001/0043)', () {
+      final mixed = MailDetail(
+        mailId: 'm_case',
+        from: const MailAddress(address: 'Billing@Shop.com'),
+        to: [
+          const MailAddress(address: 'Me@Example.com'),
+          const MailAddress(address: 'peer@example.com'),
+        ],
+        cc: [const MailAddress(address: 'PEER@example.com')],
+        subject: 'case test',
+        body: const MailBody(),
+      );
+      final r = composeFrom(ComposeMode.replyAll, mixed,
+          selfAddress: 'me@example.com');
+      final ccAddrs =
+          r.cc.map((a) => a.address.toLowerCase()).toList();
+      expect(ccAddrs.contains('me@example.com'), false); // self, text text
+      expect(ccAddrs.contains('billing@shop.com'), false); // from, text text
+      expect(ccAddrs, ['peer@example.com']); // to/cc text text text
+    });
+
+    test('reply → cc text text (B0001/0043 regression)', () {
+      final r = composeFrom(ComposeMode.reply, original,
+          selfAddress: 'me@example.com');
+      expect(r.cc, isEmpty);
+    });
+
     test('forward → Fwd: translated text, Bodytext text text, to text', () {
       final r = composeFrom(ComposeMode.forward, original);
       expect(r.subject, 'Fwd: June receipt');

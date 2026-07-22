@@ -111,8 +111,26 @@ void main() {
       });
       expect(d.to.single.display, 'Hong Gil Dong');
       expect(d.cc, isEmpty);
+      expect(d.bcc, isEmpty, reason: 'absent bcc key must parse as empty');
       expect(d.body.isHtml, true);
       expect(d.attachments.single.sizeBytes, 84213);
+    });
+
+    test('F6 (B0001/0043): parses bcc on sent mail and copyWith keeps it', () {
+      final d = MailDetail.fromJson({
+        'mail_id': 'm_sent',
+        'from': {'address': 'me@example.com'},
+        'to': [
+          {'address': 'boss@example.com'}
+        ],
+        'bcc': [
+          {'name': 'Hidden', 'address': 'hidden@example.com'}
+        ],
+        'labels': ['sent'],
+      });
+      expect(d.bcc.single.address, 'hidden@example.com');
+      expect(d.copyWithPinned(true).bcc.single.address, 'hidden@example.com');
+      expect(d.copyWithRead(true).bcc.single.address, 'hidden@example.com');
     });
   });
 

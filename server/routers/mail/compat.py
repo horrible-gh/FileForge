@@ -549,6 +549,26 @@ def _resolve_body_path(bfp: Optional[str]) -> Optional[str]:
     return None
 
 
+def _header_from_eml(raw: bytes, name: str) -> str:
+    """Read one address header straight out of the stored ``.eml``.
+
+    B0001 (0043) — the IMAP sync INSERT dropped ``cc_emails`` entirely, so every
+    mail synced before that fix has an empty Cc in the DB and "reply all" collapsed
+    to a plain reply. The original message is still on disk with its Cc header
+    intact, so the detail response recovers it here instead of requiring a
+    re-sync or a backfill. Multiple occurrences are joined; folding is undone by
+    the email parser. Returns "" when absent or unparseable.
+    """
+    if not raw:
+        return ""
+    try:
+        msg = email.message_from_bytes(raw)
+    except Exception:  # noqa: BLE001 — a malformed .eml must not break the response
+        return ""
+    values = [v for v in (msg.get_all(name) or []) if v]
+    return ", ".join(str(v) for v in values)
+
+
 def _detail_to_p0007(row: dict, attachments: list,
                      proxy_endpoint: Optional[str] = None) -> dict:
     """get_mail row (m.* + account) → P0007 §3.2 MailDetail (mail.dart).
@@ -586,6 +606,16 @@ def _detail_to_p0007(row: dict, attachments: list,
         body_format, body_content = "html", body_html
     else:
         body_format, body_content = "text", (row.get("preview") or "")
+    # Cc/To fall back to the original headers when the stored columns are empty
+    # (B0001/0043 — mail synced before the INSERT fix carries no cc_emails).
+    cc = _addr_list(row.get("cc_emails")) or _addr_list(_header_from_eml(raw, "Cc"))
+    to = _addr_list(row.get("to_emails")) or _addr_list(_header_from_eml(raw, "To"))
+    labels = _labels_for(row)
+    # F6 (B0001/0043) — Bcc is exposed for the Sent folder only, so the sender can
+    # verify the hidden recipients they chose. On received mail Bcc stays hidden by
+    # design (a Bcc'd copy must not reveal itself). insert_sent_message has always
+    # persisted bcc_emails, so the DB column alone covers sent mail — no .eml fallback.
+    bcc = _addr_list(row.get("bcc_emails")) if "sent" in labels else []
     return {
         "mail_id": row.get("message_uuid", "") or "",
         "thread_id": "",
@@ -593,8 +623,9 @@ def _detail_to_p0007(row: dict, attachments: list,
         # can default its sender to the same account instead of the arbitrary first one.
         "account_id": row.get("account_uuid", "") or "",
         "from": {"name": row.get("from_name") or "", "address": row.get("from_email") or ""},
-        "to": _addr_list(row.get("to_emails")),
-        "cc": _addr_list(row.get("cc_emails")),
+        "to": to,
+        "cc": cc,
+        "bcc": bcc,
         "subject": row.get("subject") or "",
         "received_at": _iso(row.get("sent_date")),
         "is_read": bool(row.get("is_read")),
@@ -603,7 +634,7 @@ def _detail_to_p0007(row: dict, attachments: list,
         "is_pinned": bool(row.get("is_pinned")),
         "body": {"format": body_format, "content": body_content},
         "attachments": attachments,
-        "labels": _labels_for(row),
+        "labels": labels,
     }
 
 

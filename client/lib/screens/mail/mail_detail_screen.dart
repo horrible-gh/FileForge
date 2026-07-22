@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/account_provider.dart';
 import '../../providers/mail_provider.dart';
 import '../../models/mail.dart';
+import '../../models/mail_account.dart';
 import '../../services/mail_compose.dart';
 import '../../services/download_save_service.dart';
 import '../../utils/mail_body_render.dart';
@@ -111,10 +113,29 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
       MaterialPageRoute(
         builder: (_) => MailComposeScreen(
           mode: mode,
-          initial: composeFrom(mode, detail),
+          initial: composeFrom(mode, detail, selfAddress: _selfAddress(detail)),
         ),
       ),
     );
+  }
+
+  /// Address of the account this mail arrived at, so "reply all" can drop the
+  /// user from the Cc list. B0001 (0043): this was the only real call site of
+  /// [composeFrom] and it never passed `selfAddress`, leaving the self-exclusion
+  /// filter dead in the app while unit tests (which always passed it) stayed
+  /// green. Falls back to the single connected account, then to '' (no filter).
+  String _selfAddress(MailDetail detail) {
+    final List<MailAccount> accounts;
+    try {
+      accounts = context.read<AccountProvider>().accounts;
+    } on ProviderNotFoundException {
+      return ''; // screen mounted without the account tree (widget tests)
+    }
+    if (accounts.isEmpty) return '';
+    for (final a in accounts) {
+      if (a.accountId == detail.accountId) return a.email;
+    }
+    return accounts.length == 1 ? accounts.first.email : '';
   }
 
   /// Copy one field of the open mail to the clipboard. HTML bodies are copied
@@ -177,6 +198,9 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
         _addrRow(context, t.fieldFrom, [detail.from]),
         if (detail.to.isNotEmpty) _addrRow(context, t.fieldTo, detail.to),
         if (detail.cc.isNotEmpty) _addrRow(context, t.fieldCc, detail.cc),
+        // F6 (B0001/0043) — non-empty only for sent mail; the server keeps Bcc
+        // hidden on received mail, so this row simply never shows there.
+        if (detail.bcc.isNotEmpty) _addrRow(context, t.fieldBcc, detail.bcc),
         const SizedBox(height: 4),
         Text(
           _formatTime(detail.receivedAt),
