@@ -46,6 +46,22 @@ class AuthRefreshInterceptor extends Interceptor {
   /// Per-request marker so a request is retried at most once (L0004 §2.3).
   static const String retriedKey = '__ff_auth_retried__';
 
+  /// `detail` the server sends when the *session* — not the token — was ended
+  /// (server routers/login/auth.py `_assert_session_alive`, fileforge.default.0004 T1).
+  static const String sessionRevokedDetail = 'session_revoked';
+
+  /// True when a 401 says the session itself is gone. Rotating cannot revive it:
+  /// the refresh token is stored under the same session and was deleted with it,
+  /// so a refresh attempt is a guaranteed second round trip to the same answer
+  /// (D0003 §7.5).
+  static bool _isSessionRevoked(DioException err) {
+    final data = err.response?.data;
+    if (data is Map) {
+      return data['detail'] == sessionRevokedDetail;
+    }
+    return false;
+  }
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final token = getAccessToken();
@@ -61,6 +77,14 @@ class AuthRefreshInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     if (err.response?.statusCode != 401) {
+      handler.next(err);
+      return;
+    }
+
+    // Session revoked from another device ("log out this device"): go straight to
+    // the login screen instead of spending a rotation that can only fail.
+    if (_isSessionRevoked(err)) {
+      await onSessionExpired();
       handler.next(err);
       return;
     }

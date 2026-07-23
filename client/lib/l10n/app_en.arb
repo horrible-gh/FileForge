@@ -427,5 +427,23 @@
   "@relativeHoursAgo": {
     "description": "Relative time, hours.",
     "placeholders": { "count": { "type": "int" } }
-  }
+  },
+
+  "sessionsSectionTitle": "Signed-in devices",
+  "sessionsSectionDesc": "Devices currently signed in to this account. You can sign out any of them.",
+  "sessionsCurrentBadge": "This device",
+  "sessionsSignOut": "Sign out",
+  "sessionsSignOutConfirm": "Sign out '{device}'? That device will need to sign in again.",
+  "@sessionsSignOutConfirm": {"description": "Confirm ending one session.", "placeholders": {"device": {"type": "String"}}},
+  "sessionsSignOutOthers": "Sign out all other devices",
+  "sessionsSignOutOthersConfirm": "Sign out every device except this one?",
+  "sessionsSignedOutOne": "Signed out that device.",
+  "sessionsSignedOutOthers": "{count, plural, =0{No other devices were signed in} =1{Signed out 1 device} other{Signed out {count} devices}}",
+  "@sessionsSignedOutOthers": {"description": "How many other sessions were ended.", "placeholders": {"count": {"type": "int"}}},
+  "sessionsLoadFailed": "Could not load the device list.",
+  "sessionsActionFailed": "Could not sign that device out.",
+  "sessionsEmpty": "No other devices are signed in.",
+  "sessionsUnavailable": "Sign in again to see your devices.",
+  "sessionsLastUsed": "Last used {time}",
+  "@sessionsLastUsed": {"description": "Relative last-used time of a session.", "placeholders": {"time": {"type": "String"}}}
 }

@@ -40,7 +40,8 @@ server/default.log*
 server/logs/
 server/log/
 server/test/
-server/tests/
+# server/tests/ was ignored back when it only held scratch scripts. It is now the tracked
+# server-side pytest suite (fileforge.default.0004 T1), so it must be committed.
 .pytest_cache/
 .mypy_cache/
 htmlcov/

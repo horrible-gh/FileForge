@@ -8,7 +8,7 @@ from config import settings, db, tfa, redis_client
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from . import jwt_keys
+from . import jwt_keys, session_store
 
 import LogAssist.log as logger
 
@@ -48,10 +48,16 @@ def create_access_token(data: dict, expires_delta: timedelta):
     return jwt_keys.sign_access(data, expires_delta)
 
 
-def _access_claims(user_id: str, user: dict | None = None) -> dict:
+def _access_claims(user_id: str, user: dict | None = None, sid: str | None = None) -> dict:
     """Assemble the federated access-token claims. email/display_name let the Go server
-    provision a real local user instead of synthesizing a placeholder from `sub`."""
+    provision a real local user instead of synthesizing a placeholder from `sub`.
+
+    `sid` rides in the access token as well as the refresh token: carrying it only on refresh
+    would leave ordinary requests with no session to check, so a terminated session could keep
+    working until its access token expired (D0003 §7.3)."""
     claims = {"sub": user_id, "type": "access"}
+    if sid:
+        claims["sid"] = sid
     if user:
         if user.get("user_name"):
             claims["display_name"] = user["user_name"]
@@ -66,6 +72,30 @@ def create_refresh_token(data: dict):
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def _issue_session_tokens(request: Request, user_id: str, user: dict | None) -> dict:
+    """Mint one login's token pair and register the session that owns it.
+
+    The sid is generated first because both tokens must carry it and the refresh token is
+    stored under it — replacing the account-wide `refresh:{user_id}` key that made a second
+    device's login evict the first (D0003 §3.1, NR0005 F1).
+    """
+    sid = session_store.new_session_id()
+    access_token = create_access_token(
+        data=_access_claims(user_id, user, sid=sid),
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(data={"sub": user_id, "sid": sid})
+    _, evicted = session_store.create_session(
+        user_id,
+        refresh_token,
+        sid=sid,
+        **session_store.describe_request(request),
+    )
+    if evicted:
+        logger.debug(f"[Login] session limit reached - evicted LRU sessions: {evicted}")
+    return {"access_token": access_token, "refresh_token": refresh_token, "sid": sid}
 
 
 class TotpVerifyRequest(BaseModel):
@@ -98,14 +128,14 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         logger.debug(f"[Login] temp_token issue - user_id: {user_id}")
         return {"totp_required": True, "temp_token": temp_token}
 
-    access_token = create_access_token(
-        data=_access_claims(user_id, user),
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
-    refresh_token = create_refresh_token(data={"sub": user_id})
-    redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, refresh_token)
-    logger.debug({"access_token": access_token, "token_type": "bearer", "user": user})
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user}
+    tokens = _issue_session_tokens(request, user_id, user)
+    logger.debug({"access_token": tokens["access_token"], "token_type": "bearer", "user": user})
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer",
+        "user": user,
+    }
 
 
 @router.post("/totp/verify")
@@ -146,18 +176,21 @@ async def verify_totp_login(request: Request, body: TotpVerifyRequest):
         raise HTTPException(status_code=401, detail="invalid_code")
 
     user = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), user_id)
-    access_token = create_access_token(
-        data=_access_claims(user_id, user),
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
-    refresh_token = create_refresh_token(data={"sub": user_id})
-    redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, refresh_token)
+    # The session is created here, not when the temp token was issued: a totp_pending token
+    # cannot reach any API, so a session at that point would be a login that never happened
+    # (D0003 §3.1).
+    tokens = _issue_session_tokens(request, user_id, user)
     logger.debug(f"[TOTP Verify] ✅ login success - user_id: {user_id}")
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "user": user}
+    return {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer",
+        "user": user,
+    }
 
 
 @router.post("/refresh")
-async def refresh(body: RefreshRequest):
+async def refresh(request: Request, body: RefreshRequest):
     credentials_exception = HTTPException(
         status_code=401,
         detail="Invalid authentication credentials",
@@ -174,6 +207,7 @@ async def refresh(body: RefreshRequest):
 
     user_id: str = payload.get("sub")
     token_type: str = payload.get("type")
+    sid: str | None = payload.get("sid")
 
     if not user_id or token_type != "refresh":
         raise credentials_exception
@@ -182,17 +216,37 @@ async def refresh(body: RefreshRequest):
     if redis_client.exists(f"blacklist:{body.refresh_token}") > 0:
         raise HTTPException(status_code=401, detail="Token has been logged out")
 
-    # Step 3: Redis savetext translated text token text
-    stored_token = redis_client.get(f"refresh:{user_id}")
-    if stored_token is None or stored_token != body.refresh_token:
-        raise credentials_exception
+    if sid:
+        # Step 3: match against THIS session's stored token. Rotation is now scoped to one
+        # session, so two devices refreshing concurrently no longer invalidate each other
+        # (D0003 §3.3).
+        stored_token = session_store.get_refresh_token(user_id, sid)
+        if stored_token is None or stored_token != body.refresh_token:
+            raise credentials_exception
+        if not session_store.is_session_alive(user_id, sid):
+            raise HTTPException(status_code=401, detail="session_revoked")
 
-    # Step 4: text Redis text delete
-    redis_client.delete(f"refresh:{user_id}")
-
-    # Step 5: text refresh token issue text Redis save
-    new_refresh_token = create_refresh_token(data={"sub": user_id})
-    redis_client.setex(f"refresh:{user_id}", REFRESH_TOKEN_EXPIRE_DAYS * 86400, new_refresh_token)
+        # Step 4/5: rotate in place. rotate_refresh_token also re-applies the TTL to every key
+        # of this session, keeping session lifetime sliding the way the old account-wide setex
+        # was — otherwise a daily-used device would die 7 days after its first login.
+        new_refresh_token = create_refresh_token(data={"sub": user_id, "sid": sid})
+        session_store.rotate_refresh_token(user_id, sid, new_refresh_token)
+    else:
+        # Pre-session refresh token: honour it once and hand back a session-bearing pair, so
+        # already-signed-in users migrate without being forced to log in again (D0003 §6).
+        stored_token = redis_client.get(f"refresh:{user_id}")
+        if stored_token is None or stored_token != body.refresh_token:
+            raise credentials_exception
+        sid = session_store.new_session_id()
+        new_refresh_token = create_refresh_token(data={"sub": user_id, "sid": sid})
+        session_store.create_session(
+            user_id,
+            new_refresh_token,
+            sid=sid,
+            **session_store.describe_request(request),
+        )
+        session_store.drop_legacy_refresh(user_id)
+        logger.debug(f"[Refresh] legacy refresh token migrated to session {sid} - user_id: {user_id}")
 
     # Step 6: text access token issue
     # NR0003 F3 / L0004 §2.8: re-issue with the SAME federated claim set as the
@@ -202,7 +256,7 @@ async def refresh(body: RefreshRequest):
     # refresh. Re-fetch the user; fall back to sub-only if the lookup fails.
     refreshed_user = db_instance.fetch_one(sqloader.load_sql("file_forge", "get_user"), user_id)
     access_token = create_access_token(
-        data=_access_claims(user_id, refreshed_user),
+        data=_access_claims(user_id, refreshed_user, sid=sid),
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     logger.debug(f"[Refresh] ✅ token text complete - user_id: {user_id}")

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../models/auth_exception.dart';
+import 'session_service.dart' show currentDeviceLabel, deviceNameHeader;
 
 /// A rotated access+refresh token pair returned by POST /login/refresh.
 /// The server rotates the refresh token on every call (login.py:159-203), so a
@@ -79,6 +80,10 @@ class AuthService {
         data: {'username': username, 'password': password},
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
+          // Names this device in the session list. The server falls back to a
+          // User-Agent guess without it, which on a native app is useless
+          // (D0003 §7.5).
+          headers: {deviceNameHeader: currentDeviceLabel()},
         ),
       );
       return response.data as Map<String, dynamic>;
@@ -102,6 +107,10 @@ class AuthService {
       final response = await _dio.post(
         '/login/totp/verify',
         data: {'temp_token': tempToken, 'code': code},
+        // For a 2FA account the session is created HERE, not at /login (the
+        // pending token is not a completed login), so the device name has to
+        // ride along on this call too.
+        options: Options(headers: {deviceNameHeader: currentDeviceLabel()}),
       );
       return AuthLoginResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -131,6 +140,10 @@ class AuthService {
       final response = await _dio.post(
         '/login/refresh',
         data: {'refresh_token': refreshToken},
+        // A refresh token issued before multi-session support gets a session
+        // minted for it on first use (D0003 §6); send the device name so that
+        // migrated session is not labelled from the User-Agent alone.
+        options: Options(headers: {deviceNameHeader: currentDeviceLabel()}),
       );
       final data = response.data as Map<String, dynamic>;
       final newAccessToken = data['access_token'] as String;

@@ -1959,6 +1959,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
   String relativeHoursAgo(int count);
+
+  /// No description provided for @sessionsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed-in devices'**
+  String get sessionsSectionTitle;
+
+  /// No description provided for @sessionsSectionDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices currently signed in to this account. You can sign out any of them.'**
+  String get sessionsSectionDesc;
+
+  /// No description provided for @sessionsCurrentBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get sessionsCurrentBadge;
+
+  /// No description provided for @sessionsSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get sessionsSignOut;
+
+  /// Confirm ending one session.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out \'{device}\'? That device will need to sign in again.'**
+  String sessionsSignOutConfirm(String device);
+
+  /// No description provided for @sessionsSignOutOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out all other devices'**
+  String get sessionsSignOutOthers;
+
+  /// No description provided for @sessionsSignOutOthersConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out every device except this one?'**
+  String get sessionsSignOutOthersConfirm;
+
+  /// No description provided for @sessionsSignedOutOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out that device.'**
+  String get sessionsSignedOutOne;
+
+  /// How many other sessions were ended.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No other devices were signed in} =1{Signed out 1 device} other{Signed out {count} devices}}'**
+  String sessionsSignedOutOthers(int count);
+
+  /// No description provided for @sessionsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the device list.'**
+  String get sessionsLoadFailed;
+
+  /// No description provided for @sessionsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign that device out.'**
+  String get sessionsActionFailed;
+
+  /// No description provided for @sessionsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No other devices are signed in.'**
+  String get sessionsEmpty;
+
+  /// No description provided for @sessionsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again to see your devices.'**
+  String get sessionsUnavailable;
+
+  /// Relative last-used time of a session.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used {time}'**
+  String sessionsLastUsed(String time);
 }
 
 class _AppLocalizationsDelegate

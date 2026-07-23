@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from .login import login, logout
+from .login import login, logout, sessions
 from .storages import storages, bulk
 from . import shared_link, public_share, totp
 from .mail import accounts as mail_accounts, mail as mail_core, sync as mail_sync, inbox as mail_inbox, files as mail_files, actions as mail_actions, drafts as mail_drafts, labels as mail_labels
@@ -60,6 +60,9 @@ app.add_middleware(StreamSafeSlowAPIASGIMiddleware)  # pure-ASGI rate-limit midd
 
 app.include_router(login.router, prefix=f"{CONTEXT}/login", tags=["Login"])
 app.include_router(logout.router, prefix=f"{CONTEXT}/logout", tags=["Logout"])
+# Multi-device session management (fileforge.default.0004 T2). Lives under /auth/sessions
+# next to /auth/totp because both are "my account's security state" (D0003 §8).
+app.include_router(sessions.router, prefix=f"{CONTEXT}/auth/sessions", tags=["Sessions"])
 app.include_router(storages.router, prefix=f"{CONTEXT}/storages", tags=["Storages"])
 app.include_router(bulk.router, prefix=f"{CONTEXT}/storages/bulk", tags=["Bulk"])
 app.include_router(shared_link.router, prefix=f"{CONTEXT}/share", tags=["Share"])
