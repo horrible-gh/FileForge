@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from routers.login.auth import verify_token
+from routers.login.auth import verify_token, current_session
+from routers.login import session_store
 from config import tfa, db, adapt_query
 import LogAssist.log as logger
 
@@ -42,13 +43,22 @@ async def activate_totp(body: TotpCodeRequest, user_id: str = Depends(verify_tok
 
 
 @router.post("/disable")
-async def disable_totp(body: TotpCodeRequest, user_id: str = Depends(verify_token)):
-    """TOTP translated text — current text verify text text."""
+async def disable_totp(body: TotpCodeRequest, session: tuple = Depends(current_session)):
+    """TOTP translated text — current text verify text text.
+
+    Dropping the second factor weakens every existing login, so every *other* session is ended
+    here (D0003 §3.5): if the account was taken over, turning 2FA off — like changing the
+    password — must not leave the intruder signed in. The caller keeps their own session.
+    D0003's password-change half of that rule has no hook yet: FileForge exposes no
+    change-password endpoint at all (NR0005 F7/G1), so it is deferred to whenever that lands.
+    """
+    user_id, sid = session
     if not tfa.verify(user_id, body.code):
         raise HTTPException(status_code=400, detail="invalid_code")
     tfa.disable(user_id)
-    logger.debug("totp disabled", user_id)
-    return {"success": True}
+    revoked = session_store.revoke_other_sessions(user_id, sid)
+    logger.debug(f"totp disabled - user_id: {user_id}, other sessions revoked: {revoked}")
+    return {"success": True, "revoked_sessions": revoked}
 
 
 @router.post("/regenerate")

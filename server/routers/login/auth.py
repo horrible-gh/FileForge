@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from config import settings, redis_client, db
 
-from . import jwt_keys
+from . import jwt_keys, session_store
 
 import LogAssist.log as Logger
 
@@ -23,7 +23,43 @@ def is_token_blacklisted(token: str) -> bool:
     except redis.RedisError:
         return False  # Redis text text fail-open
 
+def _assert_session_alive(user_id: str, sid: str | None) -> None:
+    """Refuse requests whose session has been terminated (D0003 §3.2/§3.4).
+
+    Placed inside ``verify_token`` on purpose: every authenticated route already depends on it
+    (116 call sites across 16 files), so session-scoped revocation reaches all of them without
+    a single caller change (NR0005 F3/F4).
+
+    A token with no ``sid`` predates this feature and is honoured for its remaining lifetime —
+    access tokens live 30 minutes, so the transition window closes on its own and nobody is
+    logged out by the deploy (D0003 §6).
+
+    Unlike the per-token blacklist above this is **fail-closed**: if Redis is unreachable we
+    cannot tell a live session from a revoked one, and guessing "live" would resurrect sessions
+    the user explicitly killed (NR0005 G2). 503 rather than 401 so the client retries instead of
+    tearing down credentials that are probably still valid.
+    """
+    if not sid:
+        return
+    try:
+        alive = session_store.check_and_touch(user_id, sid)
+    except redis.RedisError:
+        Logger.error("[Auth] session store unreachable; refusing request (fail-closed)")
+        raise HTTPException(status_code=503, detail="session_store_unavailable")
+    if not alive:
+        raise HTTPException(status_code=401, detail="session_revoked")
+
+
 def verify_token(token: str = Depends(oauth2_scheme)):
+    return verify_token_payload(token)["sub"]
+
+
+def verify_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
+    """``verify_token`` that keeps the JWT payload instead of collapsing it to ``sub``.
+
+    ``verify_token`` returns a bare user id and 116 call sites depend on that shape, so the
+    session routes get this parallel dependency rather than a changed return type (NR0005 F3).
+    """
     credentials_exception = HTTPException(
         status_code=401,
         detail="Invalid authentication credentials",
@@ -54,7 +90,9 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         if datetime.now(timezone.utc) > datetime.fromtimestamp(exp, timezone.utc):
             raise HTTPException(status_code=401, detail="Token has expired")
 
-        return user_id
+        _assert_session_alive(user_id, payload.get("sid"))
+
+        return payload
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
@@ -84,4 +122,9 @@ def current_user_uuid(user_id: str = Depends(verify_token)) -> str:
             headers={"WWW-Authenticate": "Bearer"},
         )
     return row["user_uuid"]
+
+
+def current_session(payload: dict = Depends(verify_token_payload)) -> tuple[str, str | None]:
+    """``(user_id, sid)`` for the calling request; ``sid`` is None for pre-session tokens."""
+    return payload.get("sub"), payload.get("sid")
 

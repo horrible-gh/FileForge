@@ -1039,4 +1039,61 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sessionsSectionTitle => 'Signed-in devices';
+
+  @override
+  String get sessionsSectionDesc =>
+      'Devices currently signed in to this account. You can sign out any of them.';
+
+  @override
+  String get sessionsCurrentBadge => 'This device';
+
+  @override
+  String get sessionsSignOut => 'Sign out';
+
+  @override
+  String sessionsSignOutConfirm(String device) {
+    return 'Sign out \'$device\'? That device will need to sign in again.';
+  }
+
+  @override
+  String get sessionsSignOutOthers => 'Sign out all other devices';
+
+  @override
+  String get sessionsSignOutOthersConfirm =>
+      'Sign out every device except this one?';
+
+  @override
+  String get sessionsSignedOutOne => 'Signed out that device.';
+
+  @override
+  String sessionsSignedOutOthers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Signed out $count devices',
+      one: 'Signed out 1 device',
+      zero: 'No other devices were signed in',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sessionsLoadFailed => 'Could not load the device list.';
+
+  @override
+  String get sessionsActionFailed => 'Could not sign that device out.';
+
+  @override
+  String get sessionsEmpty => 'No other devices are signed in.';
+
+  @override
+  String get sessionsUnavailable => 'Sign in again to see your devices.';
+
+  @override
+  String sessionsLastUsed(String time) {
+    return 'Last used $time';
+  }
 }

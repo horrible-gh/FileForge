@@ -1021,4 +1021,59 @@ class AppLocalizationsKo extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sessionsSectionTitle => '로그인 중인 기기';
+
+  @override
+  String get sessionsSectionDesc =>
+      '이 계정으로 지금 로그인해 있는 기기입니다. 원하는 기기를 로그아웃할 수 있습니다.';
+
+  @override
+  String get sessionsCurrentBadge => '현재 기기';
+
+  @override
+  String get sessionsSignOut => '종료';
+
+  @override
+  String sessionsSignOutConfirm(String device) {
+    return '\'$device\' 기기를 로그아웃할까요? 해당 기기는 다시 로그인해야 합니다.';
+  }
+
+  @override
+  String get sessionsSignOutOthers => '다른 기기에서 모두 로그아웃';
+
+  @override
+  String get sessionsSignOutOthersConfirm => '현재 기기를 제외한 모든 기기를 로그아웃할까요?';
+
+  @override
+  String get sessionsSignedOutOne => '해당 기기를 로그아웃했습니다.';
+
+  @override
+  String sessionsSignedOutOthers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '기기 $count대를 로그아웃했습니다',
+      zero: '로그아웃할 다른 기기가 없습니다',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sessionsLoadFailed => '기기 목록을 불러오지 못했습니다.';
+
+  @override
+  String get sessionsActionFailed => '기기를 로그아웃하지 못했습니다.';
+
+  @override
+  String get sessionsEmpty => '로그인 중인 다른 기기가 없습니다.';
+
+  @override
+  String get sessionsUnavailable => '다시 로그인하면 기기 목록을 볼 수 있습니다.';
+
+  @override
+  String sessionsLastUsed(String time) {
+    return '마지막 사용 $time';
+  }
 }

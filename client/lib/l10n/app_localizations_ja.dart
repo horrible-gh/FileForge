@@ -1022,4 +1022,59 @@ class AppLocalizationsJa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sessionsSectionTitle => 'ログイン中のデバイス';
+
+  @override
+  String get sessionsSectionDesc =>
+      'このアカウントで現在ログインしているデバイスです。任意のデバイスをログアウトできます。';
+
+  @override
+  String get sessionsCurrentBadge => 'このデバイス';
+
+  @override
+  String get sessionsSignOut => '終了';
+
+  @override
+  String sessionsSignOutConfirm(String device) {
+    return '「$device」をログアウトしますか？そのデバイスは再度ログインが必要になります。';
+  }
+
+  @override
+  String get sessionsSignOutOthers => '他のデバイスからすべてログアウト';
+
+  @override
+  String get sessionsSignOutOthersConfirm => 'このデバイス以外のすべてをログアウトしますか？';
+
+  @override
+  String get sessionsSignedOutOne => 'そのデバイスをログアウトしました。';
+
+  @override
+  String sessionsSignedOutOthers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'デバイス $count 台をログアウトしました',
+      zero: 'ログアウトする他のデバイスはありません',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sessionsLoadFailed => 'デバイス一覧を読み込めませんでした。';
+
+  @override
+  String get sessionsActionFailed => 'デバイスをログアウトできませんでした。';
+
+  @override
+  String get sessionsEmpty => 'ログイン中の他のデバイスはありません。';
+
+  @override
+  String get sessionsUnavailable => '再度ログインすると、デバイス一覧を確認できます。';
+
+  @override
+  String sessionsLastUsed(String time) {
+    return '最終使用 $time';
+  }
 }
