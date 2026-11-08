@@ -139,8 +139,13 @@ class _MailHtmlViewState extends State<MailHtmlView>
     if (_openingLink || !isOpenableMailLink(url)) return;
     _openingLink = true;
     // HTML platform views otherwise swallow pointer events intended for a
-    // Flutter dialog painted above them. Restore input even after cancellation.
+    // Flutter dialog painted above them. Pointer-events alone does NOT move
+    // keyboard focus out of the iframe: Escape/Tab would still go to the mail.
+    // Blur the parent-owned element (no cross-origin DOM access) before the
+    // Flutter dialog requests focus. Restore input even after cancellation.
     _frame?.style.pointerEvents = 'none';
+    _frame?.blur();
+    web.window.focus();
     try {
       await confirmAndOpenMailLink(context, url);
     } finally {

@@ -58,7 +58,9 @@ class FixtureMailProvider extends MailProvider {
 }
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Retain semantics for this harness's lifetime so Playwright can operate
+  // the real Flutter Cancel button by its accessible role, not coordinates.
+  WidgetsFlutterBinding.ensureInitialized().ensureSemantics();
   final provider = FixtureMailProvider();
   _setFixture = ((JSString html) => provider.replaceHtml(html.toDart)).toJS;
   runApp(MaterialApp(

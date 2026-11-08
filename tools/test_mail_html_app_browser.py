@@ -144,7 +144,6 @@ class FlutterMailBrowserTests(unittest.TestCase):
         self.replace_html('<p id="second">Second message</p>', '#second')
         self.assertNotEqual(self.iframe.get_attribute('srcdoc'), old_html)
         before = self.iframe.bounding_box()['height']
-        # Even the CURRENT source window cannot use the PREVIOUS mail's token.
         self.frame.evaluate('token=>parent.postMessage({channel:"fileforge-mail",token,kind:"height",value:4000},"*")', old_token)
         self.page.wait_for_timeout(200)
         self.assertEqual(self.iframe.count(), 1)
@@ -156,8 +155,6 @@ class FlutterMailBrowserTests(unittest.TestCase):
         token = self.token()
         before = self.iframe.bounding_box()['height']
         self.assertEqual(self.iframe.get_attribute('sandbox'), 'allow-scripts')
-        # A sibling has the SAME opaque origin, plus a copied token. It must
-        # still fail the source-window identity check (do not remove that gate).
         self.page.evaluate('''token=>{
           const sibling=document.createElement('iframe');
           sibling.id='foreign-mail'; sibling.sandbox='allow-scripts';
@@ -190,18 +187,31 @@ class FlutterMailBrowserTests(unittest.TestCase):
         self.assertEqual(self.iframe.count(), 1)
         self.assert_no_errors()
 
-    def test_real_link_opens_confirmation_and_cancel_keeps_browser(self):
+    def open_link_dialog(self):
         self.wait_for_height(400)
         self.frame.locator('#application').click()
-        self.page.wait_for_timeout(300)
-        self.assertEqual(self.iframe.evaluate('el=>el.style.pointerEvents'), 'none', 'Dart confirmation dialog was not opened')
+        self.page.get_by_role('button', name='Cancel', exact=True).wait_for()
+        self.assertEqual(self.iframe.evaluate('el=>el.style.pointerEvents'), 'none')
         self.assertEqual(len(self.context.pages), 1)
-        self.page.keyboard.press('Escape')
-        self.page.wait_for_timeout(300)
+
+    def assert_browser_restored(self):
+        self.page.wait_for_timeout(400)
         self.assertEqual(self.iframe.evaluate('el=>el.style.pointerEvents'), '')
         self.assertEqual(self.iframe.count(), 1)
         self.assertEqual(self.frame.locator('#step').evaluate('el=>getComputedStyle(el).display'), 'table-cell')
         self.assert_no_errors()
+
+    def test_real_link_opens_confirmation_and_cancel_keeps_browser(self):
+        self.open_link_dialog()
+        self.page.get_by_role('button', name='Cancel', exact=True).click()
+        self.assert_browser_restored()
+
+    def test_link_dialog_escape_reaches_flutter_not_the_focused_iframe(self):
+        self.open_link_dialog()
+        # Do not focus/click the parent page from the test. The production link
+        # handler must transfer focus itself after a genuine iframe click.
+        self.page.keyboard.press('Escape')
+        self.assert_browser_restored()
 
 
 if __name__ == '__main__':
