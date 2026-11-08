@@ -52,11 +52,36 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
+# pdfx's PDFium download helper declares a pre-3.5 policy baseline. CMake 4
+# removed that compatibility; set the documented external baseline for child
+# CMake invocations too. Honour an explicit caller override. No package-cache
+# files are patched, and this is inert on older CMake versions.
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0" AND
+   NOT DEFINED ENV{CMAKE_POLICY_VERSION_MINIMUM})
+  set(ENV{CMAKE_POLICY_VERSION_MINIMUM} "3.5")
+endif()
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# These C++/WinRT dependencies still include experimental/coroutine in C++17.
+# MSVC 19.50+ makes that deprecation a hard STL1011 error, but explicitly
+# supports this opt-in while the old header remains available. Keep it local
+# to the affected plugins; do not disable /WX or change their coroutine ABI.
+# Remove when these plugins migrate to standard C++20 coroutine headers.
+# See microsoft/STL stl/inc/experimental/coroutine and inappwebview issue #2839.
+if(MSVC AND MSVC_VERSION GREATER_EQUAL 1950)
+  foreach(PLUGIN_TARGET IN ITEMS
+      flutter_inappwebview_windows_plugin
+      audioplayers_windows_plugin
+      permission_handler_windows_plugin)
+    if(TARGET ${PLUGIN_TARGET})
+      target_compile_definitions(${PLUGIN_TARGET} PRIVATE
+        _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+    endif()
+  endforeach()
+endif()
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
