@@ -7,8 +7,10 @@ Unlike test_mail_html_browser.py, this executes the production Dart receiver.
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import base64
 import json
 import os
+import re
 import threading
 import unittest
 
@@ -18,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'client/build/mail-html-app'
 ARTIFACTS = ROOT / 'artifacts/mail-html-app'
 SELECTOR = 'iframe[title="HTML email"]'
+IMAGE_GATE = threading.Event()
+PNG = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAACgAAAAUCAIAAABwJOjsAAAAJElEQVR4nO3NMQ0AAAACIPuX1hg+bPykycVnFYvFYrFYLO4jHn36HQ4oCLQGAAAAAElFTkSuQmCC')
 
 
 class AppHandler(SimpleHTTPRequestHandler):
@@ -25,7 +29,8 @@ class AppHandler(SimpleHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path.split('?')[0] in ('/', '/index.html'):
+        path = self.path.split('?')[0]
+        if path in ('/', '/index.html'):
             # Avoid unrelated PDF CDN scripts in the production index. Flutter's
             # actual generated loader/CanvasKit/compiled app are served locally.
             body = b'<!doctype html><html><head><base href="/"><meta charset="utf-8"></head><body><script src="flutter_bootstrap.js" async></script></body></html>'
@@ -34,6 +39,14 @@ class AppHandler(SimpleHTTPRequestHandler):
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return
+        if path == '/late.png':
+            IMAGE_GATE.wait(timeout=10)
+            self.send_response(200)
+            self.send_header('Content-Type', 'image/png')
+            self.send_header('Content-Length', str(len(PNG)))
+            self.end_headers()
+            self.wfile.write(PNG)
             return
         super().do_GET()
 
@@ -76,6 +89,7 @@ class FlutterMailBrowserTests(unittest.TestCase):
         self.frame.wait_for_selector('#greeting')
 
     def tearDown(self):
+        IMAGE_GATE.set()
         name = self._testMethodName
         try:
             self.page.screenshot(path=str(ARTIFACTS / f'{name}.png'), full_page=True)
@@ -88,6 +102,16 @@ class FlutterMailBrowserTests(unittest.TestCase):
 
     def wait_for_height(self, minimum):
         self.iframe.evaluate('(el,min)=>new Promise((resolve,reject)=>{const start=Date.now();const check=()=>{if(el.getBoundingClientRect().height>min){resolve(true);return;}if(Date.now()-start>5000){reject(new Error("Flutter iframe height stayed at "+el.getBoundingClientRect().height));return;}setTimeout(check,50);};check();})', minimum)
+
+    def token(self):
+        return re.search(r'<script nonce="([^"]+)"', self.iframe.get_attribute('srcdoc')).group(1)
+
+    def replace_html(self, html, marker):
+        self.page.evaluate('html=>ffSetMailFixture(html)', html)
+        self.page.wait_for_timeout(200)
+        self.iframe.wait_for(state='attached')
+        self.frame = self.iframe.element_handle().content_frame()
+        self.frame.wait_for_selector(marker)
 
     def test_browser_survives_watchdog_without_switching_to_fallback(self):
         self.page.wait_for_timeout(13500)
@@ -116,14 +140,67 @@ class FlutterMailBrowserTests(unittest.TestCase):
 
     def test_switching_mail_replaces_the_document_and_ignores_old_channel(self):
         self.wait_for_height(400)
-        old_html = self.iframe.get_attribute('srcdoc')
-        self.page.evaluate('ffSetMailFixture("<p id=second>Second message</p>")')
-        self.page.wait_for_timeout(500)
-        self.iframe.wait_for(state='attached')
-        frame = self.iframe.element_handle().content_frame()
-        frame.wait_for_selector('#second')
+        old_html, old_token = self.iframe.get_attribute('srcdoc'), self.token()
+        self.replace_html('<p id="second">Second message</p>', '#second')
         self.assertNotEqual(self.iframe.get_attribute('srcdoc'), old_html)
+        before = self.iframe.bounding_box()['height']
+        # Even the CURRENT source window cannot use the PREVIOUS mail's token.
+        self.frame.evaluate('token=>parent.postMessage({channel:"fileforge-mail",token,kind:"height",value:4000},"*")', old_token)
+        self.page.wait_for_timeout(200)
         self.assertEqual(self.iframe.count(), 1)
+        self.assertAlmostEqual(self.iframe.bounding_box()['height'], before, delta=1)
+        self.assert_no_errors()
+
+    def test_foreign_source_bad_origin_and_bad_token_are_ignored(self):
+        self.wait_for_height(400)
+        token = self.token()
+        before = self.iframe.bounding_box()['height']
+        self.assertEqual(self.iframe.get_attribute('sandbox'), 'allow-scripts')
+        # A sibling has the SAME opaque origin, plus a copied token. It must
+        # still fail the source-window identity check (do not remove that gate).
+        self.page.evaluate('''token=>{
+          const sibling=document.createElement('iframe');
+          sibling.id='foreign-mail'; sibling.sandbox='allow-scripts';
+          sibling.srcdoc='<script>parent.postMessage('+JSON.stringify({channel:'fileforge-mail',token,kind:'error',value:'forged'})+',"*")<'+ '/script>';
+          document.body.appendChild(sibling);
+        }''', token)
+        self.iframe.evaluate('''(el,token)=>{
+          window.dispatchEvent(new MessageEvent('message',{source:el.contentWindow,origin:'https://wrong.example',data:{channel:'fileforge-mail',token,kind:'height',value:4000}}));
+        }''', token)
+        self.frame.evaluate('''()=>{
+          parent.postMessage({channel:'fileforge-mail',token:'wrong',kind:'error'},'*');
+          parent.postMessage({channel:'fileforge-mail',token:'wrong',kind:'height',value:4000},'*');
+        }''')
+        self.page.wait_for_timeout(400)
+        self.assertEqual(self.iframe.count(), 1)
+        self.assertAlmostEqual(self.iframe.bounding_box()['height'], before, delta=1)
+        self.page.locator('#foreign-mail').evaluate('el=>el.remove()')
+        self.assert_no_errors()
+
+    def test_delayed_image_updates_height_without_replacing_browser(self):
+        IMAGE_GATE.clear()
+        self.replace_html(f'<p id="image-start">Before image</p><img id="late" style="width:600px" src="{self.origin}/late.png"><p id="after-image">After image</p>', '#after-image')
+        self.page.wait_for_timeout(200)
+        before = self.iframe.bounding_box()['height']
+        self.frame.evaluate('window.fixtureIdentity="same-after-image"')
+        IMAGE_GATE.set()
+        self.frame.wait_for_function('document.querySelector("#late").naturalWidth===40')
+        self.wait_for_height(before + 200)
+        self.assertEqual(self.frame.evaluate('window.fixtureIdentity'), 'same-after-image')
+        self.assertEqual(self.iframe.count(), 1)
+        self.assert_no_errors()
+
+    def test_real_link_opens_confirmation_and_cancel_keeps_browser(self):
+        self.wait_for_height(400)
+        self.frame.locator('#application').click()
+        self.page.wait_for_timeout(300)
+        self.assertEqual(self.iframe.evaluate('el=>el.style.pointerEvents'), 'none', 'Dart confirmation dialog was not opened')
+        self.assertEqual(len(self.context.pages), 1)
+        self.page.keyboard.press('Escape')
+        self.page.wait_for_timeout(300)
+        self.assertEqual(self.iframe.evaluate('el=>el.style.pointerEvents'), '')
+        self.assertEqual(self.iframe.count(), 1)
+        self.assertEqual(self.frame.locator('#step').evaluate('el=>getComputedStyle(el).display'), 'table-cell')
         self.assert_no_errors()
 
 
