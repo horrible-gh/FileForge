@@ -87,3 +87,9 @@ file-forge-storage/
 
 # === Secure Bolt ===
 /securebolt/*
+
+# === Local deploy settings (per machine; never commit) ===
+# fileforge.local.json holds the public URLs; fileforge.ps1 generates
+# client/config/deploy.json from it. client/config/prod.json stays a plain template.
+/fileforge.local.json
+/client/config/deploy.json
