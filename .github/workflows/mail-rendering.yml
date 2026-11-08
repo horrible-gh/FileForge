@@ -56,6 +56,10 @@ jobs:
   windows-build:
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      # pdfx's legacy pdfium download project predates CMake 3.5. CMake 4
+      # runners require an explicit compatibility floor for that dependency.
+      CMAKE_POLICY_VERSION_MINIMUM: '3.5'
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
