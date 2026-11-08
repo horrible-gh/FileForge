@@ -55,7 +55,7 @@ class _MailHtmlViewState extends State<MailHtmlView>
       ..style.cssText = 'display:block;width:100%;height:100%;border:0;'
           'background:white;color-scheme:light;';
     _watchdog = Timer(const Duration(seconds: 12), _fail);
-    frame.srcdoc = _document.html;
+    frame.srcdoc = _document.html.toJS;
   }
 
   void _receive(web.MessageEvent event) {
@@ -64,7 +64,9 @@ class _MailHtmlViewState extends State<MailHtmlView>
     final data = event.data.dartify();
     if (data is! Map ||
         data['channel'] != 'fileforge-mail' ||
-        data['token'] != _document.token) return;
+        data['token'] != _document.token) {
+      return;
+    }
     switch (data['kind']) {
       case 'ready':
         _watchdog?.cancel();
@@ -111,7 +113,7 @@ class _MailHtmlViewState extends State<MailHtmlView>
   void _fail() {
     _watchdog?.cancel();
     if (!mounted || _failed) return;
-    _frame?.srcdoc = '';
+    _frame?.srcdoc = ''.toJS;
     setState(() => _failed = true);
   }
 
@@ -119,7 +121,7 @@ class _MailHtmlViewState extends State<MailHtmlView>
   void dispose() {
     _watchdog?.cancel();
     web.window.removeEventListener('message', _listener);
-    _frame?.srcdoc = '';
+    _frame?.srcdoc = ''.toJS;
     _frame = null;
     super.dispose();
   }
