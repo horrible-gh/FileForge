@@ -6,7 +6,9 @@ on:
     paths:
       - 'client/lib/widgets/mail_html*'
       - 'client/lib/utils/mail_html_document.dart'
+      - 'client/lib/screens/mail/mail_detail_screen.dart'
       - 'client/test/mail_html*'
+      - 'client/test/mail_detail*'
       - 'client/pubspec.*'
       - 'client/windows/**'
       - 'tools/test_mail_html_browser.py'
@@ -38,6 +40,7 @@ jobs:
           lib/widgets/mail_html_body.dart
           lib/widgets/mail_html_web.dart
           lib/widgets/mail_html_native.dart
+          lib/screens/mail/mail_detail_screen.dart
         working-directory: client
       - run: >-
           flutter test
@@ -47,6 +50,8 @@ jobs:
           test/mail_html_table_layout_test.dart
           test/mail_html_render_widget_test.dart
           test/mail_detail_copy_test.dart
+          test/mail_detail_title_test.dart
+          test/mail_detail_bcc_test.dart
           test/mail_link_clickable_test.dart
         working-directory: client
       - run: flutter build web --release

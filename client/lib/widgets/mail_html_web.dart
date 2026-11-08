@@ -7,6 +7,15 @@ import 'package:web/web.dart' as web;
 import '../utils/mail_html_document.dart';
 import '../utils/mail_link_launcher.dart';
 
+// MessageEvent.source can be a cross-origin WindowProxy. Keep it as JSAny?
+// all the way to the JavaScript identity comparison. Dart runtime checks on a
+// Window/JSObject (including ordinary Dart ==) can read forbidden properties
+// on that proxy and throw SecurityError before ready/height is processed.
+extension type _OpaqueMessageEvent(JSObject _) implements JSObject {
+  @JS('source')
+  external JSAny? get sourceWindow;
+}
+
 /// Opaque-origin iframe. Deliberately NEVER combine allow-scripts with
 /// allow-same-origin: mail cannot read the app DOM, cookies or storage.
 class MailHtmlView extends StatefulWidget {
@@ -52,16 +61,42 @@ class _MailHtmlViewState extends State<MailHtmlView>
       ..setAttribute('referrerpolicy', 'no-referrer')
       ..setAttribute('allow', "camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'")
       ..setAttribute('title', 'HTML email')
+      ..setAttribute('data-fileforge-mail-state', 'starting')
       ..style.cssText = 'display:block;width:100%;height:100%;border:0;'
           'background:white;color-scheme:light;';
+    _watchdog?.cancel();
     _watchdog = Timer(const Duration(seconds: 12), _fail);
     frame.srcdoc = _document.html.toJS;
   }
 
+  void _acknowledgeBrowser() {
+    _watchdog?.cancel();
+    _watchdog = null;
+    _frame?.setAttribute('data-fileforge-mail-state', 'ready');
+  }
+
   void _receive(web.MessageEvent event) {
-    if (!mounted || _failed || _frame == null) return;
-    if (event.source != _frame!.contentWindow || event.origin != 'null') return;
-    final data = event.data.dartify();
+    final frame = _frame;
+    if (!mounted || _failed || frame == null || event.origin != 'null') return;
+
+    // Use package:web's cross-origin-safe accessor, not frame.contentWindow.
+    // The source check is still mandatory: a sibling opaque-origin frame must
+    // NOT be able to resize this mail or open a link, even with a copied token.
+    final expectedSource = frame.contentWindowCrossOrigin;
+    if (expectedSource == null ||
+        !_OpaqueMessageEvent(event)
+            .sourceWindow
+            .strictEquals(expectedSource.unsafeWindow)
+            .toDart) {
+      return;
+    }
+
+    final Object? data;
+    try {
+      data = event.data.dartify();
+    } catch (_) {
+      return; // A malformed message is not a renderer failure.
+    }
     if (data is! Map ||
         data['channel'] != 'fileforge-mail' ||
         data['token'] != _document.token) {
@@ -69,11 +104,15 @@ class _MailHtmlViewState extends State<MailHtmlView>
     }
     switch (data['kind']) {
       case 'ready':
-        _watchdog?.cancel();
+        if (data['value'] == true) _acknowledgeBrowser();
         break;
       case 'height':
         final heightValue = data['value'];
-        if (heightValue is num && heightValue.isFinite) {
+        if (heightValue is num && heightValue.isFinite && heightValue > 0) {
+          // A valid measured height also proves the authenticated bootstrap is
+          // alive. Do not replace a working browser if an earlier ready event
+          // was missed during mounting.
+          _acknowledgeBrowser();
           final next = heightValue.toDouble().clamp(48.0, mailHtmlMaxHeight).toDouble();
           if ((next - _height).abs() > 1) setState(() => _height = next);
         }

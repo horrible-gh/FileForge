@@ -16,12 +16,8 @@ import '../../widgets/mail_html_body.dart';
 import '../../widgets/mail_linked_text.dart';
 import 'mail_compose_screen.dart';
 
-/// text text screen — NR0003 §7 initial implementation(text translated text).
-///
-/// text·text/text·translated text·Body·text translated text displaytext. text text text text +
-/// translated text text text(MailProvider.openMail).
-/// HTML Body text translated text text translated text text(NR0003 §6)text translated text
-/// initial implementationtext translated text translated text displaytext, text text(text T)text translated text.
+/// Mail detail: one subject in the AppBar, address metadata and the message.
+/// HTML uses the isolated browser renderer; plain text retains linked selection.
 class MailDetailScreen extends StatefulWidget {
   final String mailId;
   final String subject;
@@ -37,7 +33,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MailProvider>().openMail(widget.mailId);
+      if (mounted) context.read<MailProvider>().openMail(widget.mailId);
     });
   }
 
@@ -45,19 +41,23 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final mail = context.watch<MailProvider>();
-    final detail = mail.detail;
+    // The provider may still hold the previous mail until openMail starts.
+    // Never show its subject/actions as if they belonged to the current mail.
+    final candidate = mail.detail;
+    final detail = candidate?.mailId == widget.mailId ? candidate : null;
+    final title = detail != null
+        ? (detail.subject.trim().isEmpty ? t.noSubject : detail.subject)
+        : (widget.subject.trim().isEmpty ? t.mailDetailTitle : widget.subject);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.subject.isEmpty ? t.mailDetailTitle : widget.subject,
+          title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
         actions: [
-          // R0001(0027) — pin toggle. Filled pin = pinned. Pinning/unpinning right
-          // from the detail view updates the list to the same state too
-          // (MailProvider.togglePin keeps both in sync).
+          // Pinning/unpinning keeps the list and detail in sync.
           if (detail != null)
             IconButton(
               icon: Icon(detail.isPinned
@@ -67,12 +67,8 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
               onPressed: () =>
                   context.read<MailProvider>().togglePin(detail.mailId),
             ),
-          // Copy actions live behind a single overflow icon (R0001 — the user
-          // asked for copy of subject/body/address but explicitly did NOT want
-          // buttons scattered across the screen). The body is also drag-
-          // selectable via the SelectionArea below; this menu guarantees copy
-          // even for HTML bodies, which HtmlWidget renders as non-selectable
-          // RichText.
+          // The copy menu preserves whole-subject/body copy even when the
+          // AppBar title is ellipsized or HTML uses a separate browser surface.
           if (detail != null)
             PopupMenuButton<_CopyTarget>(
               icon: const Icon(Icons.content_copy_rounded),
@@ -120,16 +116,14 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   }
 
   /// Address of the account this mail arrived at, so "reply all" can drop the
-  /// user from the Cc list. B0001 (0043): this was the only real call site of
-  /// [composeFrom] and it never passed `selfAddress`, leaving the self-exclusion
-  /// filter dead in the app while unit tests (which always passed it) stayed
-  /// green. Falls back to the single connected account, then to '' (no filter).
+  /// user from the Cc list. Falls back to the single connected account, then ''
+  /// (no filter), preserving the B0001/0043 self-exclusion fix.
   String _selfAddress(MailDetail detail) {
     final List<MailAccount> accounts;
     try {
       accounts = context.read<AccountProvider>().accounts;
     } on ProviderNotFoundException {
-      return ''; // screen mounted without the account tree (widget tests)
+      return '';
     }
     if (accounts.isEmpty) return '';
     for (final a in accounts) {
@@ -138,9 +132,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     return accounts.length == 1 ? accounts.first.email : '';
   }
 
-  /// Copy one field of the open mail to the clipboard. HTML bodies are copied
-  /// as their readable plain-text form (the same strip the fallback renderer
-  /// uses) so the clipboard never receives raw markup/CSS.
+  /// Copy full original fields, not the ellipsized title or raw HTML/CSS.
   Future<void> _copy(_CopyTarget target, MailDetail detail) async {
     final t = AppLocalizations.of(context);
     final String value;
@@ -175,61 +167,42 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
         onRetry: () => context.read<MailProvider>().openMail(widget.mailId),
       );
     }
-    if (detail == null) {
-      return const SizedBox.shrink();
-    }
+    if (detail == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
-    // Wrap the whole detail in a SelectionArea so the subject, address rows and
-    // (plain-text) body become drag-selectable — the root of R0001's "the body
-    // sometimes can't be selected": plain `Text`/`SelectableText` selection was
-    // inconsistent and HTML bodies were not selectable at all. The AppBar copy
-    // menu remains the guaranteed path for HTML bodies that HtmlWidget renders
-    // as non-selectable RichText.
+    // Address rows/plain text stay selectable. HTML selection belongs to the
+    // browser. The sole subject lives in the AppBar, not again in this list.
     return SelectionArea(
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-        Text(
-          detail.subject.isEmpty ? t.noSubject : detail.subject,
-          style: theme.textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        _addrRow(context, t.fieldFrom, [detail.from]),
-        if (detail.to.isNotEmpty) _addrRow(context, t.fieldTo, detail.to),
-        if (detail.cc.isNotEmpty) _addrRow(context, t.fieldCc, detail.cc),
-        // F6 (B0001/0043) — non-empty only for sent mail; the server keeps Bcc
-        // hidden on received mail, so this row simply never shows there.
-        if (detail.bcc.isNotEmpty) _addrRow(context, t.fieldBcc, detail.bcc),
-        const SizedBox(height: 4),
-        Text(
-          _formatTime(detail.receivedAt),
-          style: theme.textTheme.bodySmall,
-        ),
-        const Divider(height: 32),
-        ..._buildBodyContent(detail.body),
-        if (detail.attachments.isNotEmpty) ...[
+          _addrRow(context, t.fieldFrom, [detail.from]),
+          if (detail.to.isNotEmpty) _addrRow(context, t.fieldTo, detail.to),
+          if (detail.cc.isNotEmpty) _addrRow(context, t.fieldCc, detail.cc),
+          // Bcc is populated by the server for sent mail only.
+          if (detail.bcc.isNotEmpty) _addrRow(context, t.fieldBcc, detail.bcc),
+          const SizedBox(height: 4),
+          Text(_formatTime(detail.receivedAt), style: theme.textTheme.bodySmall),
           const Divider(height: 32),
-          Text(t.attachmentsLabel, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          ...detail.attachments.map((a) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                // An attached-file *row* uses the file glyph; `attach_file_rounded`
-                // is reserved for the attach *action*/badge (NR0004 §4).
-                leading: const Icon(Icons.description_rounded),
-                title: Text(a.filename),
-                subtitle: Text(_humanSize(a.sizeBytes)),
-                trailing: const Icon(Icons.download_rounded),
-                // On tap, fetch the bytes from the server and save via DownloadSaveService (NR0003 §4).
-                onTap: () => _handleAttachmentDownload(a),
-              )),
-        ],
+          ..._buildBodyContent(detail.body),
+          if (detail.attachments.isNotEmpty) ...[
+            const Divider(height: 32),
+            Text(t.attachmentsLabel, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...detail.attachments.map((a) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.description_rounded),
+                  title: Text(a.filename),
+                  subtitle: Text(_humanSize(a.sizeBytes)),
+                  trailing: const Icon(Icons.download_rounded),
+                  onTap: () => _handleAttachmentDownload(a),
+                )),
+          ],
         ],
       ),
     );
   }
 
-  /// Attachment download: receive bytes from the server → platform-specific save → success/failure toast.
   Future<void> _handleAttachmentDownload(MailAttachment attachment) async {
     final t = AppLocalizations.of(context);
     try {
@@ -268,10 +241,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
         children: [
           SizedBox(
             width: 44,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(child: Text(text)),
         ],
@@ -279,29 +249,10 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     );
   }
 
-  /// Render the body. Plain text shows as-is; HTML is rendered with a real HTML
-  /// widget so styled layout (tables, fonts, inline CSS, images) appears the way
-  /// the legacy web client showed it (0008 R0001 — the previous tag-stripping
-  /// path mangled layout and leaked `<style>` CSS as visible text).
-  ///
-  /// `flutter_widget_from_html_core` drops non-displayed elements
-  /// (`<style>`/`<script>`/`<head>`), renders inline styles, tables and `<img>`
-  /// (server already inlines `cid:` pictures as `data:` URIs; remote `<img>`
-  /// load over the network). If the HTML is empty/unrenderable we fall back to
-  /// the hardened plain-text strip.
-  ///
-  /// [MailHtmlBody] wraps each image in a layout-stable box so loading an image
-  /// cannot relayout the hovered subtree (0009 R0001 / NR0003 — the
-  /// `mouse_tracker.dart:199` re-entrancy assertion flood).
+  /// HTML uses MailHtmlBody's browser isolation/compatibility fallback. Keep
+  /// plain-text URL handling and the existing copy contract unchanged.
   List<Widget> _buildBodyContent(MailBody body) {
-    // Plain text goes through [MailLinkedText]: a `Text.rich` that keeps the
-    // surrounding [SelectionArea]'s drag-selection while turning bare URLs into
-    // tappable links (R0001 / 0031, NR0003 root cause B — a plain `Text` made
-    // every plain-text URL un-openable). It falls back to a plain `Text` when
-    // the body has no links, so selection behaviour is unchanged there.
-    if (!body.isHtml) {
-      return [MailLinkedText(body.content)];
-    }
+    if (!body.isHtml) return [MailLinkedText(body.content)];
     if (body.content.trim().isEmpty) {
       return [MailLinkedText(stripHtmlToText(body.content))];
     }
@@ -323,5 +274,4 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   }
 }
 
-/// The fields offered by the detail screen's consolidated copy menu (R0001).
 enum _CopyTarget { subject, body, from }
