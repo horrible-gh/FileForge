@@ -1,0 +1,41 @@
+name: Mail HTML app integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/lib/widgets/mail_html*'
+      - 'client/lib/utils/mail_html_document.dart'
+      - 'client/lib/screens/mail/mail_detail_screen.dart'
+      - 'client/test/browser/mail_html_app.dart'
+      - 'client/pubspec.*'
+      - 'tools/test_mail_html_app_browser.py'
+      - '.github/workflows/mail-html-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compiled-web-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: client
+      - run: flutter build web --release --no-web-resources-cdn --target=test/browser/mail_html_app.dart --output=build/mail-html-app
+        working-directory: client
+      - run: python -m pip install 'playwright>=1.50,<2'
+      - run: python -m playwright install --with-deps chromium
+      - run: python tools/test_mail_html_app_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mail-html-app-evidence
+          path: artifacts/mail-html-app
+          if-no-files-found: ignore
