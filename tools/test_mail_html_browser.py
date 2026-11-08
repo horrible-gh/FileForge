@@ -10,7 +10,6 @@ import base64
 import os
 from pathlib import Path
 import re
-import shutil
 import unittest
 from playwright.sync_api import sync_playwright
 
@@ -48,8 +47,11 @@ class MailBrowserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.pw = sync_playwright().start()
-        path = os.environ.get('CHROMIUM_PATH') or shutil.which('chromium') or shutil.which('google-chrome')
+        # Use the exact browser installed for this Playwright version in CI.
+        # A random system Chrome can be protocol-incompatible or a snap wrapper.
+        path = os.environ.get('CHROMIUM_PATH')
         cls.browser = cls.pw.chromium.launch(executable_path=path, headless=True, args=['--no-sandbox'])
+        print(f'Browser: {cls.browser.version}; executable: {path or "Playwright-managed"}', flush=True)
 
     @classmethod
     def tearDownClass(cls):
