@@ -1,0 +1,69 @@
+name: Mail rendering checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/lib/widgets/mail_html*'
+      - 'client/lib/utils/mail_html_document.dart'
+      - 'client/test/mail_html*'
+      - 'client/pubspec.*'
+      - 'tools/test_mail_html_browser.py'
+      - '.github/workflows/mail-rendering.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-and-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: client
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mail-client-resolved-lockfile
+          path: client/pubspec.lock
+      - run: >-
+          flutter analyze --no-fatal-infos
+          lib/utils/mail_html_document.dart
+          lib/widgets/mail_html_body.dart
+          lib/widgets/mail_html_web.dart
+          lib/widgets/mail_html_native.dart
+        working-directory: client
+      - run: >-
+          flutter test
+          test/mail_html_document_test.dart
+          test/mail_html_fallback_theme_test.dart
+          test/mail_html_image_stability_test.dart
+          test/mail_html_table_layout_test.dart
+          test/mail_html_render_widget_test.dart
+          test/mail_detail_copy_test.dart
+          test/mail_link_clickable_test.dart
+        working-directory: client
+      - run: flutter build web --release
+        working-directory: client
+      - run: python -m pip install 'playwright>=1.50,<2'
+      - run: python -m playwright install --with-deps chromium
+      - run: python tools/test_mail_html_browser.py
+  windows-build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: NuGet/setup-nuget@v2
+      - run: flutter pub get
+        working-directory: client
+      - run: flutter build windows --debug
+        working-directory: client

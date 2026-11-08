@@ -51,6 +51,9 @@ dependencies:
   url_launcher: ^6.3.0
   app_links: ^6.3.2
   flutter_widget_from_html_core: ^0.17.2
+  # Browser HTML mail rendering; retain fwfh only as an unavailable-engine fallback.
+  flutter_inappwebview: 6.1.5
+  web: ^1.1.1
 
   # SecureBolt vault (fileforge.securebolt.0001). crypto = SHA-256/MD5 digests;
   # pointycastle = AES-256-CBC/PKCS7. Together they reproduce CryptoJS 4.1.1's
