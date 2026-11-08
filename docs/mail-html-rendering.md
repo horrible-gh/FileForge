@@ -67,9 +67,16 @@ WebView2. Other native setup requirements are those of the selected plugin:
 https://inappwebview.dev/docs/intro/
 https://inappwebview.dev/docs/webview/in-app-webview/
 
-The existing pubspec.lock is retained. `flutter pub get` must resolve the new
-pinned plugin and regenerate it; a successful SDK resolution must precede
-committing a newly generated lockfile. Do not hand-invent lockfile hashes.
+The Windows CMake project supplies the legacy PDFium child-project policy
+baseline on CMake 4 and scopes Microsoft's transitional experimental-coroutine
+opt-in to the three affected C++/WinRT plugins on MSVC 19.50+. This preserves
+warnings-as-errors and the existing coroutine ABI; no package-cache edits are
+required. Remove the opt-in when those dependencies migrate to C++20 coroutines.
+
+The existing pubspec.lock is retained. `flutter pub get` resolves the new pinned
+plugin and updates the lockfile. Dependency resolution succeeded in CI and its
+resolved lockfile is available as a workflow artifact; lockfile hashes were not
+hand-invented.
 
 A deployment CSP which blocks the iframe's nonced bootstrap will cause the
 compatibility fallback, not a permanently blank message. Very large native
@@ -96,9 +103,24 @@ python tools/test_mail_html_browser.py
 # Or set CHROMIUM_PATH to an existing Chromium installation.
 ```
 
-Flutter analysis, widget tests and native builds were **not run locally**.
-The checked-in mail-rendering workflow runs targeted Flutter tests plus web and
-Windows compilation on pushes that affect this renderer. A workflow definition
-is not evidence of a successful run; inspect its actual result before treating
-those checks as passed. No exact reproduction with the reporter's original EML
-was possible because only screenshots were supplied.
+### Completed CI verification — 2026-11-08
+
+Code commit: `a5eb39e1b2e8f2fb4df4a9b2e6299763ee1d737e`.
+Workflow: https://github.com/horrible-gh/FileForge/actions/runs/42440748940
+
+Both jobs completed successfully:
+
+- Flutter dependency resolution and targeted static analysis: passed.
+- Related Flutter regression tests: **29 passed**.
+- Production-bootstrap Chromium browser tests: **17 passed**.
+- `flutter build web --release`: passed.
+- `flutter build windows --debug`: passed.
+
+Earlier CI failures (JS interop typing, test-global cleanup, runner browser
+selection and native compiler compatibility) were corrected and the complete
+workflow was rerun successfully. No assertions or build checks were disabled.
+
+These results do not establish native GUI behaviour on physical devices.
+Android/iOS/macOS builds were not run. No exact reproduction with the reporter's
+original EML was possible because only screenshots were supplied. The user's
+running deployment was not replaced or restarted by this change.
