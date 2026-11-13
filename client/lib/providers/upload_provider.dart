@@ -7,6 +7,11 @@ import '../services/storage_service.dart';
 /// L003 — upload text/text upload/text state management
 class UploadProvider extends ChangeNotifier {
   static const int maxConcurrent = 2;
+
+  /// Per-file upload ceiling. Production sits behind a Cloudflare proxy, which
+  /// rejects request bodies over 100 MB at the edge (the request never reaches
+  /// the server), so refuse such files up front with a clear message.
+  static const int maxFileBytes = 100 * 1024 * 1024;
   static const String _tag = 'UploadProvider';
 
   final StorageService _storageService;
@@ -50,6 +55,7 @@ class UploadProvider extends ChangeNotifier {
     Map<String, String>? relativePathMap,
   }) {
     int added = 0;
+    bool rejected = false;
     for (final entry in files) {
       final filename = entry.key;
       // uploading text text filetext textadd prohibited
@@ -62,7 +68,7 @@ class UploadProvider extends ChangeNotifier {
       }
 
       final item = UploadItem(
-        id: '${DateTime.now().microsecondsSinceEpoch}_$added',
+        id: '${DateTime.now().microsecondsSinceEpoch}_${added}_${_items.length}',
         filename: filename,
         fileBytes: entry.value,
         storageUuid: storageUuid,
@@ -71,8 +77,26 @@ class UploadProvider extends ChangeNotifier {
         groupUuid: groupUuid,
         relativePath: relativePathMap?[filename] ?? '',
       );
+
+      if (entry.value.length > maxFileBytes) {
+        // Show it in the panel as failed instead of sending a request that the
+        // proxy is guaranteed to reject.
+        item.status = UploadStatus.error;
+        item.errorMessage = 'File exceeds the 100 MB upload limit';
+        AppLogger.warn(_tag,
+            'file too large (${entry.value.length} bytes): $filename');
+        _items.add(item);
+        rejected = true;
+        continue;
+      }
+
       _items.add(item);
       added++;
+    }
+
+    if (rejected && added == 0) {
+      _isPanelExpanded = true;
+      notifyListeners();
     }
 
     if (added > 0) {
@@ -137,9 +161,15 @@ class UploadProvider extends ChangeNotifier {
       }
       final statusCode = e.response?.statusCode;
       if (statusCode == 413) {
+        // The API's own 413 is a quota error ("Storage quota exceeded ...");
+        // any other 413 comes from a proxy/edge body-size limit.
+        final body = e.response?.data;
+        final isQuota = body.toString().toLowerCase().contains('quota');
         item.status = UploadStatus.error;
-        item.errorMessage = 'Insufficient storage space';
-        AppLogger.warn(_tag, 'HTTP 413: ${item.filename}');
+        item.errorMessage = isQuota
+            ? 'Insufficient storage space'
+            : 'File exceeds the 100 MB upload limit';
+        AppLogger.warn(_tag, 'HTTP 413 (quota=$isQuota): ${item.filename}');
       } else {
         item.status = UploadStatus.error;
         item.errorMessage = 'Upload failed';
